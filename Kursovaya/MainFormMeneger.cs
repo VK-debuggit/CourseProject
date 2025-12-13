@@ -82,6 +82,7 @@ namespace Kursovaya
 
             if (result == DialogResult.Yes)
             {
+                inactivityTimer.Stop();
                 allowClose = true;
                 this.Visible = false;
                 Authorization authorization = new Authorization();
@@ -105,6 +106,7 @@ namespace Kursovaya
 
         private void button1_Click(object sender, EventArgs e)
         {
+            inactivityTimer.Stop();
             this.Visible = false;
             Menu menu = new Menu();
             menu.ShowDialog();
@@ -113,6 +115,7 @@ namespace Kursovaya
 
         private void button6_Click(object sender, EventArgs e)
         {
+            inactivityTimer.Stop();
             this.Visible = false;
             MakingAnOrder makingAnOrder = new MakingAnOrder();
             makingAnOrder.ShowDialog();
@@ -121,6 +124,7 @@ namespace Kursovaya
 
         private void button4_Click(object sender, EventArgs e)
         {
+            inactivityTimer.Stop();
             this.Visible = false;
             ViewingOrdersForMeneger viewingOrdersForMeneger = new ViewingOrdersForMeneger();
             viewingOrdersForMeneger.ShowDialog();
@@ -129,6 +133,8 @@ namespace Kursovaya
 
         private void button2_Click(object sender, EventArgs e)
         {
+            inactivityTimer.Stop();
+
             this.Visible = false;
             ViewingMenu viewingMenu = new ViewingMenu();
             viewingMenu.ShowDialog();

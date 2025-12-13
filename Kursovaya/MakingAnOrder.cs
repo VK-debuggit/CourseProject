@@ -132,6 +132,7 @@ namespace Kursovaya
 
         private void button4_Click(object sender, EventArgs e)
         {
+            inactivityTimer.Stop();
             allowClose = true;
             this.Visible = false;
             MainFormMeneger mainFormMeneger = new MainFormMeneger();
@@ -248,6 +249,7 @@ namespace Kursovaya
             // Создаем копию корзины для передачи
             DataTable cartCopy = dataView2.Copy();
 
+            inactivityTimer.Stop();
             this.Visible = false;
             ViewingAnOrderForMeneger viewingAnOrderForMeneger = new ViewingAnOrderForMeneger(cartCopy, orderData);
             viewingAnOrderForMeneger.ShowDialog();
@@ -368,6 +370,7 @@ namespace Kursovaya
 
         private void button1_Click(object sender, EventArgs e)
         {
+            inactivityTimer.Stop();
             this.Visible = false;
             CreatingAClient creatingAClient = new CreatingAClient();
             creatingAClient.ShowDialog();

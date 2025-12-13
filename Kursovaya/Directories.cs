@@ -76,6 +76,7 @@ namespace Kursovaya
 
         private void button1_Click(object sender, EventArgs e)
         {
+            inactivityTimer.Stop();
             this.Visible = false;
             Roles roles = new Roles();
             roles.ShowDialog();
@@ -108,6 +109,7 @@ namespace Kursovaya
 
         private void button2_Click(object sender, EventArgs e)
         {
+            inactivityTimer.Stop();
             this.Visible = false;
             Statuses statuses = new Statuses();
             statuses.ShowDialog();
@@ -116,6 +118,7 @@ namespace Kursovaya
 
         private void button3_Click(object sender, EventArgs e)
         {
+            inactivityTimer.Stop();
             this.Visible = false;
             Events events = new Events();
             events.ShowDialog();
@@ -124,6 +127,7 @@ namespace Kursovaya
 
         private void button4_Click(object sender, EventArgs e)
         {
+            inactivityTimer.Stop();
             this.Visible = false;
             Categories categories = new Categories();
             categories.ShowDialog();

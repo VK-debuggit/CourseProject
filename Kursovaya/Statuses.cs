@@ -85,6 +85,7 @@ namespace Kursovaya
 
         private void button4_Click(object sender, EventArgs e)
         {
+            inactivityTimer.Stop();
             allowClose = true;
             this.Visible = false;
             Directories directories = new Directories();

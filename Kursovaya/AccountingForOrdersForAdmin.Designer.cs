@@ -84,7 +84,7 @@ namespace Kursovaya
             // 
             this.button1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.button1.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.button1.Location = new System.Drawing.Point(813, 579);
+            this.button1.Location = new System.Drawing.Point(813, 588);
             this.button1.Name = "button1";
             this.button1.Size = new System.Drawing.Size(157, 43);
             this.button1.TabIndex = 3;
@@ -96,7 +96,7 @@ namespace Kursovaya
             // 
             this.label3.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(13, 453);
+            this.label3.Location = new System.Drawing.Point(13, 487);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(217, 28);
             this.label3.TabIndex = 4;
@@ -106,7 +106,7 @@ namespace Kursovaya
             // 
             this.label4.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(237, 453);
+            this.label4.Location = new System.Drawing.Point(227, 487);
             this.label4.Name = "label4";
             this.label4.Size = new System.Drawing.Size(67, 28);
             this.label4.TabIndex = 5;
@@ -116,7 +116,7 @@ namespace Kursovaya
             // 
             this.button2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.button2.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.button2.Location = new System.Drawing.Point(18, 579);
+            this.button2.Location = new System.Drawing.Point(18, 588);
             this.button2.Name = "button2";
             this.button2.Size = new System.Drawing.Size(200, 43);
             this.button2.TabIndex = 6;
@@ -129,7 +129,7 @@ namespace Kursovaya
             this.comboBox1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.comboBox1.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.comboBox1.FormattingEnabled = true;
-            this.comboBox1.Location = new System.Drawing.Point(18, 526);
+            this.comboBox1.Location = new System.Drawing.Point(18, 546);
             this.comboBox1.Name = "comboBox1";
             this.comboBox1.Size = new System.Drawing.Size(286, 36);
             this.comboBox1.TabIndex = 7;
@@ -139,7 +139,7 @@ namespace Kursovaya
             // 
             this.label5.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(13, 481);
+            this.label5.Location = new System.Drawing.Point(13, 515);
             this.label5.Name = "label5";
             this.label5.Size = new System.Drawing.Size(67, 28);
             this.label5.TabIndex = 8;

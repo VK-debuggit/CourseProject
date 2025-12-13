@@ -254,6 +254,7 @@ namespace Kursovaya
             SelectedClientPhone = selectedRow.Cells["NumberPhone"].Value?.ToString() ?? "";
             ClientWasSelected = true;
 
+            inactivityTimer.Stop();
             // Закрываем форму
             allowClose = true;
             this.Close();

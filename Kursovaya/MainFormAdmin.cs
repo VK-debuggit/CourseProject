@@ -81,6 +81,7 @@ namespace Kursovaya
 
             if (result == DialogResult.Yes)
             {
+                inactivityTimer.Stop();
                 allowClose = true;
                 this.Visible = false;
                 Authorization authorization = new Authorization();
@@ -104,6 +105,7 @@ namespace Kursovaya
 
         private void button1_Click(object sender, EventArgs e)
         {
+            inactivityTimer.Stop();
             this.Visible = false;
             Directories directories = new Directories();
             directories.ShowDialog();
@@ -112,6 +114,7 @@ namespace Kursovaya
 
         private void button2_Click(object sender, EventArgs e)
         {
+            inactivityTimer.Stop();
             this.Visible = false;
             Users users = new Users();
             users.ShowDialog();
@@ -120,6 +123,7 @@ namespace Kursovaya
 
         private void button3_Click(object sender, EventArgs e)
         {
+            inactivityTimer.Stop();
             this.Visible = false;
             AccountingForOrdersForAdmin accountingForOrdersForAdmin = new AccountingForOrdersForAdmin();
             accountingForOrdersForAdmin.ShowDialog();

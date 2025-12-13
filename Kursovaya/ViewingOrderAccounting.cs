@@ -432,6 +432,7 @@ namespace Kursovaya
                 return;
             }
 
+            inactivityTimer.Stop();
             allowClose = true;
             this.Visible = false;
             ViewingOrderForDirector viewingOrderForDirector = new ViewingOrderForDirector(orderId);
@@ -441,6 +442,7 @@ namespace Kursovaya
 
         private void button3_Click(object sender, EventArgs e)
         {
+            inactivityTimer.Stop();
             allowClose = true;
             this.Visible = false;
             MainFormDirector mainFormDirector = new MainFormDirector();

@@ -99,7 +99,7 @@ namespace Kursovaya
             // button2
             // 
             this.button2.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.button2.Location = new System.Drawing.Point(18, 676);
+            this.button2.Location = new System.Drawing.Point(17, 700);
             this.button2.Name = "button2";
             this.button2.Size = new System.Drawing.Size(416, 41);
             this.button2.TabIndex = 21;
@@ -134,7 +134,7 @@ namespace Kursovaya
             // button3
             // 
             this.button3.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.button3.Location = new System.Drawing.Point(825, 676);
+            this.button3.Location = new System.Drawing.Point(825, 700);
             this.button3.Name = "button3";
             this.button3.Size = new System.Drawing.Size(145, 41);
             this.button3.TabIndex = 23;
@@ -165,7 +165,7 @@ namespace Kursovaya
             // label13
             // 
             this.label13.AutoSize = true;
-            this.label13.Location = new System.Drawing.Point(18, 633);
+            this.label13.Location = new System.Drawing.Point(14, 669);
             this.label13.Name = "label13";
             this.label13.Size = new System.Drawing.Size(217, 28);
             this.label13.TabIndex = 26;
@@ -174,7 +174,7 @@ namespace Kursovaya
             // label14
             // 
             this.label14.AutoSize = true;
-            this.label14.Location = new System.Drawing.Point(237, 633);
+            this.label14.Location = new System.Drawing.Point(228, 669);
             this.label14.Name = "label14";
             this.label14.Size = new System.Drawing.Size(76, 28);
             this.label14.TabIndex = 27;
@@ -205,7 +205,7 @@ namespace Kursovaya
             this.AutoScaleDimensions = new System.Drawing.SizeF(12F, 28F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.FloralWhite;
-            this.ClientSize = new System.Drawing.Size(982, 733);
+            this.ClientSize = new System.Drawing.Size(982, 753);
             this.Controls.Add(this.comboBox3);
             this.Controls.Add(this.label14);
             this.Controls.Add(this.label13);
@@ -229,6 +229,7 @@ namespace Kursovaya
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Просмотр меню";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.ViewingMenu_FormClosing);
+            this.Load += new System.EventHandler(this.ViewingMenu_Load);
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
             this.ResumeLayout(false);

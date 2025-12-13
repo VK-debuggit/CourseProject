@@ -480,10 +480,12 @@ namespace Kursovaya
 
                 if (result != DialogResult.Yes)
                 {
+
                     return;
                 }
             }
 
+            inactivityTimer.Stop();
             allowClose = true;
             this.Visible = false;
             MakingAnOrder makingAnOrder = new MakingAnOrder();

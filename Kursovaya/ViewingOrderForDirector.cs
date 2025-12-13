@@ -361,6 +361,7 @@ namespace Kursovaya
 
         private void button1_Click(object sender, EventArgs e)
         {
+            inactivityTimer.Stop();
             allowClose = true;
             this.Visible = false;
             ViewingOrderAccounting viewingOrderAccounting = new ViewingOrderAccounting();

@@ -79,6 +79,7 @@ namespace Kursovaya
 
             if (result == DialogResult.Yes)
             {
+                inactivityTimer.Stop();
                 allowClose = true;
                 this.Visible = false;
                 Authorization authorization = new Authorization();
@@ -102,6 +103,7 @@ namespace Kursovaya
 
         private void button1_Click(object sender, EventArgs e)
         {
+            inactivityTimer.Stop();
             this.Visible = false;
             ViewingOrderAccounting viewingOrderAccounting = new ViewingOrderAccounting();
             viewingOrderAccounting.ShowDialog();
