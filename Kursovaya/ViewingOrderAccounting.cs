@@ -18,6 +18,8 @@ namespace Kursovaya
         private DateTime defaultEndDate;
         private Timer searchTimer;
         private DataTable dataTable;
+        private Timer inactivityTimer;
+        private int inactivityTimeout;
 
         public ViewingOrderAccounting()
         {
@@ -26,6 +28,12 @@ namespace Kursovaya
             searchTimer = new Timer();
             searchTimer.Interval = 500;
             searchTimer.Tick += SearchTimer_Tick;
+
+            inactivityTimeout = Properties.Settings.Default.InactivityTimeout * 1000;
+            inactivityTimer = new Timer();
+            inactivityTimer.Interval = inactivityTimeout;
+            inactivityTimer.Tick += InactivityTimer_Tick;
+            inactivityTimer.Start();
 
             button1.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button2.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
@@ -40,6 +48,28 @@ namespace Kursovaya
             SetupDateControls();
             SetupUserInfo();
             FillFilterUsers();
+        }
+
+        private void ResetInactivityTimer(object sender, EventArgs e)
+        {
+            inactivityTimer.Stop();
+            inactivityTimer.Interval = Properties.Settings.Default.InactivityTimeout * 1000;
+            inactivityTimer.Start();
+        }
+
+        private void InactivityTimer_Tick(object sender, EventArgs e)
+        {
+            inactivityTimer.Stop();
+            ShowLoginForm();
+        }
+
+        private void ShowLoginForm()
+        {
+            this.Hide();
+            var loginForm = new Authorization();
+            loginForm.ShowDialog();
+            this.Show();
+            ResetInactivityTimer(null, null);
         }
 
         private void SetupDateControls()

@@ -118,5 +118,17 @@ namespace Kursovaya.Properties {
                 this["passwordAdmin"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("30")]
+        public int InactivityTimeout {
+            get {
+                return ((int)(this["InactivityTimeout"]));
+            }
+            set {
+                this["InactivityTimeout"] = value;
+            }
+        }
     }
 }

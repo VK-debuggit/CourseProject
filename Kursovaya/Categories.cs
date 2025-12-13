@@ -16,12 +16,21 @@ namespace Kursovaya
         string conString = $"host={Properties.Settings.Default.host};uid={Properties.Settings.Default.uid};pwd={Properties.Settings.Default.pwd};database={Properties.Settings.Default.database};";
         private int selectedProductRowIndex = -1;
         private int rowCount = 0;
+        private Timer inactivityTimer;
+        private int inactivityTimeout;
 
         public Categories()
         {
             InitializeComponent();
 
             FillDataGridViewCategory();
+
+            inactivityTimeout = Properties.Settings.Default.InactivityTimeout * 1000;
+            inactivityTimer = new Timer();
+            inactivityTimer.Interval = inactivityTimeout;
+            inactivityTimer.Tick += InactivityTimer_Tick;
+            inactivityTimer.Start();
+
             categoryInsert.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             updateCategory.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             deleteCategory.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
@@ -50,6 +59,28 @@ namespace Kursovaya
             {
                 deleteCategory.Enabled = false;
             }
+        }
+
+        private void ResetInactivityTimer(object sender, EventArgs e)
+        {
+            inactivityTimer.Stop();
+            inactivityTimer.Interval = Properties.Settings.Default.InactivityTimeout * 1000;
+            inactivityTimer.Start();
+        }
+
+        private void InactivityTimer_Tick(object sender, EventArgs e)
+        {
+            inactivityTimer.Stop();
+            ShowLoginForm();
+        }
+
+        private void ShowLoginForm()
+        {
+            this.Hide();
+            var loginForm = new Authorization();
+            loginForm.ShowDialog();
+            this.Show();
+            ResetInactivityTimer(null, null);
         }
 
         private bool allowClose = false;

@@ -15,7 +15,8 @@ namespace Kursovaya
     public partial class MakingAnOrder : Form
     {
         string conString = $"host={Properties.Settings.Default.host};uid={Properties.Settings.Default.uid};pwd={Properties.Settings.Default.pwd};database={Properties.Settings.Default.database};";
-
+        private Timer inactivityTimer;
+        private int inactivityTimeout;
         private int rowCount = 0;
         private DataTable dataView2 = new DataTable();
         private int selectedProductRowIndex = -1;
@@ -35,6 +36,12 @@ namespace Kursovaya
             FillFilterShedule();
 
             FillDataGridView();
+
+            inactivityTimeout = Properties.Settings.Default.InactivityTimeout * 1000;
+            inactivityTimer = new Timer();
+            inactivityTimer.Interval = inactivityTimeout;
+            inactivityTimer.Tick += InactivityTimer_Tick;
+            inactivityTimer.Start();
 
             // Подключение обработчиков
             dataGridView1.CellClick += dataGridView1_CellClick;
@@ -91,6 +98,28 @@ namespace Kursovaya
             }
             label1.Text = formattedname;
             label2.Text = Properties.Settings.Default.userRole;
+        }
+
+        private void ResetInactivityTimer(object sender, EventArgs e)
+        {
+            inactivityTimer.Stop();
+            inactivityTimer.Interval = Properties.Settings.Default.InactivityTimeout * 1000;
+            inactivityTimer.Start();
+        }
+
+        private void InactivityTimer_Tick(object sender, EventArgs e)
+        {
+            inactivityTimer.Stop();
+            ShowLoginForm();
+        }
+
+        private void ShowLoginForm()
+        {
+            this.Hide();
+            var loginForm = new Authorization();
+            loginForm.ShowDialog();
+            this.Show();
+            ResetInactivityTimer(null, null);
         }
 
         private bool allowClose = false;

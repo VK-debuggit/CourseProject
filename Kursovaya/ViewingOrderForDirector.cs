@@ -19,6 +19,8 @@ namespace Kursovaya
         private int rowCount = 0;
         private DataTable orderItems;
         private OrderData orderData;
+        private Timer inactivityTimer;
+        private int inactivityTimeout;
 
         public ViewingOrderForDirector(string orderId)
         {
@@ -27,6 +29,12 @@ namespace Kursovaya
 
             // Загружаем данные заказа
             LoadOrderData();
+
+            inactivityTimeout = Properties.Settings.Default.InactivityTimeout * 1000;
+            inactivityTimer = new Timer();
+            inactivityTimer.Interval = inactivityTimeout;
+            inactivityTimer.Tick += InactivityTimer_Tick;
+            inactivityTimer.Start();
 
             button1.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             dataGridView1.BackgroundColor = System.Drawing.Color.FromArgb(255, 221, 153);
@@ -48,6 +56,28 @@ namespace Kursovaya
             label2.Text = Properties.Settings.Default.userRole;
 
             label18.Text = rowCount.ToString();
+        }
+
+        private void ResetInactivityTimer(object sender, EventArgs e)
+        {
+            inactivityTimer.Stop();
+            inactivityTimer.Interval = Properties.Settings.Default.InactivityTimeout * 1000;
+            inactivityTimer.Start();
+        }
+
+        private void InactivityTimer_Tick(object sender, EventArgs e)
+        {
+            inactivityTimer.Stop();
+            ShowLoginForm();
+        }
+
+        private void ShowLoginForm()
+        {
+            this.Hide();
+            var loginForm = new Authorization();
+            loginForm.ShowDialog();
+            this.Show();
+            ResetInactivityTimer(null, null);
         }
 
         public class OrderData

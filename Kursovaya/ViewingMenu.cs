@@ -15,6 +15,8 @@ namespace Kursovaya
     public partial class ViewingMenu : Form
     {
         string conString = $"host={Properties.Settings.Default.host};uid={Properties.Settings.Default.uid};pwd={Properties.Settings.Default.pwd};database={Properties.Settings.Default.database};";
+        private Timer inactivityTimer;
+        private int inactivityTimeout;
 
         public ViewingMenu()
         {
@@ -24,6 +26,12 @@ namespace Kursovaya
             FillFilterCategories();
             FillFilterEvents();
             FillDataGridView();
+
+            inactivityTimeout = Properties.Settings.Default.InactivityTimeout * 1000;
+            inactivityTimer = new Timer();
+            inactivityTimer.Interval = inactivityTimeout;
+            inactivityTimer.Tick += InactivityTimer_Tick;
+            inactivityTimer.Start();
 
             button2.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button3.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
@@ -48,6 +56,28 @@ namespace Kursovaya
             }
             label1.Text = formattedname;
             label2.Text = Properties.Settings.Default.userRole;
+        }
+
+        private void ResetInactivityTimer(object sender, EventArgs e)
+        {
+            inactivityTimer.Stop();
+            inactivityTimer.Interval = Properties.Settings.Default.InactivityTimeout * 1000;
+            inactivityTimer.Start();
+        }
+
+        private void InactivityTimer_Tick(object sender, EventArgs e)
+        {
+            inactivityTimer.Stop();
+            ShowLoginForm();
+        }
+
+        private void ShowLoginForm()
+        {
+            this.Hide();
+            var loginForm = new Authorization();
+            loginForm.ShowDialog();
+            this.Show();
+            ResetInactivityTimer(null, null);
         }
 
         private bool allowClose = false;
