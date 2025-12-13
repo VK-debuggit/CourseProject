@@ -56,6 +56,10 @@ namespace Kursovaya
             FillFilterUsers();
         }
 
+        // Создаем переменные для хранения текущей страницы и общего количества страниц
+        private int currentPage = 1;
+        private int totalPages = 1;
+
         // создание пагинации        
         void Pagination()
         {
@@ -63,69 +67,228 @@ namespace Kursovaya
             // каждый раз будем создавать новую пагинацию
             for (int j = 0, count = this.Controls.Count; j < count; ++j)
             {
-                this.Controls.RemoveByKey("page" + j);
+                if (this.Controls[j].Name.StartsWith("page") ||
+                    this.Controls[j].Name == "btnPrev" ||
+                    this.Controls[j].Name == "btnNext")
+                {
+                    this.Controls.RemoveAt(j);
+                    j--;
+                    count--;
+                }
             }
 
             // узнаём сколько страниц будет
-            int size = dataGridView1.Rows.Count / 20; // на каждой странице по 20 зиписей
-            if (Convert.ToBoolean(dataGridView1.Rows.Count % 20)) size += 1; // ситуакиця когда при делении получаем не целое число
-            LinkLabel[] ll = new LinkLabel[size]; // пагинация на основе элемента ссылка(можно использовать и другой элемент)
-            int x = 13, y = 400, step = 15; // место на форме для меню пагинации и расстояние между номерами страниц
+            totalPages = dataGridView1.Rows.Count / 20; // на каждой странице по 20 записей
+            if (Convert.ToBoolean(dataGridView1.Rows.Count % 20)) totalPages += 1; // ситуация когда при делении получаем не целое число
 
-            for (int i = 0; i < size; ++i)
+            // Если нет данных, устанавливаем 1 страницу
+            if (totalPages == 0) totalPages = 1;
+
+            // Создаем кнопку "Назад"
+            Button btnPrev = new Button();
+            btnPrev.Name = "btnPrev";
+            btnPrev.Text = "◀";
+            btnPrev.Font = new Font("Microsoft Sans Serif", 8, FontStyle.Bold);
+            btnPrev.Size = new Size(30, 25);
+            btnPrev.Location = new Point(13, 395);
+            btnPrev.Click += new EventHandler(BtnPrev_Click);
+            btnPrev.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
+            btnPrev.FlatStyle = FlatStyle.Flat;
+            btnPrev.FlatAppearance.BorderSize = 0;
+            this.Controls.Add(btnPrev);
+
+            // Создаем ссылки на страницы
+            int x = 48; // Начинаем после кнопки "Назад"
+            int y = 395;
+            int step = 20;
+
+            LinkLabel[] ll = new LinkLabel[totalPages];
+            for (int i = 0; i < totalPages; i++)
             {
+                int pageNumber = i + 1;
                 ll[i] = new LinkLabel();
-                ll[i].Text = Convert.ToString(i + 1); // текст(номер старницы) который видет пользователь
-                ll[i].Name = "page" + i;
-                ll[i].AutoSize = true; //!!!
+                ll[i].Text = Convert.ToString(pageNumber);
+                ll[i].Font = new Font("Microsoft Sans Serif", 14, FontStyle.Regular);
+                ll[i].Name = "page" + pageNumber;
+                ll[i].AutoSize = true;
                 ll[i].Location = new Point(x, y);
-                ll[i].Click += new EventHandler(LinkLabel_Click); // один обработчик для всех пунктов пагинации
-                this.Controls.Add(ll[i]); // добавление на форму
+                ll[i].Click += new EventHandler(LinkLabel_Click);
+                ll[i].BackColor = Color.Transparent;
 
-                x += step;
-            }
-
-            // чтобы понять на какой странице пользователь убираем подчеркивание для активной странице
-            // по умолчанию первая страница активна
-            ll[0].LinkBehavior = LinkBehavior.NeverUnderline;
-        }
-
-        // выбор страницы пагинации
-        // те строки которые нам не нужны на выбраной странице - скрываем
-        private void LinkLabel_Click(object sender, EventArgs e)
-        {
-            // возвращаем всем LinkLabel подчеркивание
-            foreach (var ctrl in this.Controls)
-            {
-                if (ctrl is LinkLabel)
+                // Выделяем текущую страницу - убираем подчеркивание и меняем цвет
+                if (pageNumber == currentPage)
                 {
-                    (ctrl as LinkLabel).LinkBehavior = LinkBehavior.AlwaysUnderline;
-                }
-            }
-
-            // узнаём какая страница выбрана и убираем подчеркивание для неё
-            LinkLabel l = sender as LinkLabel;
-            l.LinkBehavior = LinkBehavior.NeverUnderline;
-
-            // узнаём с какой и по какую строку отображать информацию в таблицу
-            // другие строки будем скрывать
-            int numPage = Convert.ToInt32(l.Text) - 1;
-            int countRows = dataGridView1.Rows.Count;
-            int sizePage = 20;
-            int start = numPage * sizePage;
-            int stop = (countRows - start) >= sizePage ? start + sizePage : countRows;
-
-            for (int j = 0; j < countRows; ++j)
-            {
-                if (j < start || j > stop)
-                {
-                    dataGridView1.Rows[j].Visible = false;
+                    ll[i].LinkBehavior = LinkBehavior.NeverUnderline;
+                    ll[i].ForeColor = Color.DarkRed; // Меняем цвет текущей страницы
+                    ll[i].Font = new Font(ll[i].Font, FontStyle.Bold);
                 }
                 else
                 {
-                    dataGridView1.Rows[j].Visible = true;
+                    ll[i].LinkBehavior = LinkBehavior.AlwaysUnderline;
+                    ll[i].ForeColor = Color.Blue; // Цвет для остальных страниц
+                    ll[i].Font = new Font(ll[i].Font, FontStyle.Regular);
+                }
+
+                this.Controls.Add(ll[i]);
+                x += step;
+            }
+
+            // Создаем кнопку "Вперед"
+            Button btnNext = new Button();
+            btnNext.Name = "btnNext";
+            btnNext.Text = "▶";
+            btnNext.Font = new Font("Microsoft Sans Serif", 8, FontStyle.Bold);
+            btnNext.Size = new Size(30, 25);
+            btnNext.Location = new Point(x, 395);
+            btnNext.Click += new EventHandler(BtnNext_Click);
+            btnNext.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
+            btnNext.FlatStyle = FlatStyle.Flat;
+            btnNext.FlatAppearance.BorderSize = 0;
+            this.Controls.Add(btnNext);
+
+            // Обновляем отображение данных
+            ShowPage(currentPage);
+
+            // Обновляем состояние кнопок
+            UpdateNavigationButtons();
+        }
+
+        // Метод для отображения конкретной страницы
+        private void ShowPage(int pageNumber)
+        {
+            // Проверяем корректность номера страницы
+            if (pageNumber < 1) pageNumber = 1;
+            if (pageNumber > totalPages) pageNumber = totalPages;
+
+            currentPage = pageNumber;
+
+            // Скрываем/показываем строки в зависимости от страницы
+            int countRows = dataGridView1.Rows.Count;
+            int sizePage = 20;
+            int start = (pageNumber - 1) * sizePage;
+            int stop = Math.Min(start + sizePage - 1, countRows - 1);
+
+            for (int j = 0; j < countRows; ++j)
+            {
+                dataGridView1.Rows[j].Visible = (j >= start && j <= stop);
+            }
+
+            // Прокручиваем таблицу к началу страницы
+            if (dataGridView1.Rows.Count > start)
+            {
+                dataGridView1.FirstDisplayedScrollingRowIndex = start;
+            }
+
+            if (dataTable != null)
+            {
+                UpdateRowCount(0, dataTable.Rows.Count);
+            }
+        }
+
+        // Обработчик для кнопки "Назад"
+        private void BtnPrev_Click(object sender, EventArgs e)
+        {
+            if (currentPage > 1)
+            {
+                ShowPage(currentPage - 1);
+                Pagination(); // Пересоздаем пагинацию с обновленным выделением
+                ResetInactivityTimer(sender, e);
+            }
+        }
+
+        // Обработчик для кнопки "Вперед"
+        private void BtnNext_Click(object sender, EventArgs e)
+        {
+            if (currentPage < totalPages)
+            {
+                ShowPage(currentPage + 1);
+                Pagination(); // Пересоздаем пагинацию с обновленным выделением
+                ResetInactivityTimer(sender, e);
+            }
+        }
+
+        // Выбор страницы пагинации по клику на номер
+        private void LinkLabel_Click(object sender, EventArgs e)
+        {
+            LinkLabel l = sender as LinkLabel;
+            if (l != null && int.TryParse(l.Text, out int pageNumber))
+            {
+                ShowPage(pageNumber);
+                Pagination(); // Пересоздаем пагинацию с обновленным выделением
+                ResetInactivityTimer(sender, e);
+            }
+        }
+
+        // Метод для обновления состояния кнопок навигации
+        private void UpdateNavigationButtons()
+        {
+            // Находим кнопки на форме
+            Button btnPrev = this.Controls.Find("btnPrev", false).FirstOrDefault() as Button;
+            Button btnNext = this.Controls.Find("btnNext", false).FirstOrDefault() as Button;
+
+            if (btnPrev != null)
+            {
+                btnPrev.Enabled = (currentPage > 1);
+                btnPrev.BackColor = btnPrev.Enabled ?
+                    System.Drawing.Color.FromArgb(217, 152, 22) :
+                    System.Drawing.Color.FromArgb(200, 200, 200);
+                btnPrev.ForeColor = btnPrev.Enabled ? Color.Black : Color.Gray;
+            }
+
+            if (btnNext != null)
+            {
+                btnNext.Enabled = (currentPage < totalPages);
+                btnNext.BackColor = btnNext.Enabled ?
+                    System.Drawing.Color.FromArgb(217, 152, 22) :
+                    System.Drawing.Color.FromArgb(200, 200, 200);
+                btnNext.ForeColor = btnNext.Enabled ? Color.Black : Color.Gray;
+            }
+        }
+
+        // Также можно добавить обработку клавиатуры для навигации
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            // Обработка стрелок для пагинации
+            if (keyData == Keys.Left || keyData == Keys.PageUp)
+            {
+                if (currentPage > 1)
+                {
+                    BtnPrev_Click(null, null);
+                    return true;
                 }
             }
+            else if (keyData == Keys.Right || keyData == Keys.PageDown)
+            {
+                if (currentPage < totalPages)
+                {
+                    BtnNext_Click(null, null);
+                    return true;
+                }
+            }
+            else if (keyData == Keys.Home)
+            {
+                // Переход на первую страницу
+                if (currentPage != 1)
+                {
+                    ShowPage(1);
+                    Pagination();
+                    ResetInactivityTimer(null, null);
+                }
+                return true;
+            }
+            else if (keyData == Keys.End)
+            {
+                // Переход на последнюю страницу
+                if (currentPage != totalPages)
+                {
+                    ShowPage(totalPages);
+                    Pagination();
+                    ResetInactivityTimer(null, null);
+                }
+                return true;
+            }
+
+            return base.ProcessCmdKey(ref msg, keyData);
         }
 
         private void ResetInactivityTimer(object sender, EventArgs e)
@@ -195,12 +358,64 @@ namespace Kursovaya
             label2.Text = Properties.Settings.Default.userRole;
         }
 
+        private string BuildCountQuery()
+        {
+            StringBuilder query = new StringBuilder();
+            query.Append(@"SELECT COUNT(*) 
+    FROM CafeActivities.Orders p 
+    LEFT JOIN CafeActivities.Clients c ON p.IdClient = c.IDclient 
+    LEFT JOIN CafeActivities.Events q ON p.IdEvent = q.IDevent
+    LEFT JOIN CafeActivities.Status s ON p.IdStatus = s.IDstatus
+    LEFT JOIN CafeActivities.Schedule r ON p.IdSchedule = r.IDschedule
+    LEFT JOIN CafeActivities.Users w ON p.IdUser = w.IDuser");
+
+            List<string> conditions = new List<string>();
+
+            bool dateFilterApplied = (dateTimePicker1.Value != defaultStartDate) || (dateTimePicker2.Value != defaultEndDate);
+
+            if (dateFilterApplied)
+            {
+                if (dateTimePicker1.Value <= dateTimePicker2.Value)
+                {
+                    string filterStartDate = dateTimePicker1.Value.ToString("yyyy-MM-dd");
+                    string filterEndDate = dateTimePicker2.Value.ToString("yyyy-MM-dd");
+                    conditions.Add($"(p.DateEvent >= '{filterStartDate}' AND p.DateEvent <= '{filterEndDate}')");
+                }
+            }
+
+            if (comboBox1.SelectedIndex != 0 && comboBox1.SelectedItem != null)
+            {
+                conditions.Add($"w.FullName = '{MySqlHelper.EscapeString(comboBox1.SelectedItem.ToString())}'");
+            }
+
+            List<string> statusConditions = new List<string>();
+
+            if (checkBox1.Checked)
+                statusConditions.Add($"s.Status = '{MySqlHelper.EscapeString(checkBox1.Text)}'");
+            if (checkBox2.Checked)
+                statusConditions.Add($"s.Status = '{MySqlHelper.EscapeString(checkBox2.Text)}'");
+            if (checkBox3.Checked)
+                statusConditions.Add($"s.Status = '{MySqlHelper.EscapeString(checkBox3.Text)}'");
+
+            if (statusConditions.Count > 0)
+                conditions.Add("(" + string.Join(" OR ", statusConditions) + ")");
+
+            if (conditions.Count > 0)
+            {
+                query.Append(" WHERE ");
+                query.Append(string.Join(" AND ", conditions));
+            }
+
+            return query.ToString();
+        }
+
         private void LoadData()
         {
             try
             {
                 Cursor = Cursors.WaitCursor;
                 string query = BuildQuery();
+                string countQuery = BuildCountQuery();
 
                 using (MySqlConnection con = new MySqlConnection(conString))
                 {
@@ -211,8 +426,15 @@ namespace Kursovaya
                     {
                         dataTable = new DataTable();
                         adapter.Fill(dataTable);
-                        DisplayDataInDataGridView(dataTable);
                     }
+
+                    using (MySqlCommand cmd = new MySqlCommand(countQuery, con))
+                    {
+                        int totalCount = Convert.ToInt32(cmd.ExecuteScalar());
+                        UpdateRowCount(dataTable.Rows.Count, totalCount);
+                    }
+
+                    DisplayDataInDataGridView(dataTable);
                 }
             }
             catch (Exception ex)
@@ -223,6 +445,8 @@ namespace Kursovaya
             {
                 Cursor = Cursors.Default;
             }
+
+            Pagination();
         }
 
         private string BuildQuery()
@@ -363,7 +587,12 @@ namespace Kursovaya
                     totalSum += priceAll;
             }
 
-            label4.Text = dataGridView1.Rows.Count.ToString();
+            int displayedCount = dataGridView1.Rows.Count;
+            if (dataGridView1.AllowUserToAddRows && displayedCount > 0)
+            {
+                displayedCount--;
+            }
+            UpdateRowCount(displayedCount, tableToDisplay.Rows.Count);
             label12.Text = totalSum.ToString("C2");
         }
 
@@ -396,6 +625,21 @@ namespace Kursovaya
             return $"{firstDigit}{stars}{lastTwoDigits}";
         }
 
+        private void UpdateRowCount(int displayedCount, int totalCount)
+        {
+            // Считаем только видимые строки
+            int visibleCount = 0;
+            for (int i = 0; i < dataGridView1.Rows.Count; i++)
+            {
+                if (dataGridView1.Rows[i].Visible)
+                {
+                    visibleCount++;
+                }
+            }
+
+            label4.Text = $"{visibleCount} из {totalCount}";
+        }
+
         private void SearchTimer_Tick(object sender, EventArgs e)
         {
             searchTimer.Stop();
@@ -417,8 +661,6 @@ namespace Kursovaya
 
             searchTimer.Stop();
             searchTimer.Start();
-
-            Pagination();
         }
 
         private void textBox1_KeyPress(object sender, KeyPressEventArgs e)
@@ -547,37 +789,31 @@ namespace Kursovaya
         private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
         {
             LoadData();
-            Pagination();
         }
 
         private void dateTimePicker1_ValueChanged(object sender, EventArgs e)
         {
             LoadData();
-            Pagination();
         }
 
         private void dateTimePicker2_ValueChanged(object sender, EventArgs e)
         {
             LoadData();
-            Pagination();
         }
 
         private void checkBox1_CheckedChanged(object sender, EventArgs e)
         {
             LoadData();
-            Pagination();
         }
 
         private void checkBox2_CheckedChanged(object sender, EventArgs e)
         {
             LoadData();
-            Pagination();
         }
 
         private void checkBox3_CheckedChanged(object sender, EventArgs e)
         {
             LoadData();
-            Pagination();
         }
 
         private bool allowClose = false;
@@ -921,7 +1157,7 @@ namespace Kursovaya
 
         private void ViewingOrderAccounting_Load_1(object sender, EventArgs e)
         {
-            Pagination();
+            LoadData();
         }
     }
 }

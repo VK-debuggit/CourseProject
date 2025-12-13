@@ -67,6 +67,10 @@ namespace Kursovaya
             dataGridView1.BackgroundColor = System.Drawing.Color.FromArgb(255, 221, 153);
         }
 
+        // Создаем переменные для хранения текущей страницы и общего количества страниц
+        private int currentPage = 1;
+        private int totalPages = 1;
+
         // создание пагинации        
         void Pagination()
         {
@@ -74,69 +78,223 @@ namespace Kursovaya
             // каждый раз будем создавать новую пагинацию
             for (int j = 0, count = this.Controls.Count; j < count; ++j)
             {
-                this.Controls.RemoveByKey("page" + j);
+                if (this.Controls[j].Name.StartsWith("page") ||
+                    this.Controls[j].Name == "btnPrev" ||
+                    this.Controls[j].Name == "btnNext")
+                {
+                    this.Controls.RemoveAt(j);
+                    j--;
+                    count--;
+                }
             }
 
             // узнаём сколько страниц будет
-            int size = dataGridView1.Rows.Count / 20; // на каждой странице по 20 зиписей
-            if (Convert.ToBoolean(dataGridView1.Rows.Count % 20)) size += 1; // ситуакиця когда при делении получаем не целое число
-            LinkLabel[] ll = new LinkLabel[size]; // пагинация на основе элемента ссылка(можно использовать и другой элемент)
-            int x = 13, y = 460, step = 15; // место на форме для меню пагинации и расстояние между номерами страниц
+            totalPages = dataGridView1.Rows.Count / 20; // на каждой странице по 20 записей
+            if (Convert.ToBoolean(dataGridView1.Rows.Count % 20)) totalPages += 1; // ситуация когда при делении получаем не целое число
 
-            for (int i = 0; i < size; ++i)
+            // Если нет данных, устанавливаем 1 страницу
+            if (totalPages == 0) totalPages = 1;
+
+            // Создаем кнопку "Назад"
+            Button btnPrev = new Button();
+            btnPrev.Name = "btnPrev";
+            btnPrev.Text = "◀";
+            btnPrev.Font = new Font("Microsoft Sans Serif", 8, FontStyle.Bold);
+            btnPrev.Size = new Size(30, 25);
+            btnPrev.Location = new Point(13, 460);
+            btnPrev.Click += new EventHandler(BtnPrev_Click);
+            btnPrev.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
+            btnPrev.FlatStyle = FlatStyle.Flat;
+            btnPrev.FlatAppearance.BorderSize = 0;
+            this.Controls.Add(btnPrev);
+
+            // Создаем ссылки на страницы
+            int x = 48; // Начинаем после кнопки "Назад"
+            int y = 460;
+            int step = 20;
+
+            LinkLabel[] ll = new LinkLabel[totalPages];
+            for (int i = 0; i < totalPages; i++)
             {
+                int pageNumber = i + 1;
                 ll[i] = new LinkLabel();
-                ll[i].Text = Convert.ToString(i + 1); // текст(номер старницы) который видет пользователь
-                ll[i].Name = "page" + i;
-                ll[i].AutoSize = true; //!!!
+                ll[i].Text = Convert.ToString(pageNumber);
+                ll[i].Font = new Font("Microsoft Sans Serif", 14, FontStyle.Regular);
+                ll[i].Name = "page" + pageNumber;
+                ll[i].AutoSize = true;
                 ll[i].Location = new Point(x, y);
-                ll[i].Click += new EventHandler(LinkLabel_Click); // один обработчик для всех пунктов пагинации
-                this.Controls.Add(ll[i]); // добавление на форму
+                ll[i].Click += new EventHandler(LinkLabel_Click);
+                ll[i].BackColor = Color.Transparent;
 
-                x += step;
-            }
-
-            // чтобы понять на какой странице пользователь убираем подчеркивание для активной странице
-            // по умолчанию первая страница активна
-            ll[0].LinkBehavior = LinkBehavior.NeverUnderline;
-        }
-
-        // выбор страницы пагинации
-        // те строки которые нам не нужны на выбраной странице - скрываем
-        private void LinkLabel_Click(object sender, EventArgs e)
-        {
-            // возвращаем всем LinkLabel подчеркивание
-            foreach (var ctrl in this.Controls)
-            {
-                if (ctrl is LinkLabel)
+                // Выделяем текущую страницу - убираем подчеркивание и меняем цвет
+                if (pageNumber == currentPage)
                 {
-                    (ctrl as LinkLabel).LinkBehavior = LinkBehavior.AlwaysUnderline;
-                }
-            }
-
-            // узнаём какая страница выбрана и убираем подчеркивание для неё
-            LinkLabel l = sender as LinkLabel;
-            l.LinkBehavior = LinkBehavior.NeverUnderline;
-
-            // узнаём с какой и по какую строку отображать информацию в таблицу
-            // другие строки будем скрывать
-            int numPage = Convert.ToInt32(l.Text) - 1;
-            int countRows = dataGridView1.Rows.Count;
-            int sizePage = 20;
-            int start = numPage * sizePage;
-            int stop = (countRows - start) >= sizePage ? start + sizePage : countRows;
-
-            for (int j = 0; j < countRows; ++j)
-            {
-                if (j < start || j > stop)
-                {
-                    dataGridView1.Rows[j].Visible = false;
+                    ll[i].LinkBehavior = LinkBehavior.NeverUnderline;
+                    ll[i].ForeColor = Color.DarkRed; // Меняем цвет текущей страницы
+                    ll[i].Font = new Font(ll[i].Font, FontStyle.Bold);
                 }
                 else
                 {
-                    dataGridView1.Rows[j].Visible = true;
+                    ll[i].LinkBehavior = LinkBehavior.AlwaysUnderline;
+                    ll[i].ForeColor = Color.Blue; // Цвет для остальных страниц
+                    ll[i].Font = new Font(ll[i].Font, FontStyle.Regular);
+                }
+
+                this.Controls.Add(ll[i]);
+                x += step;
+            }
+
+            // Создаем кнопку "Вперед"
+            Button btnNext = new Button();
+            btnNext.Name = "btnNext";
+            btnNext.Text = "▶";
+            btnNext.Font = new Font("Microsoft Sans Serif", 8, FontStyle.Bold);
+            btnNext.Size = new Size(30, 25);
+            btnNext.Location = new Point(x, 457);
+            btnNext.Click += new EventHandler(BtnNext_Click);
+            btnNext.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
+            btnNext.FlatStyle = FlatStyle.Flat;
+            btnNext.FlatAppearance.BorderSize = 0;
+            this.Controls.Add(btnNext);
+
+            // Обновляем отображение данных
+            ShowPage(currentPage);
+
+            // Обновляем состояние кнопок
+            UpdateNavigationButtons();
+        }
+
+        // Метод для отображения конкретной страницы
+        private void ShowPage(int pageNumber)
+        {
+            // Проверяем корректность номера страницы
+            if (pageNumber < 1) pageNumber = 1;
+            if (pageNumber > totalPages) pageNumber = totalPages;
+
+            currentPage = pageNumber;
+
+            // Скрываем/показываем строки в зависимости от страницы
+            int countRows = dataGridView1.Rows.Count;
+            int sizePage = 20;
+            int start = (pageNumber - 1) * sizePage;
+            int stop = Math.Min(start + sizePage - 1, countRows - 1);
+
+            for (int j = 0; j < countRows; ++j)
+            {
+                dataGridView1.Rows[j].Visible = (j >= start && j <= stop);
+            }
+
+            // Прокручиваем таблицу к началу страницы
+            if (dataGridView1.Rows.Count > start)
+            {
+                dataGridView1.FirstDisplayedScrollingRowIndex = start;
+            }
+        }
+
+        // Обработчик для кнопки "Назад"
+        private void BtnPrev_Click(object sender, EventArgs e)
+        {
+            if (currentPage > 1)
+            {
+                ShowPage(currentPage - 1);
+                Pagination(); // Пересоздаем пагинацию с обновленным выделением
+                ResetInactivityTimer(sender, e);
+            }
+        }
+
+        // Обработчик для кнопки "Вперед"
+        private void BtnNext_Click(object sender, EventArgs e)
+        {
+            if (currentPage < totalPages)
+            {
+                ShowPage(currentPage + 1);
+                Pagination(); // Пересоздаем пагинацию с обновленным выделением
+                ResetInactivityTimer(sender, e);
+            }
+        }
+
+        // Выбор страницы пагинации по клику на номер
+        private void LinkLabel_Click(object sender, EventArgs e)
+        {
+            LinkLabel l = sender as LinkLabel;
+            if (l != null && int.TryParse(l.Text, out int pageNumber))
+            {
+                ShowPage(pageNumber);
+                Pagination(); // Пересоздаем пагинацию с обновленным выделением
+                ResetInactivityTimer(sender, e);
+            }
+        }
+
+        // Метод для обновления состояния кнопок навигации
+        private void UpdateNavigationButtons()
+        {
+            // Находим кнопки на форме
+            Button btnPrev = this.Controls.Find("btnPrev", false).FirstOrDefault() as Button;
+            Button btnNext = this.Controls.Find("btnNext", false).FirstOrDefault() as Button;
+
+            if (btnPrev != null)
+            {
+                btnPrev.Enabled = (currentPage > 1);
+                btnPrev.BackColor = btnPrev.Enabled ?
+                    System.Drawing.Color.FromArgb(217, 152, 22) :
+                    System.Drawing.Color.FromArgb(200, 200, 200);
+                btnPrev.ForeColor = btnPrev.Enabled ? Color.Black : Color.Gray;
+            }
+
+            if (btnNext != null)
+            {
+                btnNext.Enabled = (currentPage < totalPages);
+                btnNext.BackColor = btnNext.Enabled ?
+                    System.Drawing.Color.FromArgb(217, 152, 22) :
+                    System.Drawing.Color.FromArgb(200, 200, 200);
+                btnNext.ForeColor = btnNext.Enabled ? Color.Black : Color.Gray;
+            }
+        }
+
+        // Также можно добавить обработку клавиатуры для навигации
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            // Обработка стрелок для пагинации
+            if (keyData == Keys.Left || keyData == Keys.PageUp)
+            {
+                if (currentPage > 1)
+                {
+                    BtnPrev_Click(null, null);
+                    return true;
                 }
             }
+            else if (keyData == Keys.Right || keyData == Keys.PageDown)
+            {
+                if (currentPage < totalPages)
+                {
+                    BtnNext_Click(null, null);
+                    return true;
+                }
+            }
+            else if (keyData == Keys.Home)
+            {
+                // Переход на первую страницу
+                if (currentPage != 1)
+                {
+                    ShowPage(1);
+                    Pagination();
+                    ResetInactivityTimer(null, null);
+                }
+                return true;
+            }
+            else if (keyData == Keys.End)
+            {
+                // Переход на последнюю страницу
+                if (currentPage != totalPages)
+                {
+                    ShowPage(totalPages);
+                    Pagination();
+                    ResetInactivityTimer(null, null);
+                }
+                return true;
+            }
+
+            return base.ProcessCmdKey(ref msg, keyData);
         }
 
         private void ResetInactivityTimer(object sender, EventArgs e)
@@ -296,6 +454,10 @@ namespace Kursovaya
                 MessageBox.Show($"Ошибка при загрузке данных: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 Console.WriteLine("Error details: " + ex.ToString());
             }
+
+            // После загрузки данных обновляем пагинацию
+            currentPage = 1; // Сбрасываем на первую страницу
+            Pagination();
         }
 
         private void FillStatusComboBox()
