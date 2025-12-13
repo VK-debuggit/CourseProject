@@ -604,7 +604,7 @@ namespace Kursovaya
             foreach (DataRowView rowView in dv)
             {
                 DataRow row = rowView.Row;
-                dataGridView1.Rows.Add(
+                int rowIndex = dataGridView1.Rows.Add(
                     row["NumberOrder"],
                     row["IdClient"],
                     FormatPhoneNumber(row["NumberPhoneClient"].ToString()),
@@ -619,6 +619,36 @@ namespace Kursovaya
                     row["PriceAll"],
                     row["Prepayment"]
                 );
+
+                // Форматирование по статусу
+                string status = row["IdStatus"].ToString();
+
+                DataGridViewRow dataGridRow = dataGridView1.Rows[rowIndex];
+
+                switch (status)
+                {
+                    case "Принят":
+                        // Желтый фон для всей строки
+                        foreach (DataGridViewCell cell in dataGridRow.Cells)
+                        {
+                            cell.Style.BackColor = Color.FromArgb(255, 254, 230);
+                        }
+                        break;
+                    case "Оплачен":
+                        // Зеленый фон для всей строки
+                        foreach (DataGridViewCell cell in dataGridRow.Cells)
+                        {
+                            cell.Style.BackColor = Color.FromArgb(240, 255, 230);
+                        }
+                        break;
+                    case "Отменен":
+                        // Красный фон для всей строки
+                        foreach (DataGridViewCell cell in dataGridRow.Cells)
+                        {
+                            cell.Style.BackColor = Color.FromArgb(255, 230, 230);
+                        }
+                        break;
+                }
             }
 
             int displayedCount = dataGridView1.Rows.Count;
