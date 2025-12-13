@@ -104,7 +104,7 @@ namespace Kursovaya
             // label3
             // 
             this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(13, 388);
+            this.label3.Location = new System.Drawing.Point(13, 419);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(217, 28);
             this.label3.TabIndex = 3;
@@ -113,7 +113,7 @@ namespace Kursovaya
             // label4
             // 
             this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(236, 388);
+            this.label4.Location = new System.Drawing.Point(225, 419);
             this.label4.Name = "label4";
             this.label4.Size = new System.Drawing.Size(67, 28);
             this.label4.TabIndex = 4;
@@ -122,7 +122,7 @@ namespace Kursovaya
             // label5
             // 
             this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(12, 426);
+            this.label5.Location = new System.Drawing.Point(12, 447);
             this.label5.Name = "label5";
             this.label5.Size = new System.Drawing.Size(252, 28);
             this.label5.TabIndex = 5;
@@ -130,7 +130,7 @@ namespace Kursovaya
             // 
             // textBox1
             // 
-            this.textBox1.Location = new System.Drawing.Point(18, 462);
+            this.textBox1.Location = new System.Drawing.Point(18, 478);
             this.textBox1.Name = "textBox1";
             this.textBox1.Size = new System.Drawing.Size(135, 35);
             this.textBox1.TabIndex = 6;
@@ -342,6 +342,7 @@ namespace Kursovaya
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Просмотр учета заказов";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.ViewingOrderAccounting_FormClosing);
+            this.Load += new System.EventHandler(this.ViewingOrderAccounting_Load_1);
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();

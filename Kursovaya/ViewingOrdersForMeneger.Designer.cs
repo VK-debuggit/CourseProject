@@ -95,7 +95,7 @@ namespace Kursovaya
             // button1
             // 
             this.button1.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.button1.Location = new System.Drawing.Point(681, 662);
+            this.button1.Location = new System.Drawing.Point(681, 676);
             this.button1.Name = "button1";
             this.button1.Size = new System.Drawing.Size(192, 35);
             this.button1.TabIndex = 3;
@@ -106,7 +106,7 @@ namespace Kursovaya
             // label3
             // 
             this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(13, 433);
+            this.label3.Location = new System.Drawing.Point(12, 459);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(217, 28);
             this.label3.TabIndex = 4;
@@ -115,7 +115,7 @@ namespace Kursovaya
             // label4
             // 
             this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(236, 433);
+            this.label4.Location = new System.Drawing.Point(225, 459);
             this.label4.Name = "label4";
             this.label4.Size = new System.Drawing.Size(67, 28);
             this.label4.TabIndex = 5;
@@ -124,7 +124,7 @@ namespace Kursovaya
             // button2
             // 
             this.button2.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.button2.Location = new System.Drawing.Point(17, 662);
+            this.button2.Location = new System.Drawing.Point(17, 676);
             this.button2.Name = "button2";
             this.button2.Size = new System.Drawing.Size(264, 35);
             this.button2.TabIndex = 7;
@@ -135,7 +135,7 @@ namespace Kursovaya
             // label5
             // 
             this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(13, 461);
+            this.label5.Location = new System.Drawing.Point(12, 487);
             this.label5.Name = "label5";
             this.label5.Size = new System.Drawing.Size(252, 28);
             this.label5.TabIndex = 8;
@@ -143,7 +143,7 @@ namespace Kursovaya
             // 
             // textBox1
             // 
-            this.textBox1.Location = new System.Drawing.Point(18, 492);
+            this.textBox1.Location = new System.Drawing.Point(17, 518);
             this.textBox1.Name = "textBox1";
             this.textBox1.Size = new System.Drawing.Size(135, 35);
             this.textBox1.TabIndex = 9;
@@ -237,7 +237,7 @@ namespace Kursovaya
             // label6
             // 
             this.label6.AutoSize = true;
-            this.label6.Location = new System.Drawing.Point(13, 544);
+            this.label6.Location = new System.Drawing.Point(12, 556);
             this.label6.Name = "label6";
             this.label6.Size = new System.Drawing.Size(333, 28);
             this.label6.TabIndex = 20;
@@ -247,7 +247,7 @@ namespace Kursovaya
             // 
             this.comboBox1.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.comboBox1.FormattingEnabled = true;
-            this.comboBox1.Location = new System.Drawing.Point(18, 575);
+            this.comboBox1.Location = new System.Drawing.Point(17, 589);
             this.comboBox1.Name = "comboBox1";
             this.comboBox1.Size = new System.Drawing.Size(263, 36);
             this.comboBox1.TabIndex = 21;
@@ -256,7 +256,7 @@ namespace Kursovaya
             // button3
             // 
             this.button3.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.button3.Location = new System.Drawing.Point(17, 617);
+            this.button3.Location = new System.Drawing.Point(17, 631);
             this.button3.Name = "button3";
             this.button3.Size = new System.Drawing.Size(264, 39);
             this.button3.TabIndex = 22;
@@ -269,7 +269,7 @@ namespace Kursovaya
             this.AutoScaleDimensions = new System.Drawing.SizeF(12F, 28F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.FloralWhite;
-            this.ClientSize = new System.Drawing.Size(885, 709);
+            this.ClientSize = new System.Drawing.Size(885, 723);
             this.Controls.Add(this.button3);
             this.Controls.Add(this.comboBox1);
             this.Controls.Add(this.label6);

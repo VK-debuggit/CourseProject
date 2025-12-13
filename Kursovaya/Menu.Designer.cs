@@ -264,7 +264,7 @@ namespace Kursovaya
             // label13
             // 
             this.label13.AutoSize = true;
-            this.label13.Location = new System.Drawing.Point(12, 685);
+            this.label13.Location = new System.Drawing.Point(12, 712);
             this.label13.Name = "label13";
             this.label13.Size = new System.Drawing.Size(217, 28);
             this.label13.TabIndex = 21;
@@ -273,7 +273,7 @@ namespace Kursovaya
             // label14
             // 
             this.label14.AutoSize = true;
-            this.label14.Location = new System.Drawing.Point(235, 685);
+            this.label14.Location = new System.Drawing.Point(235, 712);
             this.label14.Name = "label14";
             this.label14.Size = new System.Drawing.Size(76, 28);
             this.label14.TabIndex = 22;
@@ -282,7 +282,7 @@ namespace Kursovaya
             // button2
             // 
             this.button2.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.button2.Location = new System.Drawing.Point(17, 719);
+            this.button2.Location = new System.Drawing.Point(12, 743);
             this.button2.Name = "button2";
             this.button2.Size = new System.Drawing.Size(165, 48);
             this.button2.TabIndex = 23;
@@ -293,7 +293,7 @@ namespace Kursovaya
             // button3
             // 
             this.button3.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.button3.Location = new System.Drawing.Point(188, 719);
+            this.button3.Location = new System.Drawing.Point(183, 743);
             this.button3.Name = "button3";
             this.button3.Size = new System.Drawing.Size(174, 48);
             this.button3.TabIndex = 24;
@@ -304,7 +304,7 @@ namespace Kursovaya
             // button4
             // 
             this.button4.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.button4.Location = new System.Drawing.Point(775, 719);
+            this.button4.Location = new System.Drawing.Point(775, 743);
             this.button4.Name = "button4";
             this.button4.Size = new System.Drawing.Size(165, 48);
             this.button4.TabIndex = 25;
@@ -315,7 +315,7 @@ namespace Kursovaya
             // button5
             // 
             this.button5.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.button5.Location = new System.Drawing.Point(368, 719);
+            this.button5.Location = new System.Drawing.Point(363, 743);
             this.button5.Name = "button5";
             this.button5.Size = new System.Drawing.Size(176, 48);
             this.button5.TabIndex = 26;
@@ -350,7 +350,7 @@ namespace Kursovaya
             this.AutoScaleDimensions = new System.Drawing.SizeF(12F, 28F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.FloralWhite;
-            this.ClientSize = new System.Drawing.Size(952, 778);
+            this.ClientSize = new System.Drawing.Size(952, 803);
             this.Controls.Add(this.textBox5);
             this.Controls.Add(this.button5);
             this.Controls.Add(this.button4);

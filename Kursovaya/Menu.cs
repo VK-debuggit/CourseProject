@@ -82,6 +82,77 @@ namespace Kursovaya
             label2.Text = Properties.Settings.Default.userRole;
         }
 
+        void Pagination()
+        {
+            // удаляем LinkLabel служащий для пагинации
+            // каждый раз будем создавать новую пагинацию
+            for (int j = 0, count = this.Controls.Count; j < count; ++j)
+            {
+                this.Controls.RemoveByKey("page" + j);
+            }
+
+            // узнаём сколько страниц будет
+            int size = dataGridView1.Rows.Count / 20; // на каждой странице по 20 зиписей
+            if (Convert.ToBoolean(dataGridView1.Rows.Count % 20)) size += 1; // ситуакиця когда при делении получаем не целое число
+            LinkLabel[] ll = new LinkLabel[size]; // пагинация на основе элемента ссылка(можно использовать и другой элемент)
+            int x = 12, y = 690, step = 15; // место на форме для меню пагинации и расстояние между номерами страниц
+
+            for (int i = 0; i < size; ++i)
+            {
+                ll[i] = new LinkLabel();
+                ll[i].Text = Convert.ToString(i + 1); // текст(номер старницы) который видет пользователь
+                ll[i].Name = "page" + i;
+                ll[i].AutoSize = true; //!!!
+                ll[i].Location = new Point(x, y);
+                ll[i].Click += new EventHandler(LinkLabel_Click); // один обработчик для всех пунктов пагинации
+                this.Controls.Add(ll[i]); // добавление на форму
+
+                x += step;
+            }
+
+            // чтобы понять на какой странице пользователь убираем подчеркивание для активной странице
+            // по умолчанию первая страница активна
+            ll[0].LinkBehavior = LinkBehavior.NeverUnderline;
+        }
+
+        // выбор страницы пагинации
+        // те строки которые нам не нужны на выбраной странице - скрываем
+        private void LinkLabel_Click(object sender, EventArgs e)
+        {
+            // возвращаем всем LinkLabel подчеркивание
+            foreach (var ctrl in this.Controls)
+            {
+                if (ctrl is LinkLabel)
+                {
+                    (ctrl as LinkLabel).LinkBehavior = LinkBehavior.AlwaysUnderline;
+                }
+            }
+
+            // узнаём какая страница выбрана и убираем подчеркивание для неё
+            LinkLabel l = sender as LinkLabel;
+            l.LinkBehavior = LinkBehavior.NeverUnderline;
+
+            // узнаём с какой и по какую строку отображать информацию в таблицу
+            // другие строки будем скрывать
+            int numPage = Convert.ToInt32(l.Text) - 1;
+            int countRows = dataGridView1.Rows.Count;
+            int sizePage = 20;
+            int start = numPage * sizePage;
+            int stop = (countRows - start) >= sizePage ? start + sizePage : countRows;
+
+            for (int j = 0; j < countRows; ++j)
+            {
+                if (j < start || j > stop)
+                {
+                    dataGridView1.Rows[j].Visible = false;
+                }
+                else
+                {
+                    dataGridView1.Rows[j].Visible = true;
+                }
+            }
+        }
+
         private void ResetInactivityTimer(object sender, EventArgs e)
         {
             inactivityTimer.Stop();
@@ -915,6 +986,7 @@ namespace Kursovaya
                             ClearForm();
                             FillDataGridView();
                             ClearAllFields();
+                            Pagination();
                         }
                         else
                         {
@@ -1608,6 +1680,7 @@ namespace Kursovaya
         {
             // Очищаем все поля при загрузке формы
             ClearAllFields();
+            Pagination();
         }
 
         private bool IsDishInUse(int dishId)
@@ -1690,6 +1763,7 @@ namespace Kursovaya
                             textBox1.Clear();
                             FillDataGridView();
                             ClearAllFields();
+                            Pagination();
                         }
                     }
                 }
