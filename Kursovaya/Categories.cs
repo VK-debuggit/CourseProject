@@ -31,6 +31,12 @@ namespace Kursovaya
             inactivityTimer.Tick += InactivityTimer_Tick;
             inactivityTimer.Start();
 
+            this.MouseMove += ResetInactivityTimer;
+            this.KeyDown += ResetInactivityTimer;
+            this.MouseWheel += ResetInactivityTimer;
+            this.DoubleClick += ResetInactivityTimer;
+            this.MouseDoubleClick += ResetInactivityTimer;
+
             categoryInsert.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             updateCategory.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             deleteCategory.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);

@@ -33,6 +33,12 @@ namespace Kursovaya
             inactivityTimer.Tick += InactivityTimer_Tick;
             inactivityTimer.Start();
 
+            this.MouseMove += ResetInactivityTimer;
+            this.KeyDown += ResetInactivityTimer;
+            this.MouseWheel += ResetInactivityTimer;
+            this.DoubleClick += ResetInactivityTimer;
+            this.MouseDoubleClick += ResetInactivityTimer;
+
             button2.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button3.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             dataGridView1.BackgroundColor = System.Drawing.Color.FromArgb(255, 221, 153);

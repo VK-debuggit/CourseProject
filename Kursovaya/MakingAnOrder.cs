@@ -43,6 +43,12 @@ namespace Kursovaya
             inactivityTimer.Tick += InactivityTimer_Tick;
             inactivityTimer.Start();
 
+            this.MouseMove += ResetInactivityTimer;
+            this.KeyDown += ResetInactivityTimer;
+            this.MouseWheel += ResetInactivityTimer;
+            this.DoubleClick += ResetInactivityTimer;
+            this.MouseDoubleClick += ResetInactivityTimer;
+
             // Подключение обработчиков
             dataGridView1.CellClick += dataGridView1_CellClick;
             dataGridView2.CellClick += dataGridView2_CellClick;
