@@ -31,6 +31,10 @@ namespace Kursovaya
         public AccountingForOrdersForAdmin()
         {
             InitializeComponent();
+
+            // Развернуть форму на весь экран
+            this.WindowState = FormWindowState.Maximized;
+
             FillDataGridView();
             FillStatusComboBox();
 
@@ -80,6 +84,45 @@ namespace Kursovaya
             dataGridView1.BackgroundColor = System.Drawing.Color.FromArgb(255, 221, 153);
         }
 
+        // Метод для форматирования ФИО в формат "Фамилия И.О."
+        private string FormatFullName(string fullName)
+        {
+            if (string.IsNullOrEmpty(fullName))
+                return "";
+
+            string[] parts = fullName.Trim().Split(' ');
+
+            if (parts.Length >= 3)
+            {
+                string lastName = parts[0];
+                string firstName = parts[1].Substring(0, 1);
+                string middleName = parts[2].Substring(0, 1);
+                return $"{lastName} {firstName}.{middleName}.";
+            }
+            else if (parts.Length == 2)
+            {
+                string lastName = parts[0];
+                string firstName = parts[1].Substring(0, 1);
+                return $"{lastName} {firstName}.";
+            }
+
+            return fullName;
+        }
+
+        // Метод для форматирования номера телефона (оставляем последние 4 цифры)
+        private string FormatPhoneNumber(string phoneNumber)
+        {
+            if (string.IsNullOrEmpty(phoneNumber) || phoneNumber.Length < 4)
+                return phoneNumber;
+
+            // Оставляем первую и последние 4 цифры
+            string firstDigit = phoneNumber.Substring(0, 1);
+            string lastFourDigits = phoneNumber.Substring(phoneNumber.Length - 4);
+            string stars = new string('*', phoneNumber.Length - 4);
+
+            return $"{firstDigit}{stars}{lastFourDigits}";
+        }
+
         private void SearchTimer_Tick(object sender, EventArgs e)
         {
             searchTimer.Stop();
@@ -109,15 +152,15 @@ namespace Kursovaya
 
                 dataGridView1.Rows.Add(
                     row["NumberOrder"].ToString(),
-                    row["IdClient"].ToString(),
-                    FormatPhoneNumber(row["NumberPhoneClient"].ToString()),
+                    FormatFullName(row["IdClient"].ToString()), // Форматируем ФИО клиента
+                    FormatPhoneNumber(row["NumberPhoneClient"].ToString()), // Форматируем телефон
                     Convert.ToDateTime(row["DateOfConclusion"]).ToString("dd.MM.yyyy"),
                     Convert.ToDateTime(row["DateEvent"]).ToString("dd.MM.yyyy"),
                     row["IdSchedule"].ToString(),
                     statusName,
                     statusId,
                     row["IdEvent"].ToString(),
-                    row["IdUser"].ToString(),
+                    FormatFullName(row["IdUser"].ToString()), // Форматируем ФИО сотрудника
                     row["Price"].ToString(),
                     row["DiscountAmount"].ToString(),
                     row["PriceAll"].ToString(),
@@ -178,20 +221,6 @@ namespace Kursovaya
             {
                 e.Cancel = true;
             }
-        }
-
-        private string FormatPhoneNumber(string phoneNumber)
-        {
-            if (string.IsNullOrEmpty(phoneNumber) || phoneNumber.Length < 4)
-                return phoneNumber;
-
-            char firstDigit = phoneNumber[0];
-            string lastTwoDigits = phoneNumber.Substring(phoneNumber.Length - 2);
-
-            int starsCount = phoneNumber.Length - 3;
-            string stars = new string('*', starsCount);
-
-            return $"{firstDigit}{stars}{lastTwoDigits}";
         }
 
         void FillDataGridView()
@@ -267,15 +296,15 @@ namespace Kursovaya
 
                             dataGridView1.Rows.Add(
                                 rdr["NumberOrder"].ToString(),
-                                rdr["IdClient"].ToString(),
-                                FormatPhoneNumber(rdr["NumberPhoneClient"].ToString()),
+                                FormatFullName(rdr["IdClient"].ToString()), // Форматируем ФИО клиента
+                                FormatPhoneNumber(rdr["NumberPhoneClient"].ToString()), // Форматируем телефон
                                 Convert.ToDateTime(rdr["DateOfConclusion"]).ToString("dd.MM.yyyy"),
                                 Convert.ToDateTime(rdr["DateEvent"]).ToString("dd.MM.yyyy"),
                                 rdr["IdSchedule"].ToString(),
                                 statusName,
                                 statusId,
                                 rdr["IdEvent"].ToString(),
-                                rdr["IdUser"].ToString(),
+                                FormatFullName(rdr["IdUser"].ToString()), // Форматируем ФИО сотрудника
                                 rdr["Price"].ToString(),
                                 rdr["DiscountAmount"].ToString(),
                                 rdr["PriceAll"].ToString(),
@@ -661,7 +690,6 @@ namespace Kursovaya
                     if (row["NumberOrder"].ToString() == orderNumber.ToString())
                     {
                         row["IDstatus"] = newStatusId;
-                        // Обновляем FilterDataGridView позже
                         break;
                     }
                 }

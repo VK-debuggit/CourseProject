@@ -18,10 +18,18 @@ namespace Kursovaya
         private Timer inactivityTimer;
         private int inactivityTimeout;
         private DataTable dataTable; // Добавим DataTable для хранения данных
+        private int selectedProductRowIndex = -1;
+
+        // Переменные для пагинации
+        private int currentPage = 1;
+        private int totalPages = 1;
 
         public ViewingMenu()
         {
             InitializeComponent();
+
+            // Развернуть форму на весь экран
+            this.WindowState = FormWindowState.Maximized;
 
             FillSort();
             FillFilterCategories();
@@ -39,17 +47,20 @@ namespace Kursovaya
             this.MouseWheel += ResetInactivityTimer;
             this.DoubleClick += ResetInactivityTimer;
             this.MouseDoubleClick += ResetInactivityTimer;
+            this.Resize += ViewingMenu_Resize;
             dataGridView1.Scroll += ResetInactivityTimer;
 
             button2.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button3.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             dataGridView1.BackgroundColor = System.Drawing.Color.FromArgb(255, 221, 153);
+            textBox2.BackColor = System.Drawing.Color.FromArgb(255, 221, 153);
             textBox1.BackColor = System.Drawing.Color.FromArgb(255, 221, 153);
             comboBox1.BackColor = System.Drawing.Color.FromArgb(255, 221, 153);
             comboBox2.BackColor = System.Drawing.Color.FromArgb(255, 221, 153);
             comboBox3.BackColor = System.Drawing.Color.FromArgb(255, 221, 153);
             dataGridView1.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
             dataGridView1.DefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(217, 152, 22);
+
             string fullname = Properties.Settings.Default.userName;
             string formattedname = fullname;
 
@@ -65,10 +76,6 @@ namespace Kursovaya
             label1.Text = formattedname;
             label2.Text = Properties.Settings.Default.userRole;
         }
-
-        // Создаем переменные для хранения текущей страницы и общего количества страниц
-        private int currentPage = 1;
-        private int totalPages = 1;
 
         // создание пагинации        
         void Pagination()
@@ -94,13 +101,17 @@ namespace Kursovaya
             // Если нет данных, устанавливаем 1 страницу
             if (totalPages == 0) totalPages = 1;
 
+            // Позиционируем пагинацию под DataGridView
+            int yPosition = dataGridView1.Bottom + 10;
+            int leftMargin = 13;
+
             // Создаем кнопку "Назад"
             Button btnPrev = new Button();
             btnPrev.Name = "btnPrev";
             btnPrev.Text = "◀";
             btnPrev.Font = new Font("Microsoft Sans Serif", 8, FontStyle.Bold);
             btnPrev.Size = new Size(30, 25);
-            btnPrev.Location = new Point(13, 645);
+            btnPrev.Location = new Point(leftMargin, yPosition);
             btnPrev.Click += new EventHandler(BtnPrev_Click);
             btnPrev.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             btnPrev.FlatStyle = FlatStyle.Flat;
@@ -108,8 +119,7 @@ namespace Kursovaya
             this.Controls.Add(btnPrev);
 
             // Создаем ссылки на страницы
-            int x = 48; // Начинаем после кнопки "Назад"
-            int y = 645;
+            int x = leftMargin + 35; // Начинаем после кнопки "Назад"
             int step = 20;
 
             LinkLabel[] ll = new LinkLabel[totalPages];
@@ -121,7 +131,7 @@ namespace Kursovaya
                 ll[i].Font = new Font("Microsoft Sans Serif", 14, FontStyle.Regular);
                 ll[i].Name = "page" + pageNumber;
                 ll[i].AutoSize = true;
-                ll[i].Location = new Point(x, y);
+                ll[i].Location = new Point(x, yPosition);
                 ll[i].Click += new EventHandler(LinkLabel_Click);
                 ll[i].BackColor = Color.Transparent;
 
@@ -149,7 +159,7 @@ namespace Kursovaya
             btnNext.Text = "▶";
             btnNext.Font = new Font("Microsoft Sans Serif", 8, FontStyle.Bold);
             btnNext.Size = new Size(30, 25);
-            btnNext.Location = new Point(x, 645);
+            btnNext.Location = new Point(x, yPosition);
             btnNext.Click += new EventHandler(BtnNext_Click);
             btnNext.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             btnNext.FlatStyle = FlatStyle.Flat;
@@ -256,6 +266,16 @@ namespace Kursovaya
             }
         }
 
+        // Обработчик изменения размера формы
+        private void ViewingMenu_Resize(object sender, EventArgs e)
+        {
+            // Обновляем позицию пагинации при изменении размера формы
+            int savedPage = currentPage;
+            Pagination();
+            currentPage = savedPage;
+            ShowPage(currentPage);
+        }
+
         // Также можно добавить обработку клавиатуры для навигации
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
@@ -351,7 +371,7 @@ namespace Kursovaya
             // Добавляем условие поиска 
             if (!string.IsNullOrEmpty(where))
             {
-                conditions.Add($"(p.Article LIKE '%{MySqlHelper.EscapeString(where)}%' OR p.Name LIKE '%{MySqlHelper.EscapeString(where)}%' OR p.Compound LIKE '%{MySqlHelper.EscapeString(where)}%')");
+                conditions.Add($"(p.Name LIKE '{MySqlHelper.EscapeString(where)}%')");
             }
 
             // Объединяем все условия
@@ -452,7 +472,7 @@ namespace Kursovaya
             // Добавляем условие поиска 
             if (!string.IsNullOrEmpty(where))
             {
-                conditions.Add($"(p.Article LIKE '%{MySqlHelper.EscapeString(where)}%' OR p.Name LIKE '%{MySqlHelper.EscapeString(where)}%' OR p.Compound LIKE '%{MySqlHelper.EscapeString(where)}%')");
+                conditions.Add($"(p.Name LIKE '{MySqlHelper.EscapeString(where)}%')");
             }
 
             // Объединяем все условия
@@ -470,7 +490,7 @@ namespace Kursovaya
             else
             {
                 // Сортировка по умолчанию (по названию)
-                query.Append(" ORDER BY p.Name ASC");
+                query.Append(" ORDER BY p.Article DESC");
             }
 
             return query.ToString();
@@ -488,6 +508,7 @@ namespace Kursovaya
                 dataGridView1.Columns.Add("Article", "Артикул");
                 dataGridView1.Columns.Add("Name", "Название");
                 dataGridView1.Columns.Add("Compound", "Описание");
+                dataGridView1.Columns["Compound"].Visible = false;
                 dataGridView1.Columns.Add("IdEvent", "Мероприятие");
                 dataGridView1.Columns.Add("IdCategory", "Категория");
                 dataGridView1.Columns.Add("Weight", "Вес");
@@ -508,10 +529,11 @@ namespace Kursovaya
             if (!string.IsNullOrEmpty(where))
             {
                 string searchText = where.ToLower();
-                dv.RowFilter = $"Article LIKE '%{searchText}%' OR Name LIKE '%{searchText}%' OR Compound LIKE '%{searchText}%'";
+                dv.RowFilter = $"Name LIKE '{searchText}%'";
             }
 
             // Заполняем DataGridView отфильтрованными данными
+            //!!!!!
             string imagesFolder = @"C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\Resources";
 
             foreach (DataRowView rowView in dv)
@@ -634,7 +656,6 @@ namespace Kursovaya
             comboBox3.SelectedIndex = 0;
         }
 
-        // ИЗМЕНИТЬ СУЩЕСТВУЮЩИЙ МЕТОД FillDataGridView
         void FillDataGridView(string where = "")
         {
             LoadDataWithCount(where);
@@ -717,6 +738,36 @@ namespace Kursovaya
         private void ViewingMenu_Load(object sender, EventArgs e)
         {
             LoadDataWithCount();
+            dataGridView1.CurrentCell = null;
+            dataGridView1.ClearSelection();
+            textBox2.Text = "";
+        }
+
+        private void dataGridView1_CellClick(object sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex >= 0)
+            {
+                selectedProductRowIndex = e.RowIndex;
+            }
+        }
+
+        private void dataGridView1_SelectionChanged(object sender, EventArgs e)
+        {
+            if (dataGridView1.CurrentRow != null && dataGridView1.CurrentRow.Index >= 0)
+            {
+                try
+                {
+                    // Заполняем поля данными из выбранной строки
+                    DataGridViewRow selectedRow = dataGridView1.CurrentRow;
+
+                    // Основные данные
+                    textBox2.Text = selectedRow.Cells["Compound"].Value?.ToString() ?? "";
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ошибка при заполнении поля: {ex.Message}");
+                }
+            }
         }
     }
 }
