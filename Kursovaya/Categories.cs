@@ -116,7 +116,7 @@ namespace Kursovaya
 
         void FillDataGridViewCategory()
         {
-            string SelectQuery = @"SELECT IDcategory, Category FROM CafeActivities.Categories;";
+            string SelectQuery = @"SELECT IDcategory, Category FROM CafeActivities.Categories ORDER BY Category ASC;";
 
             using (MySqlConnection con = new MySqlConnection(conString))
             {

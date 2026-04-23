@@ -134,7 +134,8 @@ namespace Kursovaya
                                     p.Password, 
                                     c.`Role` as `Role`
                                 FROM CafeActivities.Users p 
-                                LEFT JOIN Roles c ON p.IDrole = c.IDrole;";
+                                LEFT JOIN Roles c ON p.IDrole = c.IDrole
+                                ORDER BY p.FullName ASC;";
 
             using (MySqlConnection con = new MySqlConnection(conString))
             {
@@ -324,72 +325,72 @@ namespace Kursovaya
         }
 
         private void button1_Click(object sender, EventArgs e)
-{
-    string userName = textBox1.Text.Trim();
-    string loginName = textBox2.Text.Trim();
-    string password = textBox3.Text.Trim();
+        {
+            string userName = textBox1.Text.Trim();
+            string loginName = textBox2.Text.Trim();
+            string password = textBox3.Text.Trim();
 
-    bool hasError = false;
-    string errorMessage = "";
+            bool hasError = false;
+            string errorMessage = "";
 
-    if (string.IsNullOrEmpty(userName))
-    {
-        errorMessage += "• Заполните поле ФИО\n";
-        hasError = true;
-    }
+            if (string.IsNullOrEmpty(userName))
+            {
+                errorMessage += "• Заполните поле ФИО\n";
+                hasError = true;
+            }
 
-    if (string.IsNullOrEmpty(loginName))
-    {
-        errorMessage += "• Заполните поле логина\n";
-        hasError = true;
-    }
+            if (string.IsNullOrEmpty(loginName))
+            {
+                errorMessage += "• Заполните поле логина\n";
+                hasError = true;
+            }
 
-    if (string.IsNullOrEmpty(password))
-    {
-        errorMessage += "• Заполните поле пароля\n";
-        hasError = true;
-    }
+            if (string.IsNullOrEmpty(password))
+            {
+                errorMessage += "• Заполните поле пароля\n";
+                hasError = true;
+            }
 
-    // Проверка выбора роли - нельзя выбрать "Все роли"
-    if (Filter.SelectedIndex <= 0) // 0 - это "Все роли"
-    {
-        errorMessage += "• Выберите конкретную роль пользователя\n";
-        hasError = true;
-    }
+            // Проверка выбора роли - нельзя выбрать "Все роли"
+            if (Filter.SelectedIndex <= 0) // 0 - это "Все роли"
+            {
+                errorMessage += "• Выберите конкретную роль пользователя\n";
+                hasError = true;
+            }
 
-    if (hasError)
-    {
-        MessageBox.Show(errorMessage, "Ошибка",
-                       MessageBoxButtons.OK, MessageBoxIcon.Warning);
-        return;
-    }
+            if (hasError)
+            {
+                MessageBox.Show(errorMessage, "Ошибка",
+                               MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
 
-    if (IsUserExists(loginName))
-    {
-        MessageBox.Show("Пользователь с таким логином уже существует", "Ошибка",
-                      MessageBoxButtons.OK, MessageBoxIcon.Warning);
-        return;
-    }
+            if (IsUserExists(loginName))
+            {
+                MessageBox.Show("Пользователь с таким логином уже существует", "Ошибка",
+                              MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
 
-    string hashPassword = GetHashPass(password);
-    
-    // Получаем имя выбранной роли
-    string roleName = Filter.SelectedItem.ToString();
-    
-    // Получаем ID роли по имени
-    int roleId = GetRoleIdByName(roleName);
-    if (roleId <= 0)
-    {
-        MessageBox.Show("Ошибка получения ID роли", "Ошибка",
-                      MessageBoxButtons.OK, MessageBoxIcon.Error);
-        return;
-    }
+            string hashPassword = GetHashPass(password);
 
-    string query = @"INSERT INTO Users (FullName, Login, Password, IDRole) 
+            // Получаем имя выбранной роли
+            string roleName = Filter.SelectedItem.ToString();
+
+            // Получаем ID роли по имени
+            int roleId = GetRoleIdByName(roleName);
+            if (roleId <= 0)
+            {
+                MessageBox.Show("Ошибка получения ID роли", "Ошибка",
+                              MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            string query = @"INSERT INTO Users (FullName, Login, Password, IDRole) 
                      VALUES (@fullName, @login, @password, @idrole)";
 
-    using (MySqlConnection con = new MySqlConnection(conString))
-    {
+            using (MySqlConnection con = new MySqlConnection(conString))
+            {
                 try
                 {
                     con.Open();
@@ -435,8 +436,8 @@ namespace Kursovaya
                     MessageBox.Show($"Ошибка добавления пользователя: {ex.Message}", "Ошибка",
                                   MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
-    }
-}
+            }
+        }
 
         private string GetHashPass(string password)
         {

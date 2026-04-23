@@ -275,7 +275,7 @@ namespace Kursovaya
 
         void FillDataGridView(string where = "")
         {
-            string SelectQuery = @"SELECT IDclient, Name, NumberPhone FROM CafeActivities.Clients";
+            string SelectQuery = @"SELECT IDclient, Name, NumberPhone FROM CafeActivities.Clients ORDER BY Name ASC";
 
             List<string> conditions = new List<string>();
 

@@ -107,7 +107,7 @@ namespace Kursovaya
 
         void FillDataGridView()
         {
-            string SelectQuery = @"SELECT IDrole, `Role` FROM CafeActivities.Roles;";
+            string SelectQuery = @"SELECT IDrole, `Role` FROM CafeActivities.Roles ORDER BY `Role` ASC;";
 
             using (MySqlConnection con = new MySqlConnection(conString))
             {

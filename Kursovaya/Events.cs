@@ -109,7 +109,7 @@ namespace Kursovaya
 
         void FillDataGridView()
         {
-            string SelectQuery = @"SELECT IDevent, `Event` FROM CafeActivities.Events;";
+            string SelectQuery = @"SELECT IDevent, `Event` FROM CafeActivities.Events ORDER BY `Event` ASC;";
 
             using (MySqlConnection con = new MySqlConnection(conString))
             {
