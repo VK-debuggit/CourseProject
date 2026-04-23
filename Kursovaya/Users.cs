@@ -792,6 +792,15 @@ namespace Kursovaya
         {
             // Очищаем все поля при загрузке формы
             ClearAllFields();
+
+            // Для всех колонок, кроме последней
+            for (int i = 0; i < dataGridView1.Columns.Count - 1; i++)
+            {
+                dataGridView1.Columns[i].AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
+            }
+
+            // Последняя колонка заполняет оставшееся пространство
+            dataGridView1.Columns[dataGridView1.Columns.Count - 1].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
         }
 
         private void button3_Click(object sender, EventArgs e)
