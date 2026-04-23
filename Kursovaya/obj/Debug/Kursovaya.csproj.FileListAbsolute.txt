@@ -130,3 +130,5 @@ C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\bin\Debug\Resources\zhul
 C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\bin\Debug\Resources\Иконка.png
 C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\bin\Debug\Resources\лупа.png
 C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\bin\Debug\Resources\3939944.png
+C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\bin\Debug\cafe_coffee_shop_icon.ico
+C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\bin\Debug\Иконка.ico

@@ -35,10 +35,6 @@ namespace Kursovaya
             this.MouseWheel += ResetInactivityTimer;
             this.DoubleClick += ResetInactivityTimer;
             this.MouseDoubleClick += ResetInactivityTimer;
-
-            button1.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
-            button2.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
-            button3.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button4.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             dataGridView1.BackgroundColor = System.Drawing.Color.FromArgb(255, 221, 153);
             dataGridView1.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
@@ -330,32 +326,6 @@ namespace Kursovaya
             }
         }
 
-        private void textBox1_TextChanged(object sender, EventArgs e)
-        {
-            UpdateButtonsState();
-        }
-
-        void UpdateButtonsState()
-        {
-            // Включаем кнопку только если TextBox не пустой
-            button1.Enabled = !string.IsNullOrWhiteSpace(textBox1.Text);
-            string currentText = textBox1.Text.Trim();
-            bool hasText = !string.IsNullOrWhiteSpace(currentText);
-
-            if (dataGridView1.CurrentRow != null && hasText)
-            {
-                string originalStatus = dataGridView1.CurrentRow.Cells["Role"].Value?.ToString() ?? "";
-                button2.Enabled = (currentText != originalStatus);
-            }
-            else
-            {
-                button2.Enabled = false;
-            }
-
-            // Кнопка удаления доступна только когда выбрана запись
-            button3.Enabled = (dataGridView1.CurrentRow != null);
-        }
-
         private bool IsRoleInUse(int statusId)
         {
             string checkQueries = @"SELECT COUNT(*) FROM Users WHERE IdRole = @roleId;";
@@ -403,9 +373,6 @@ namespace Kursovaya
                 {
                     MessageBox.Show($"Ошибка при заполнении полей: {ex.Message}");
                 }
-
-                // Обновляем состояние кнопок
-                UpdateButtonsState();
             }
         }
 
@@ -475,7 +442,6 @@ namespace Kursovaya
             dataGridView1.ClearSelection();
             dataGridView1.CurrentCell = null;
             textBox1.Text = "";
-            UpdateButtonsState();
         }
 
         private void Roles_Load(object sender, EventArgs e)

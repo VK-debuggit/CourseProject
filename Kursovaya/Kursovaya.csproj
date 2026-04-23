@@ -338,7 +338,9 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="cafe_coffee_shop_icon.ico" />
+    <Content Include="cafe_coffee_shop_icon.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="Resources\03578_0.jpg">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
@@ -486,7 +488,9 @@
     <Content Include="Resources\zhulyen-s-kuritsei-ready0-ogimg.jpg">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="Иконка.ico" />
+    <Content Include="Иконка.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

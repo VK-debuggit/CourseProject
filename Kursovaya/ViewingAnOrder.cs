@@ -49,6 +49,8 @@ namespace Kursovaya
             button1.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button2.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button3.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
+            button4.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
+            button5.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             textBox1.BackColor = System.Drawing.Color.FromArgb(255, 221, 153);
             comboBox1.BackColor = System.Drawing.Color.FromArgb(255, 221, 153);
             dataGridView1.BackgroundColor = System.Drawing.Color.FromArgb(255, 221, 153);
@@ -738,7 +740,8 @@ namespace Kursovaya
 
         private void button2_Click(object sender, EventArgs e)
         {
-            GenerateWordTicket();
+            groupBox1.Visible = true;
+            //GenerateWordTicket();
         }
 
         private string GetTemplatePath()
@@ -849,23 +852,13 @@ namespace Kursovaya
             }
             finally
             {
-                // ОСВОБОЖДАЕМ РЕСУРСЫ в правильном порядке
                 try
                 {
-                    // Закрываем документ, но оставляем Word открытым для просмотра
                     if (doc != null)
                     {
                         // Не закрываем документ, чтобы пользователь мог его просмотреть
-                        // doc.Close(SaveChanges: false);
                         System.Runtime.InteropServices.Marshal.ReleaseComObject(doc);
                     }
-
-                    //// Не закрываем Word приложение, чтобы пользователь мог работать с документом
-                    //if (wordApp != null)
-                    //{
-                    //    wordApp.Quit(SaveChanges: false);
-                    //    System.Runtime.InteropServices.Marshal.ReleaseComObject(wordApp);
-                    //}
                 }
                 catch (Exception ex)
                 {
@@ -1134,6 +1127,22 @@ namespace Kursovaya
                 e.Handled = true;
                 ValidateAndPasteAdditionalExpenses();
             }
+        }
+
+        private void pictureBox1_Click(object sender, EventArgs e)
+        {
+            groupBox1.Hide();
+        }
+
+        private void button5_Click(object sender, EventArgs e)
+        {
+            GenerateWordTicket();
+            groupBox1.Hide();
+        }
+
+        private void button4_Click(object sender, EventArgs e)
+        {
+            groupBox1.Hide();
         }
     }
 }

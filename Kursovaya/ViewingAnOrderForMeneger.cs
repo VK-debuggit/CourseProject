@@ -3,12 +3,12 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Drawing;
 
 namespace Kursovaya
 {
@@ -508,12 +508,12 @@ namespace Kursovaya
 
         private void button2_Click(object sender, EventArgs e)
         {
-            GenerateWordTicket();
+            groupBox1.Visible = true;
 
-            isWordGenerated = true;
-            button1.Enabled = true;
-            button2.Enabled = false;
-            button3.Enabled = false;
+            //isWordGenerated = true;
+            //button1.Enabled = true;
+            //button2.Enabled = false;
+            //button3.Enabled = false;
         }
 
         private void button1_Click(object sender, EventArgs e)
@@ -807,6 +807,26 @@ namespace Kursovaya
                     cmd.ExecuteNonQuery();
                 }
             }
+        }
+
+        private void button5_Click(object sender, EventArgs e)
+        {
+            GenerateWordTicket();
+
+            isWordGenerated = true;
+            button1.Enabled = true;
+            button2.Enabled = false;
+            button3.Enabled = false;
+        }
+
+        private void pictureBox1_Click(object sender, EventArgs e)
+        {
+            groupBox1.Hide();
+        }
+
+        private void button4_Click(object sender, EventArgs e)
+        {
+            groupBox1.Hide();
         }
     }
 }
