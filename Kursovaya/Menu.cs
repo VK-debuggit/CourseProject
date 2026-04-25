@@ -19,8 +19,12 @@ namespace Kursovaya
         private Timer inactivityTimer;
         private int inactivityTimeout;
         private int rowCount = 0;
-        private Image newProductImage; // Поле для нового изображения
-        private string originalImageFilePath; // Сохраняем путь к выбранному файлу
+        private Image newProductImage;
+        private string originalImageFilePath;
+
+        // Переменные для пагинации 
+        private int currentPage = 1;
+        private int totalPages = 1;
 
         // Поля для хранения исходных данных
         private DataGridViewRow selectedRowData = null;
@@ -52,6 +56,7 @@ namespace Kursovaya
             this.MouseWheel += ResetInactivityTimer;
             this.DoubleClick += ResetInactivityTimer;
             this.MouseDoubleClick += ResetInactivityTimer;
+            this.Resize += Menu_Resize;
 
             button1.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button2.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
@@ -68,11 +73,10 @@ namespace Kursovaya
             dataGridView1.BackgroundColor = System.Drawing.Color.FromArgb(255, 221, 153);
             dataGridView1.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
             dataGridView1.DefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(217, 152, 22);
+
             string fullname = Properties.Settings.Default.userName;
             string formattedname = fullname;
-
             string[] parts = fullname.Split(' ');
-
             if (parts.Length == 3)
             {
                 string lastname = parts[0];
@@ -83,19 +87,14 @@ namespace Kursovaya
             label1.Text = formattedname;
             label2.Text = Properties.Settings.Default.userRole;
 
-            // Развернуть форму на весь экран
             this.WindowState = FormWindowState.Maximized;
         }
 
-        // Создаем переменные для хранения текущей страницы и общего количества страниц
-        private int currentPage = 1;
-        private int totalPages = 1;
+        // ========== ПАГИНАЦИЯ (как в ViewingOrdersForMeneger) ==========
 
-        // создание пагинации        
         void Pagination()
         {
-            // удаляем LinkLabel служащий для пагинации
-            // каждый раз будем создавать новую пагинацию
+            // Удаляем старые элементы пагинации
             for (int j = 0, count = this.Controls.Count; j < count; ++j)
             {
                 if (this.Controls[j].Name.StartsWith("page") ||
@@ -108,147 +107,135 @@ namespace Kursovaya
                 }
             }
 
-            // узнаём сколько страниц будет
-            totalPages = dataGridView1.Rows.Count / 20; // на каждой странице по 20 записей
-            if (Convert.ToBoolean(dataGridView1.Rows.Count % 20)) totalPages += 1; // ситуация когда при делении получаем не целое число
-
-            // Если нет данных, устанавливаем 1 страницу
+            // Вычисляем количество страниц
+            totalPages = dataGridView1.Rows.Count / 20;
+            if (Convert.ToBoolean(dataGridView1.Rows.Count % 20)) totalPages += 1;
             if (totalPages == 0) totalPages = 1;
 
-            // Создаем кнопку "Назад"
+            // Позиционируем пагинацию под DataGridView
+            int yPosition = dataGridView1.Bottom + 10;
+            int leftMargin = 13;
+
+            // Кнопка "Назад"
             Button btnPrev = new Button();
             btnPrev.Name = "btnPrev";
             btnPrev.Text = "◀";
             btnPrev.Font = new Font("Microsoft Sans Serif", 8, FontStyle.Bold);
             btnPrev.Size = new Size(30, 25);
-            btnPrev.Location = new Point(13, 690);
+            btnPrev.Location = new Point(leftMargin, yPosition);
             btnPrev.Click += new EventHandler(BtnPrev_Click);
             btnPrev.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             btnPrev.FlatStyle = FlatStyle.Flat;
             btnPrev.FlatAppearance.BorderSize = 0;
             this.Controls.Add(btnPrev);
 
-            // Создаем ссылки на страницы
-            int x = 48; // Начинаем после кнопки "Назад"
-            int y = 690;
+            // Ссылки на страницы
+            int x = leftMargin + 35;
             int step = 20;
 
-            LinkLabel[] ll = new LinkLabel[totalPages];
             for (int i = 0; i < totalPages; i++)
             {
                 int pageNumber = i + 1;
-                ll[i] = new LinkLabel();
-                ll[i].Text = Convert.ToString(pageNumber);
-                ll[i].Font = new Font("Microsoft Sans Serif", 14, FontStyle.Regular);
-                ll[i].Name = "page" + pageNumber;
-                ll[i].AutoSize = true;
-                ll[i].Location = new Point(x, y);
-                ll[i].Click += new EventHandler(LinkLabel_Click);
-                ll[i].BackColor = Color.Transparent;
+                LinkLabel link = new LinkLabel();
+                link.Text = Convert.ToString(pageNumber);
+                link.Font = new Font("Microsoft Sans Serif", 14, FontStyle.Regular);
+                link.Name = "page" + pageNumber;
+                link.AutoSize = true;
+                link.Location = new Point(x, yPosition);
+                link.Click += new EventHandler(LinkLabel_Click);
+                link.BackColor = Color.Transparent;
 
-                // Выделяем текущую страницу - убираем подчеркивание и меняем цвет
                 if (pageNumber == currentPage)
                 {
-                    ll[i].LinkBehavior = LinkBehavior.NeverUnderline;
-                    ll[i].ForeColor = Color.DarkRed; // Меняем цвет текущей страницы
-                    ll[i].Font = new Font(ll[i].Font, FontStyle.Bold);
+                    link.LinkBehavior = LinkBehavior.NeverUnderline;
+                    link.ForeColor = Color.DarkRed;
+                    link.Font = new Font(link.Font, FontStyle.Bold);
                 }
                 else
                 {
-                    ll[i].LinkBehavior = LinkBehavior.AlwaysUnderline;
-                    ll[i].ForeColor = Color.Blue; // Цвет для остальных страниц
-                    ll[i].Font = new Font(ll[i].Font, FontStyle.Regular);
+                    link.LinkBehavior = LinkBehavior.AlwaysUnderline;
+                    link.ForeColor = Color.Blue;
                 }
 
-                this.Controls.Add(ll[i]);
+                this.Controls.Add(link);
                 x += step;
             }
 
-            // Создаем кнопку "Вперед"
+            // Кнопка "Вперед"
             Button btnNext = new Button();
             btnNext.Name = "btnNext";
             btnNext.Text = "▶";
             btnNext.Font = new Font("Microsoft Sans Serif", 8, FontStyle.Bold);
             btnNext.Size = new Size(30, 25);
-            btnNext.Location = new Point(x, 690);
+            btnNext.Location = new Point(x, yPosition);
             btnNext.Click += new EventHandler(BtnNext_Click);
             btnNext.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             btnNext.FlatStyle = FlatStyle.Flat;
             btnNext.FlatAppearance.BorderSize = 0;
             this.Controls.Add(btnNext);
 
-            // Обновляем отображение данных
             ShowPage(currentPage);
-
-            // Обновляем состояние кнопок
             UpdateNavigationButtons();
+            UpdateRowCount();
         }
 
-        // Метод для отображения конкретной страницы
         private void ShowPage(int pageNumber)
         {
-            // Проверяем корректность номера страницы
             if (pageNumber < 1) pageNumber = 1;
             if (pageNumber > totalPages) pageNumber = totalPages;
 
             currentPage = pageNumber;
 
-            // Скрываем/показываем строки в зависимости от страницы
-            int countRows = dataGridView1.Rows.Count;
             int sizePage = 20;
             int start = (pageNumber - 1) * sizePage;
-            int stop = Math.Min(start + sizePage - 1, countRows - 1);
+            int stop = Math.Min(start + sizePage - 1, dataGridView1.Rows.Count - 1);
 
-            for (int j = 0; j < countRows; ++j)
+            for (int j = 0; j < dataGridView1.Rows.Count; ++j)
             {
                 dataGridView1.Rows[j].Visible = (j >= start && j <= stop);
             }
 
-            // Прокручиваем таблицу к началу страницы
             if (dataGridView1.Rows.Count > start)
             {
                 dataGridView1.FirstDisplayedScrollingRowIndex = start;
             }
+
+            UpdateRowCount();
         }
 
-        // Обработчик для кнопки "Назад"
         private void BtnPrev_Click(object sender, EventArgs e)
         {
             if (currentPage > 1)
             {
                 ShowPage(currentPage - 1);
-                Pagination(); // Пересоздаем пагинацию с обновленным выделением
+                Pagination();
                 ResetInactivityTimer(sender, e);
             }
         }
 
-        // Обработчик для кнопки "Вперед"
         private void BtnNext_Click(object sender, EventArgs e)
         {
             if (currentPage < totalPages)
             {
                 ShowPage(currentPage + 1);
-                Pagination(); // Пересоздаем пагинацию с обновленным выделением
+                Pagination();
                 ResetInactivityTimer(sender, e);
             }
         }
 
-        // Выбор страницы пагинации по клику на номер
         private void LinkLabel_Click(object sender, EventArgs e)
         {
             LinkLabel l = sender as LinkLabel;
             if (l != null && int.TryParse(l.Text, out int pageNumber))
             {
                 ShowPage(pageNumber);
-                Pagination(); // Пересоздаем пагинацию с обновленным выделением
+                Pagination();
                 ResetInactivityTimer(sender, e);
             }
         }
 
-        // Метод для обновления состояния кнопок навигации
         private void UpdateNavigationButtons()
         {
-            // Находим кнопки на форме
             Button btnPrev = this.Controls.Find("btnPrev", false).FirstOrDefault() as Button;
             Button btnNext = this.Controls.Find("btnNext", false).FirstOrDefault() as Button;
 
@@ -271,10 +258,16 @@ namespace Kursovaya
             }
         }
 
-        // Также можно добавить обработку клавиатуры для навигации
+        private void Menu_Resize(object sender, EventArgs e)
+        {
+            int savedPage = currentPage;
+            Pagination();
+            currentPage = savedPage;
+            ShowPage(currentPage);
+        }
+
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
-            // Обработка стрелок для пагинации
             if (keyData == Keys.Left || keyData == Keys.PageUp)
             {
                 if (currentPage > 1)
@@ -293,7 +286,6 @@ namespace Kursovaya
             }
             else if (keyData == Keys.Home)
             {
-                // Переход на первую страницу
                 if (currentPage != 1)
                 {
                     ShowPage(1);
@@ -304,7 +296,6 @@ namespace Kursovaya
             }
             else if (keyData == Keys.End)
             {
-                // Переход на последнюю страницу
                 if (currentPage != totalPages)
                 {
                     ShowPage(totalPages);
@@ -316,6 +307,37 @@ namespace Kursovaya
 
             return base.ProcessCmdKey(ref msg, keyData);
         }
+
+        // ========== ОБНОВЛЕНИЕ КОЛИЧЕСТВА ЗАПИСЕЙ ==========
+
+        private void UpdateRowCount()
+        {
+            // Общее количество строк в DataGridView
+            int totalCount = dataGridView1.Rows.Count;
+
+            // Количество строк в БД (все блюда)
+            int totalInDatabase = 0;
+            string q = "SELECT COUNT(*) FROM CafeActivities.Dishes;";
+            using (MySqlConnection con = new MySqlConnection(conString))
+            {
+                con.Open();
+                using (MySqlCommand cmd = new MySqlCommand(q, con))
+                {
+                    totalInDatabase = Convert.ToInt32(cmd.ExecuteScalar());
+                }
+            }
+
+            // Количество строк на текущей странице (видимых)
+            int visibleCount = 0;
+            for (int i = (currentPage - 1) * 20; i < currentPage * 20 && i < totalCount; i++)
+            {
+                visibleCount++;
+            }
+
+            label14.Text = $"{visibleCount} из {totalInDatabase}";
+        }
+
+        // ========== ТАЙМЕРЫ ==========
 
         private void ResetInactivityTimer(object sender, EventArgs e)
         {
@@ -364,6 +386,8 @@ namespace Kursovaya
             }
         }
 
+        // ========== ЗАГРУЗКА ДАННЫХ ==========
+
         void FillDataGridView()
         {
             string SelectQuery = @"SELECT 
@@ -392,7 +416,6 @@ namespace Kursovaya
                         dataGridView1.Rows.Clear();
                         dataGridView1.Columns.Clear();
 
-                        // Создаем колонку для изображений
                         DataGridViewImageColumn imageColumn = new DataGridViewImageColumn();
                         imageColumn.Name = "Photo";
                         imageColumn.HeaderText = "Фото";
@@ -418,18 +441,13 @@ namespace Kursovaya
 
                             if (!string.IsNullOrEmpty(photoFileName) && File.Exists(fullImagePath))
                             {
-                                // Загружаем изображение из файла
                                 using (var fs = new FileStream(fullImagePath, FileMode.Open, FileAccess.Read))
                                 {
                                     img = Image.FromStream(fs);
                                 }
                             }
-                            else
-                            {
-                                img = null;
-                            }
 
-                            int rowIndex = dataGridView1.Rows.Add(
+                            dataGridView1.Rows.Add(
                                 rdr["Article"].ToString(),
                                 rdr["Event"].ToString(),
                                 rdr["Category"].ToString(),
@@ -445,7 +463,6 @@ namespace Kursovaya
 
                         label14.Text = rowCount.ToString();
 
-                        // Показываем информацию о загруженных данных
                         if (rowCount == 0)
                         {
                             MessageBox.Show("Данные не найдены", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -455,49 +472,45 @@ namespace Kursovaya
                 catch (Exception ex)
                 {
                     MessageBox.Show($"Ошибка при загрузке данных: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    Console.WriteLine("Error details: " + ex.ToString());
                 }
             }
+
+            currentPage = 1;
+            Pagination();
         }
 
         void FillFilterCategory()
         {
-            MySqlConnection con = new MySqlConnection(conString);
-            con.Open();
-
-            MySqlCommand cmd = new MySqlCommand(@"SELECT * FROM CafeActivities.Categories;", con);
-            MySqlDataReader rdr = cmd.ExecuteReader();
-
-            comboBox2.Items.Clear();
-
-            while (rdr.Read())
+            using (MySqlConnection con = new MySqlConnection(conString))
             {
-                comboBox2.Items.Add(rdr[1].ToString());
+                con.Open();
+                MySqlCommand cmd = new MySqlCommand(@"SELECT * FROM CafeActivities.Categories;", con);
+                MySqlDataReader rdr = cmd.ExecuteReader();
+                comboBox2.Items.Clear();
+                while (rdr.Read())
+                {
+                    comboBox2.Items.Add(rdr[1].ToString());
+                }
+                comboBox2.SelectedIndex = 0;
+                con.Close();
             }
-
-            comboBox2.SelectedIndex = 0;
-
-            con.Close();
         }
 
         void FillFilterEvent()
         {
-            MySqlConnection con = new MySqlConnection(conString);
-            con.Open();
-
-            MySqlCommand cmd = new MySqlCommand(@"SELECT * FROM CafeActivities.Events;", con);
-            MySqlDataReader rdr = cmd.ExecuteReader();
-
-            comboBox1.Items.Clear();
-
-            while (rdr.Read())
+            using (MySqlConnection con = new MySqlConnection(conString))
             {
-                comboBox1.Items.Add(rdr[1].ToString());
+                con.Open();
+                MySqlCommand cmd = new MySqlCommand(@"SELECT * FROM CafeActivities.Events;", con);
+                MySqlDataReader rdr = cmd.ExecuteReader();
+                comboBox1.Items.Clear();
+                while (rdr.Read())
+                {
+                    comboBox1.Items.Add(rdr[1].ToString());
+                }
+                comboBox1.SelectedIndex = 0;
+                con.Close();
             }
-
-            comboBox1.SelectedIndex = 0;
-
-            con.Close();
         }
 
         private void textBox4_KeyPress(object sender, KeyPressEventArgs e)

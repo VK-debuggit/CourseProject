@@ -280,6 +280,7 @@ namespace Kursovaya
                         dataGridView1.Columns.Add("IDstatus", "ID статуса");
                         dataGridView1.Columns["IDstatus"].Visible = false;
                         dataGridView1.Columns.Add("IdEvent", "Мероприятие");
+                        dataGridView1.Columns["IdEvent"].AutoSizeMode = DataGridViewAutoSizeColumnMode.DisplayedCells;
                         dataGridView1.Columns.Add("IdUser", "Сотрудник");
                         dataGridView1.Columns.Add("Price", "Цена");
                         dataGridView1.Columns["Price"].Visible = false;

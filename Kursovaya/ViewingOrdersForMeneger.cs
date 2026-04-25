@@ -16,19 +16,23 @@ namespace Kursovaya
         string conString = $"host={Properties.Settings.Default.host};uid={Properties.Settings.Default.uid};pwd={Properties.Settings.Default.pwd};database={Properties.Settings.Default.database};";
         private DateTime defaultStartDate;
         private DateTime defaultEndDate;
-        private Timer searchTimer; // Таймер для задержки поиска
-        private DataTable dataTable; // Храним данные в DataTable для фильтрации
-        private DataTable allDataTable;
+        private Timer searchTimer;
+        private DataTable dataTable;
         private Timer inactivityTimer;
         private int inactivityTimeout;
+
+        // Переменные для пагинации
+        private int currentPage = 1;
+        private int totalPages = 1;
 
         public ViewingOrdersForMeneger()
         {
             InitializeComponent();
 
-            // Инициализация таймера для поиска с задержкой
+            this.WindowState = FormWindowState.Maximized;
+
             searchTimer = new Timer();
-            searchTimer.Interval = 500; // 500 мс задержка
+            searchTimer.Interval = 500;
             searchTimer.Tick += SearchTimer_Tick;
 
             inactivityTimeout = Properties.Settings.Default.InactivityTimeout * 1000;
@@ -42,8 +46,8 @@ namespace Kursovaya
             this.MouseWheel += ResetInactivityTimer;
             this.DoubleClick += ResetInactivityTimer;
             this.MouseDoubleClick += ResetInactivityTimer;
+            this.Resize += ViewingOrdersForMeneger_Resize;
 
-            // Настройка цветов
             button1.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button2.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button3.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
@@ -53,28 +57,58 @@ namespace Kursovaya
             textBox1.BackColor = System.Drawing.Color.FromArgb(255, 221, 153);
             comboBox1.BackColor = System.Drawing.Color.FromArgb(255, 221, 153);
 
-            button2.Enabled = false; // Кнопка просмотра заказа изначально неактивна
+            button2.Enabled = false;
 
-            // Настройка дат
             SetupDateControls();
-
-            // Настройка пользователя
             SetupUserInfo();
-
-            // Заполнение фильтров
             FillFilterUsers();
+
+            LoadData();
         }
 
-        // создание пагинации        
-        // Создаем переменные для хранения текущей страницы и общего количества страниц
-        private int currentPage = 1;
-        private int totalPages = 1;
+        // ========== МЕТОДЫ ФОРМАТИРОВАНИЯ (из AccountingForOrdersForAdmin) ==========
 
-        // создание пагинации        
+        private string FormatFullName(string fullName)
+        {
+            if (string.IsNullOrEmpty(fullName))
+                return "";
+
+            string[] parts = fullName.Trim().Split(' ');
+
+            if (parts.Length >= 3)
+            {
+                string lastName = parts[0];
+                string firstName = parts[1].Length > 0 ? parts[1].Substring(0, 1) : "";
+                string middleName = parts[2].Length > 0 ? parts[2].Substring(0, 1) : "";
+                return $"{lastName} {firstName}.{middleName}.";
+            }
+            else if (parts.Length == 2)
+            {
+                string lastName = parts[0];
+                string firstName = parts[1].Length > 0 ? parts[1].Substring(0, 1) : "";
+                return $"{lastName} {firstName}.";
+            }
+
+            return fullName;
+        }
+
+        private string FormatPhoneNumber(string phoneNumber)
+        {
+            if (string.IsNullOrEmpty(phoneNumber) || phoneNumber.Length < 4)
+                return phoneNumber;
+
+            string firstDigit = phoneNumber.Substring(0, 1);
+            string lastFourDigits = phoneNumber.Substring(phoneNumber.Length - 4);
+            string stars = new string('*', phoneNumber.Length - 4);
+
+            return $"{firstDigit}{stars}{lastFourDigits}";
+        }
+
+        // ========== ПАГИНАЦИЯ ==========
+
         void Pagination()
         {
-            // удаляем LinkLabel служащий для пагинации
-            // каждый раз будем создавать новую пагинацию
+            // Удаляем старые элементы пагинации
             for (int j = 0, count = this.Controls.Count; j < count; ++j)
             {
                 if (this.Controls[j].Name.StartsWith("page") ||
@@ -87,152 +121,135 @@ namespace Kursovaya
                 }
             }
 
-            // узнаём сколько страниц будет
-            totalPages = dataGridView1.Rows.Count / 20; // на каждой странице по 20 записей
-            if (Convert.ToBoolean(dataGridView1.Rows.Count % 20)) totalPages += 1; // ситуация когда при делении получаем не целое число
-
-            // Если нет данных, устанавливаем 1 страницу
+            // Вычисляем количество страниц
+            totalPages = dataGridView1.Rows.Count / 20;
+            if (Convert.ToBoolean(dataGridView1.Rows.Count % 20)) totalPages += 1;
             if (totalPages == 0) totalPages = 1;
 
-            // Создаем кнопку "Назад"
+            // Позиционируем пагинацию под DataGridView
+            int yPosition = dataGridView1.Bottom + 10;
+            int leftMargin = 13;
+
+            // Кнопка "Назад"
             Button btnPrev = new Button();
             btnPrev.Name = "btnPrev";
             btnPrev.Text = "◀";
             btnPrev.Font = new Font("Microsoft Sans Serif", 8, FontStyle.Bold);
             btnPrev.Size = new Size(30, 25);
-            btnPrev.Location = new Point(13, 435);
+            btnPrev.Location = new Point(leftMargin, yPosition);
             btnPrev.Click += new EventHandler(BtnPrev_Click);
             btnPrev.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             btnPrev.FlatStyle = FlatStyle.Flat;
             btnPrev.FlatAppearance.BorderSize = 0;
             this.Controls.Add(btnPrev);
 
-            // Создаем ссылки на страницы
-            int x = 48; // Начинаем после кнопки "Назад"
-            int y = 435;
+            // Ссылки на страницы
+            int x = leftMargin + 35;
             int step = 20;
 
-            LinkLabel[] ll = new LinkLabel[totalPages];
             for (int i = 0; i < totalPages; i++)
             {
                 int pageNumber = i + 1;
-                ll[i] = new LinkLabel();
-                ll[i].Text = Convert.ToString(pageNumber);
-                ll[i].Font = new Font("Microsoft Sans Serif", 14, FontStyle.Regular);
-                ll[i].Name = "page" + pageNumber;
-                ll[i].AutoSize = true;
-                ll[i].Location = new Point(x, y);
-                ll[i].Click += new EventHandler(LinkLabel_Click);
-                ll[i].BackColor = Color.Transparent;
+                LinkLabel link = new LinkLabel();
+                link.Text = Convert.ToString(pageNumber);
+                link.Font = new Font("Microsoft Sans Serif", 14, FontStyle.Regular);
+                link.Name = "page" + pageNumber;
+                link.AutoSize = true;
+                link.Location = new Point(x, yPosition);
+                link.Click += new EventHandler(LinkLabel_Click);
+                link.BackColor = Color.Transparent;
 
-                // Выделяем текущую страницу - убираем подчеркивание и меняем цвет
                 if (pageNumber == currentPage)
                 {
-                    ll[i].LinkBehavior = LinkBehavior.NeverUnderline;
-                    ll[i].ForeColor = Color.DarkRed; // Меняем цвет текущей страницы
-                    ll[i].Font = new Font(ll[i].Font, FontStyle.Bold);
+                    link.LinkBehavior = LinkBehavior.NeverUnderline;
+                    link.ForeColor = Color.DarkRed;
+                    link.Font = new Font(link.Font, FontStyle.Bold);
                 }
                 else
                 {
-                    ll[i].LinkBehavior = LinkBehavior.AlwaysUnderline;
-                    ll[i].ForeColor = Color.Blue; // Цвет для остальных страниц
-                    ll[i].Font = new Font(ll[i].Font, FontStyle.Regular);
+                    link.LinkBehavior = LinkBehavior.AlwaysUnderline;
+                    link.ForeColor = Color.Blue;
                 }
 
-                this.Controls.Add(ll[i]);
+                this.Controls.Add(link);
                 x += step;
             }
 
-            // Создаем кнопку "Вперед"
+            // Кнопка "Вперед"
             Button btnNext = new Button();
             btnNext.Name = "btnNext";
             btnNext.Text = "▶";
             btnNext.Font = new Font("Microsoft Sans Serif", 8, FontStyle.Bold);
             btnNext.Size = new Size(30, 25);
-            btnNext.Location = new Point(x, 435);
+            btnNext.Location = new Point(x, yPosition);
             btnNext.Click += new EventHandler(BtnNext_Click);
             btnNext.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             btnNext.FlatStyle = FlatStyle.Flat;
             btnNext.FlatAppearance.BorderSize = 0;
             this.Controls.Add(btnNext);
 
-            // Обновляем отображение данных
             ShowPage(currentPage);
-
-            // Обновляем состояние кнопок
             UpdateNavigationButtons();
+            UpdateRowCount();
         }
 
-        // Метод для отображения конкретной страницы
         private void ShowPage(int pageNumber)
         {
-            // Проверяем корректность номера страницы
             if (pageNumber < 1) pageNumber = 1;
             if (pageNumber > totalPages) pageNumber = totalPages;
 
             currentPage = pageNumber;
 
-            // Скрываем/показываем строки в зависимости от страницы
-            int countRows = dataGridView1.Rows.Count;
             int sizePage = 20;
             int start = (pageNumber - 1) * sizePage;
-            int stop = Math.Min(start + sizePage - 1, countRows - 1);
+            int stop = Math.Min(start + sizePage - 1, dataGridView1.Rows.Count - 1);
 
-            for (int j = 0; j < countRows; ++j)
+            for (int j = 0; j < dataGridView1.Rows.Count; ++j)
             {
                 dataGridView1.Rows[j].Visible = (j >= start && j <= stop);
             }
 
-            // Прокручиваем таблицу к началу страницы
             if (dataGridView1.Rows.Count > start)
             {
                 dataGridView1.FirstDisplayedScrollingRowIndex = start;
             }
 
-            if (dataTable != null)
-            {
-                UpdateRowCount(0, dataTable.Rows.Count);
-            }
+            UpdateRowCount();
         }
 
-        // Обработчик для кнопки "Назад"
         private void BtnPrev_Click(object sender, EventArgs e)
         {
             if (currentPage > 1)
             {
                 ShowPage(currentPage - 1);
-                Pagination(); // Пересоздаем пагинацию с обновленным выделением
+                Pagination();
                 ResetInactivityTimer(sender, e);
             }
         }
 
-        // Обработчик для кнопки "Вперед"
         private void BtnNext_Click(object sender, EventArgs e)
         {
             if (currentPage < totalPages)
             {
                 ShowPage(currentPage + 1);
-                Pagination(); // Пересоздаем пагинацию с обновленным выделением
+                Pagination();
                 ResetInactivityTimer(sender, e);
             }
         }
 
-        // Выбор страницы пагинации по клику на номер
         private void LinkLabel_Click(object sender, EventArgs e)
         {
             LinkLabel l = sender as LinkLabel;
             if (l != null && int.TryParse(l.Text, out int pageNumber))
             {
                 ShowPage(pageNumber);
-                Pagination(); // Пересоздаем пагинацию с обновленным выделением
+                Pagination();
                 ResetInactivityTimer(sender, e);
             }
         }
 
-        // Метод для обновления состояния кнопок навигации
         private void UpdateNavigationButtons()
         {
-            // Находим кнопки на форме
             Button btnPrev = this.Controls.Find("btnPrev", false).FirstOrDefault() as Button;
             Button btnNext = this.Controls.Find("btnNext", false).FirstOrDefault() as Button;
 
@@ -255,10 +272,16 @@ namespace Kursovaya
             }
         }
 
-        // Также можно добавить обработку клавиатуры для навигации
+        private void ViewingOrdersForMeneger_Resize(object sender, EventArgs e)
+        {
+            int savedPage = currentPage;
+            Pagination();
+            currentPage = savedPage;
+            ShowPage(currentPage);
+        }
+
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
-            // Обработка стрелок для пагинации
             if (keyData == Keys.Left || keyData == Keys.PageUp)
             {
                 if (currentPage > 1)
@@ -277,7 +300,6 @@ namespace Kursovaya
             }
             else if (keyData == Keys.Home)
             {
-                // Переход на первую страницу
                 if (currentPage != 1)
                 {
                     ShowPage(1);
@@ -288,7 +310,6 @@ namespace Kursovaya
             }
             else if (keyData == Keys.End)
             {
-                // Переход на последнюю страницу
                 if (currentPage != totalPages)
                 {
                     ShowPage(totalPages);
@@ -300,6 +321,8 @@ namespace Kursovaya
 
             return base.ProcessCmdKey(ref msg, keyData);
         }
+
+        // ========== ТАЙМЕРЫ ==========
 
         private void ResetInactivityTimer(object sender, EventArgs e)
         {
@@ -323,9 +346,16 @@ namespace Kursovaya
             ResetInactivityTimer(null, null);
         }
 
+        private void SearchTimer_Tick(object sender, EventArgs e)
+        {
+            searchTimer.Stop();
+            LoadData();
+        }
+
+        // ========== НАСТРОЙКА ФОРМЫ ==========
+
         private void SetupDateControls()
         {
-            // Устанавливаем ограничения для DateTimePicker
             DateTime minDate = DateTime.Today.AddMonths(-6);
             DateTime maxDate = DateTime.Today.AddMonths(6);
 
@@ -334,11 +364,9 @@ namespace Kursovaya
             dateTimePicker2.MinDate = DateTime.Today;
             dateTimePicker2.MaxDate = maxDate;
 
-            // Устанавливаем значения по умолчанию
             defaultStartDate = DateTime.Now.AddMonths(-6);
             defaultEndDate = DateTime.Now.AddMonths(6);
 
-            // Корректируем значения по умолчанию, если они выходят за границы
             if (defaultStartDate < dateTimePicker1.MinDate)
                 defaultStartDate = dateTimePicker1.MinDate;
             if (defaultStartDate > dateTimePicker1.MaxDate)
@@ -356,83 +384,44 @@ namespace Kursovaya
         private void SetupUserInfo()
         {
             string fullname = Properties.Settings.Default.userName;
-            string formattedname = fullname;
-
-            string[] parts = fullname.Split(' ');
-
-            if (parts.Length == 3)
-            {
-                string lastname = parts[0];
-                string firstname = parts[1].Substring(0, 1);
-                string middle = parts[2].Substring(0, 1);
-                formattedname = $"{lastname} {firstname}.{middle}.";
-            }
+            string formattedname = FormatFullName(fullname);
             label1.Text = formattedname;
             label2.Text = Properties.Settings.Default.userRole;
         }
 
-        private string BuildCountQuery()
+        void FillFilterUsers()
         {
-            StringBuilder query = new StringBuilder();
-            query.Append(@"SELECT COUNT(*) 
-    FROM CafeActivities.Orders p 
-    LEFT JOIN CafeActivities.Clients c ON p.IdClient = c.IDclient 
-    LEFT JOIN CafeActivities.Events q ON p.IdEvent = q.IDevent
-    LEFT JOIN CafeActivities.Status s ON p.IdStatus = s.IDstatus
-    LEFT JOIN CafeActivities.Schedule r ON p.IdSchedule = r.IDschedule
-    LEFT JOIN CafeActivities.Users w ON p.IdUser = w.IDuser");
-
-            List<string> conditions = new List<string>();
-
-            bool dateFilterApplied = (dateTimePicker1.Value != defaultStartDate) ||
-                                   (dateTimePicker2.Value != defaultEndDate);
-
-            if (dateFilterApplied)
+            try
             {
-                if (dateTimePicker1.Value <= dateTimePicker2.Value)
+                using (MySqlConnection con = new MySqlConnection(conString))
                 {
-                    string filterStartDate = dateTimePicker1.Value.ToString("yyyy-MM-dd");
-                    string filterEndDate = dateTimePicker2.Value.ToString("yyyy-MM-dd");
+                    con.Open();
 
-                    conditions.Add($"(p.DateEvent >= '{filterStartDate}' AND p.DateEvent <= '{filterEndDate}')");
+                    using (MySqlCommand cmd = new MySqlCommand(@"SELECT FullName FROM CafeActivities.Users WHERE IdRole = 2 ORDER BY FullName;", con))
+                    using (MySqlDataReader rdr = cmd.ExecuteReader())
+                    {
+                        comboBox1.Items.Clear();
+                        comboBox1.Items.Add("Все сотрудники");
+
+                        while (rdr.Read())
+                        {
+                            string fullName = rdr["FullName"].ToString();
+                            string formattedName = FormatFullName(fullName);
+                            comboBox1.Items.Add(formattedName);
+                        }
+
+                        comboBox1.SelectedIndex = 0;
+                    }
                 }
             }
-
-            if (comboBox1.SelectedIndex != 0 && comboBox1.SelectedItem != null)
+            catch (Exception ex)
             {
-                conditions.Add($"w.FullName = '{MySqlHelper.EscapeString(comboBox1.SelectedItem.ToString())}'");
+                MessageBox.Show($"Ошибка при загрузке списка сотрудников: {ex.Message}", "Ошибка",
+                              MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
-
-            List<string> statusConditions = new List<string>();
-
-            if (checkBox1.Checked)
-            {
-                statusConditions.Add($"s.Status = '{MySqlHelper.EscapeString(checkBox1.Text)}'");
-            }
-
-            if (checkBox2.Checked)
-            {
-                statusConditions.Add($"s.Status = '{MySqlHelper.EscapeString(checkBox2.Text)}'");
-            }
-
-            if (checkBox3.Checked)
-            {
-                statusConditions.Add($"s.Status = '{MySqlHelper.EscapeString(checkBox3.Text)}'");
-            }
-
-            if (statusConditions.Count > 0)
-            {
-                conditions.Add("(" + string.Join(" OR ", statusConditions) + ")");
-            }
-
-            if (conditions.Count > 0)
-            {
-                query.Append(" WHERE ");
-                query.Append(string.Join(" AND ", conditions));
-            }
-
-            return query.ToString();
         }
+
+        // ========== РАБОТА С ДАННЫМИ ==========
 
         private void LoadData()
         {
@@ -441,7 +430,6 @@ namespace Kursovaya
                 Cursor = Cursors.WaitCursor;
 
                 string query = BuildQuery();
-                string countQuery = BuildCountQuery();
 
                 using (MySqlConnection con = new MySqlConnection(conString))
                 {
@@ -453,15 +441,11 @@ namespace Kursovaya
                         dataTable = new DataTable();
                         adapter.Fill(dataTable);
                     }
-
-                    using (MySqlCommand cmd = new MySqlCommand(countQuery, con))
-                    {
-                        int totalCount = Convert.ToInt32(cmd.ExecuteScalar());
-                        UpdateRowCount(dataTable.Rows.Count, totalCount);
-                    }
-
-                    DisplayDataInDataGridView(dataTable);
                 }
+
+                DisplayDataInDataGridView(dataTable);
+                currentPage = 1;
+                Pagination();
             }
             catch (Exception ex)
             {
@@ -500,7 +484,7 @@ namespace Kursovaya
 
             List<string> conditions = new List<string>();
 
-            // Фильтр по датам (если изменены относительно значений по умолчанию)
+            // Фильтр по датам
             bool dateFilterApplied = (dateTimePicker1.Value != defaultStartDate) ||
                                    (dateTimePicker2.Value != defaultEndDate);
 
@@ -510,7 +494,6 @@ namespace Kursovaya
                 {
                     string filterStartDate = dateTimePicker1.Value.ToString("yyyy-MM-dd");
                     string filterEndDate = dateTimePicker2.Value.ToString("yyyy-MM-dd");
-
                     conditions.Add($"(p.DateEvent >= '{filterStartDate}' AND p.DateEvent <= '{filterEndDate}')");
                 }
                 else
@@ -518,63 +501,52 @@ namespace Kursovaya
                     MessageBox.Show("Дата 'С' не может быть больше даты 'До'", "Ошибка",
                                   MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     dateTimePicker2.Value = dateTimePicker1.Value;
-                    return BuildQuery(); // Перестраиваем запрос с корректными датами
+                    return BuildQuery();
                 }
             }
 
             // Фильтр по сотруднику
             if (comboBox1.SelectedIndex != 0 && comboBox1.SelectedItem != null)
             {
-                conditions.Add($"w.FullName = '{MySqlHelper.EscapeString(comboBox1.SelectedItem.ToString())}'");
+                conditions.Add($"w.FullName LIKE '%{MySqlHelper.EscapeString(comboBox1.SelectedItem.ToString())}%'");
             }
 
             // Фильтр по статусам
             List<string> statusConditions = new List<string>();
-
             if (checkBox1.Checked)
-            {
                 statusConditions.Add($"s.Status = '{MySqlHelper.EscapeString(checkBox1.Text)}'");
-            }
-
             if (checkBox2.Checked)
-            {
                 statusConditions.Add($"s.Status = '{MySqlHelper.EscapeString(checkBox2.Text)}'");
-            }
-
             if (checkBox3.Checked)
-            {
                 statusConditions.Add($"s.Status = '{MySqlHelper.EscapeString(checkBox3.Text)}'");
-            }
 
             if (statusConditions.Count > 0)
-            {
                 conditions.Add("(" + string.Join(" OR ", statusConditions) + ")");
+
+            // Фильтр по номеру заказа
+            string searchText = textBox1.Text.Trim();
+            if (!string.IsNullOrEmpty(searchText))
+            {
+                conditions.Add($"p.NumberOrder LIKE '%{MySqlHelper.EscapeString(searchText)}%'");
             }
 
-            // Добавляем условия WHERE
             if (conditions.Count > 0)
             {
                 query.Append(" WHERE ");
                 query.Append(string.Join(" AND ", conditions));
             }
 
-            // Сортировка
-            query.Append(" ORDER BY p.DateEvent ASC, p.NumberOrder DESC");
+            query.Append(" ORDER BY p.NumberOrder DESC");
 
             return query.ToString();
         }
 
-        private void DisplayDataInDataGridView(DataTable tableToDisplay = null)
+        private void DisplayDataInDataGridView(DataTable tableToDisplay)
         {
-            if (tableToDisplay == null)
-            {
-                if (dataTable == null) return;
-                tableToDisplay = dataTable;
-            }
+            if (tableToDisplay == null) return;
 
             dataGridView1.Rows.Clear();
 
-            // Если колонки еще не созданы - создаем их
             if (dataGridView1.Columns.Count == 0)
             {
                 dataGridView1.Columns.Add("NumberOrder", "Номер заказа");
@@ -585,129 +557,82 @@ namespace Kursovaya
                 dataGridView1.Columns.Add("IdSchedule", "Время проведения");
                 dataGridView1.Columns.Add("IdStatus", "Статус");
                 dataGridView1.Columns.Add("IdEvent", "Мероприятие");
+                dataGridView1.Columns["IdEvent"].AutoSizeMode = DataGridViewAutoSizeColumnMode.DisplayedCells;
                 dataGridView1.Columns.Add("IdUser", "ФИО сотрудника");
                 dataGridView1.Columns.Add("Price", "Цена");
+                dataGridView1.Columns["Price"].Visible = false;
                 dataGridView1.Columns.Add("DiscountAmount", "Сумма скидки");
+                dataGridView1.Columns["DiscountAmount"].Visible = false;
                 dataGridView1.Columns.Add("PriceAll", "Полная стоимость");
                 dataGridView1.Columns.Add("Prepayment", "Предоплата");
             }
 
-            string searchText = textBox1.Text.Trim();
-            DataView dv = new DataView(tableToDisplay);
-
-            if (!string.IsNullOrEmpty(searchText))
+            foreach (DataRow row in tableToDisplay.Rows)
             {
-                dv.RowFilter = $"CONVERT(NumberOrder, 'System.String') LIKE '%{searchText}%'";
-            }
-
-            // Заполняем DataGridView отфильтрованными данными
-            foreach (DataRowView rowView in dv)
-            {
-                DataRow row = rowView.Row;
                 int rowIndex = dataGridView1.Rows.Add(
                     row["NumberOrder"],
-                    row["IdClient"],
+                    FormatFullName(row["IdClient"].ToString()),
                     FormatPhoneNumber(row["NumberPhoneClient"].ToString()),
-                    row["DateOfConclusion"],
-                    row["DateEvent"],
+                    Convert.ToDateTime(row["DateOfConclusion"]).ToString("dd.MM.yyyy"),
+                    Convert.ToDateTime(row["DateEvent"]).ToString("dd.MM.yyyy"),
                     row["IdSchedule"],
                     row["IdStatus"],
                     row["IdEvent"],
-                    row["IdUser"],
+                    FormatFullName(row["IdUser"].ToString()),
                     row["Price"],
                     row["DiscountAmount"],
                     row["PriceAll"],
                     row["Prepayment"]
                 );
 
-                // Форматирование по статусу
                 string status = row["IdStatus"].ToString();
-
                 DataGridViewRow dataGridRow = dataGridView1.Rows[rowIndex];
 
                 switch (status)
                 {
                     case "Принят":
-                        // Желтый фон для всей строки
                         foreach (DataGridViewCell cell in dataGridRow.Cells)
-                        {
-                            cell.Style.BackColor = Color.FromArgb(255, 254, 230);
-                        }
+                            cell.Style.BackColor = Color.FromArgb(255, 255, 102);
                         break;
                     case "Оплачен":
-                        // Зеленый фон для всей строки
                         foreach (DataGridViewCell cell in dataGridRow.Cells)
-                        {
-                            cell.Style.BackColor = Color.FromArgb(240, 255, 230);
-                        }
+                            cell.Style.BackColor = Color.FromArgb(170, 255, 170);
                         break;
                     case "Отменен":
-                        // Красный фон для всей строки
                         foreach (DataGridViewCell cell in dataGridRow.Cells)
-                        {
-                            cell.Style.BackColor = Color.FromArgb(255, 230, 230);
-                        }
+                            cell.Style.BackColor = Color.FromArgb(255, 182, 182);
                         break;
                 }
             }
-
-            int displayedCount = dataGridView1.Rows.Count;
-            if (dataGridView1.AllowUserToAddRows && displayedCount > 0)
-            {
-                displayedCount--;
-            }
-            UpdateRowCount(displayedCount, tableToDisplay.Rows.Count);
         }
 
-        private string FormatPhoneNumber(string phoneNumber)
+        private void UpdateRowCount()
         {
-            if (string.IsNullOrEmpty(phoneNumber) || phoneNumber.Length < 4)
-                return phoneNumber;
+            int totalCount = dataGridView1.Rows.Count;
 
-            // Оставляем первую цифру и последние две цифры, остальное заменяем *
-            char firstDigit = phoneNumber[0];
-            string lastTwoDigits = phoneNumber.Substring(phoneNumber.Length - 2);
-
-            // Создаем строку со звездочками
-            int starsCount = phoneNumber.Length - 3; // минус первая цифра и две последние
-            string stars = new string('*', starsCount);
-
-            return $"{firstDigit}{stars}{lastTwoDigits}";
-        }
-
-        private void UpdateRowCount(int displayedCount, int totalCount)
-        {
-            // Считаем только видимые строки
-            int visibleCount = 0;
-            for (int i = 0; i < dataGridView1.Rows.Count; i++)
+            int totalInDatabase = 0;
+            string q = "SELECT COUNT(*) FROM CafeActivities.Orders;";
+            using (MySqlConnection con = new MySqlConnection(conString))
             {
-                if (dataGridView1.Rows[i].Visible)
+                con.Open();
+                using (MySqlCommand cmd = new MySqlCommand(q, con))
                 {
-                    visibleCount++;
+                    totalInDatabase = Convert.ToInt32(cmd.ExecuteScalar());
                 }
             }
 
-            label4.Text = $"{visibleCount} из {totalCount}";
-        }
+            int visibleCount = 0;
+            for (int i = (currentPage - 1) * 20; i < currentPage * 20 && i < totalCount; i++)
+            {
+                visibleCount++;
+            }
 
-        // ========== СОБЫТИЯ ТАЙМЕРА ПОИСКА ==========
-
-        private void SearchTimer_Tick(object sender, EventArgs e)
-        {
-            searchTimer.Stop();
-            // Применяем фильтр поиска локально
-            ApplySearchFilter();
-        }
-
-        private void ApplySearchFilter()
-        {
-            if (dataTable == null) return;
-
-            // Просто перерисовываем DataGridView с текущим фильтром
-            DisplayDataInDataGridView(dataTable);
+            label4.Text = $"{visibleCount} из {totalInDatabase}";
         }
 
         // ========== СОБЫТИЯ КНОПОК ==========
+
+        private bool allowClose = false;
 
         private void button1_Click(object sender, EventArgs e)
         {
@@ -721,7 +646,6 @@ namespace Kursovaya
 
         private void button2_Click(object sender, EventArgs e)
         {
-            // Получаем выбранную строку
             if (dataGridView1.SelectedRows.Count == 0)
             {
                 MessageBox.Show("Выберите заказ для просмотра", "Ошибка",
@@ -730,8 +654,6 @@ namespace Kursovaya
             }
 
             DataGridViewRow selectedRow = dataGridView1.SelectedRows[0];
-
-            // Получаем ID заказа из выбранной строки
             string orderId = selectedRow.Cells["NumberOrder"].Value?.ToString();
 
             if (string.IsNullOrEmpty(orderId))
@@ -753,22 +675,14 @@ namespace Kursovaya
         {
             try
             {
-                // Сбрасываем все фильтры
                 textBox1.Text = "";
-
-                // Восстанавливаем даты по умолчанию
                 dateTimePicker1.Value = defaultStartDate;
                 dateTimePicker2.Value = defaultEndDate;
-
-                // Сбрасываем комбобокс
                 comboBox1.SelectedIndex = 0;
-
-                // Сбрасываем чекбоксы статусов
                 checkBox1.Checked = false;
                 checkBox2.Checked = false;
                 checkBox3.Checked = false;
 
-                // Перезагружаем данные
                 LoadData();
             }
             catch (Exception ex)
@@ -782,10 +696,8 @@ namespace Kursovaya
 
         private void textBox1_TextChanged(object sender, EventArgs e)
         {
-            // Разрешаем ввод только цифр
             if (!string.IsNullOrEmpty(textBox1.Text))
             {
-                // Удаляем все нецифровые символы
                 string digitsOnly = new string(textBox1.Text.Where(char.IsDigit).ToArray());
                 if (textBox1.Text != digitsOnly)
                 {
@@ -794,56 +706,44 @@ namespace Kursovaya
                 }
             }
 
-            // Перезапускаем таймер при каждом изменении текста
             searchTimer.Stop();
             searchTimer.Start();
-
-            Pagination();
         }
 
         private void textBox1_KeyPress(object sender, KeyPressEventArgs e)
         {
-            // Разрешаем: цифры, Backspace, Delete
             if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar))
-            {
-                e.Handled = true; // Блокируем ввод
-            }
+                e.Handled = true;
         }
 
         private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
         {
-            LoadData(); // Перезагружаем данные с новым фильтром
-            Pagination();
+            LoadData();
         }
 
         private void dateTimePicker1_ValueChanged(object sender, EventArgs e)
         {
-            LoadData(); // Перезагружаем данные с новым диапазоном дат
-            Pagination();
+            LoadData();
         }
 
         private void dateTimePicker2_ValueChanged(object sender, EventArgs e)
         {
-            LoadData(); // Перезагружаем данные с новым диапазоном дат
-            Pagination();
+            LoadData();
         }
 
         private void checkBox1_CheckedChanged(object sender, EventArgs e)
         {
-            LoadData(); // Перезагружаем данные с новым фильтром статусов
-            Pagination();
+            LoadData();
         }
 
         private void checkBox2_CheckedChanged(object sender, EventArgs e)
         {
-            LoadData(); // Перезагружаем данные с новым фильтром статусов
-            Pagination();
+            LoadData();
         }
 
         private void checkBox3_CheckedChanged(object sender, EventArgs e)
         {
-            LoadData(); // Перезагружаем данные с новым фильтром статусов
-            Pagination();
+            LoadData();
         }
 
         // ========== СОБЫТИЯ DataGridView ==========
@@ -861,65 +761,18 @@ namespace Kursovaya
         private void dataGridView1_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex >= 0)
-            {
                 button2.PerformClick();
-            }
-        }
-
-        // ========== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ==========
-
-        void FillFilterUsers()
-        {
-            try
-            {
-                using (MySqlConnection con = new MySqlConnection(conString))
-                {
-                    con.Open();
-
-                    using (MySqlCommand cmd = new MySqlCommand(@"SELECT * FROM CafeActivities.Users WHERE IdRole = 2;", con))
-                    using (MySqlDataReader rdr = cmd.ExecuteReader())
-                    {
-                        comboBox1.Items.Clear();
-                        comboBox1.Items.Add("Все сотрудники");
-
-                        while (rdr.Read())
-                        {
-                            comboBox1.Items.Add(rdr[1].ToString());
-                        }
-
-                        comboBox1.SelectedIndex = 0;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Ошибка при загрузке списка сотрудников: {ex.Message}", "Ошибка",
-                              MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
         }
 
         // ========== СОБЫТИЯ ФОРМЫ ==========
 
-        private bool allowClose = false;
-
         private void ViewingOrdersForMeneger_FormClosing(object sender, FormClosingEventArgs e)
         {
             if (e.CloseReason == CloseReason.ApplicationExitCall)
-            {
                 return;
-            }
 
             if (!allowClose)
-            {
                 e.Cancel = true;
-            }
-        }
-
-        private void ViewingOrdersForMeneger_Load(object sender, EventArgs e)
-        {
-            // Загрузка данных при загрузке формы
-            LoadData();
-            Pagination();
         }
     }
 }
