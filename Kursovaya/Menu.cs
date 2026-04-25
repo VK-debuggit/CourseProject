@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -23,6 +24,7 @@ namespace Kursovaya
 
         // Поля для хранения исходных данных
         private DataGridViewRow selectedRowData = null;
+        private string originalArticle = "";
         private string originalName = "";
         private string originalCompound = "";
         private string originalWeight = "";
@@ -80,6 +82,9 @@ namespace Kursovaya
             }
             label1.Text = formattedname;
             label2.Text = Properties.Settings.Default.userRole;
+
+            // Развернуть форму на весь экран
+            this.WindowState = FormWindowState.Maximized;
         }
 
         // Создаем переменные для хранения текущей страницы и общего количества страниц
@@ -372,7 +377,8 @@ namespace Kursovaya
                                     p.Photo 
                                     FROM CafeActivities.Dishes p
                                     LEFT JOIN Categories d ON p.IdCategory = d.IDcategory
-                                    LEFT JOIN Events c ON p.IdEvent = c.IDevent;";
+                                    LEFT JOIN Events c ON p.IdEvent = c.IDevent
+                                    ORDER BY p.Article DESC;";
 
             using (MySqlConnection con = new MySqlConnection(conString))
             {
@@ -723,30 +729,63 @@ namespace Kursovaya
         {
             TextBox tb = (TextBox)sender;
 
+            // Разрешаем управляющие символы (Backspace, Enter, etc.)
             if (char.IsControl(e.KeyChar))
                 return;
 
-            // Разрешаем цифры
+            // Разрешаем русские буквы (верхний и нижний регистр)
+            if ((e.KeyChar >= 'А' && e.KeyChar <= 'Я') ||
+                (e.KeyChar >= 'а' && e.KeyChar <= 'я') ||
+                e.KeyChar == 'Ё' || e.KeyChar == 'ё')
+            {
+                e.Handled = false;
+                return;
+            }
+
+            // Разрешаем цифры (для указания веса, количества)
             if (char.IsDigit(e.KeyChar))
             {
                 e.Handled = false;
                 return;
             }
 
-            // Разрешаем десятичную точку или запятую
-            if (e.KeyChar == '.')
+            // Разрешаем пробел
+            if (e.KeyChar == ' ')
             {
-                // Запрещаем точку/запятую в начале
+                // Запрещаем пробел в начале
                 if (tb.Text.Length == 0)
                 {
                     e.Handled = true;
                     return;
                 }
 
+                // Запрещаем пробел после пробела
+                if (tb.Text.Length > 0 && tb.Text[tb.Text.Length - 1] == ' ')
+                {
+                    e.Handled = true;
+                    return;
+                }
+
+                // Разрешаем пробел
                 e.Handled = false;
                 return;
             }
 
+            // Разрешаем знаки препинания и часто используемые символы
+            char[] allowedSymbols = {
+        '.', ',', '!', '?', ';', ':', '-', '—',  // знаки препинания
+        '(', ')', '"', '\'', '«', '»',           // кавычки и скобки
+        '/', '\\', '№', '#', '*',                // специальные символы
+        '+', '=', '%', '&', '@'                  // математические символы
+    };
+
+            if (allowedSymbols.Contains(e.KeyChar))
+            {
+                e.Handled = false;
+                return;
+            }
+
+            // Автоматическое преобразование первой буквы предложения в заглавную
             if (tb.Text.Length > 0)
             {
                 int cursorPos = tb.SelectionStart;
@@ -777,33 +816,7 @@ namespace Kursovaya
                 }
             }
 
-            // Если вводится пробел
-            if (e.KeyChar == ' ')
-            {
-                // Запрещаем пробел в начале
-                if (tb.Text.Length == 0)
-                {
-                    e.Handled = true;
-                    return;
-                }
-
-                // Запрещаем пробел после пробела
-                if (tb.Text.Length > 0 && tb.Text[tb.Text.Length - 1] == ' ')
-                {
-                    e.Handled = true;
-                    return;
-                }
-
-                // Разрешаем пробел после буквы
-                return;
-            }
-
-            // Проверяем русские буквы
-            if ((e.KeyChar >= 'А' && e.KeyChar <= 'Я') ||
-                (e.KeyChar >= 'а' && e.KeyChar <= 'я') ||
-                e.KeyChar == 'Ё' || e.KeyChar == 'ё')
-                return;
-
+            // Все остальные символы запрещаем
             e.Handled = true;
         }
 
@@ -849,17 +862,18 @@ namespace Kursovaya
             return allowedExtensions.Contains(fileExtension);
         }
 
-        // Метод проверки размера файла
+        // Метод проверки размера файла (упрощенная версия)
         private bool IsFileSizeValid(string filePath)
         {
             try
             {
                 FileInfo fileInfo = new FileInfo(filePath);
-                long maxSize = 2 * 1024 * 1024; // 2 МБ в байтах
+                long maxSize = 10 * 1024 * 1024; // 10 МБ (сжатие все равно уменьшит до 3 МБ)
 
                 if (fileInfo.Length > maxSize)
                 {
-                    MessageBox.Show($"Размер файла превышает допустимый лимит 2 МБ.",
+                    MessageBox.Show($"Размер файла {fileInfo.Length / (1024 * 1024)} МБ превышает 10 МБ. " +
+                                  "Пожалуйста, выберите изображение меньшего размера.",
                                   "Превышен размер файла",
                                   MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return false;
@@ -872,6 +886,76 @@ namespace Kursovaya
                               MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Сжимает изображение до указанного размера, сохраняя качество
+        /// </summary>
+        /// <param name="sourceImage">Исходное изображение</param>
+        /// <param name="targetSizeBytes">Целевой размер в байтах (3 МБ = 3 * 1024 * 1024)</param>
+        /// <returns>Сжатое изображение</returns>
+        private Image CompressImage(Image sourceImage, long targetSizeBytes = 3 * 1024 * 1024)
+        {
+            if (sourceImage == null) return null;
+
+            int quality = 90; // Начинаем с высокого качества
+            Image resultImage = null;
+
+            using (MemoryStream ms = new MemoryStream())
+            {
+                do
+                {
+                    // Сохраняем с текущим качеством
+                    SaveJpegWithQuality(sourceImage, ms, quality);
+
+                    if (ms.Length <= targetSizeBytes || quality <= 10)
+                    {
+                        // Достигли нужного размера - возвращаем копию
+                        resultImage = Image.FromStream(new MemoryStream(ms.ToArray()));
+                        break;
+                    }
+
+                    // Уменьшаем качество и пробуем снова
+                    quality -= 10;
+                    ms.SetLength(0); // Очищаем поток
+                    ms.Position = 0;
+
+                } while (quality > 0);
+            }
+
+            return resultImage;
+        }
+
+        /// <summary>
+        /// Сохраняет изображение в JPEG с указанным качеством
+        /// </summary>
+        private void SaveJpegWithQuality(Image image, Stream stream, int quality)
+        {
+            // Получаем кодировщик JPEG
+            ImageCodecInfo jpegCodec = GetEncoderInfo("image/jpeg");
+
+            if (jpegCodec == null)
+            {
+                // Если кодировщик не найден, сохраняем стандартным методом
+                image.Save(stream, System.Drawing.Imaging.ImageFormat.Jpeg);
+                return;
+            }
+
+            // Настраиваем параметры качества
+            using (EncoderParameters encoderParams = new EncoderParameters(1))
+            {
+                encoderParams.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, quality);
+                image.Save(stream, jpegCodec, encoderParams);
+            }
+        }
+
+        /// <summary>
+        /// Получает информацию о кодировщике по MIME типу
+        /// </summary>
+        private ImageCodecInfo GetEncoderInfo(string mimeType)
+        {
+            ImageCodecInfo[] codecs = ImageCodecInfo.GetImageEncoders();
+            return codecs.FirstOrDefault(codec => codec.MimeType == mimeType);
         }
 
         private void button1_Click(object sender, EventArgs e)
@@ -905,7 +989,22 @@ namespace Kursovaya
 
                         // Загружаем изображение из выбранного файла
                         newProductImage = Image.FromFile(originalImageFilePath);
-                        pictureBox1.Image = newProductImage;
+
+                        // Сразу сжимаем изображение для отображения
+                        using (Image compressed = CompressImage(newProductImage, 3 * 1024 * 1024))
+                        {
+                            if (compressed != null)
+                            {
+                                pictureBox1.Image = (Image)compressed.Clone();
+                                // Заменяем newProductImage сжатой версией
+                                newProductImage.Dispose();
+                                newProductImage = (Image)compressed.Clone();
+                            }
+                            else
+                            {
+                                pictureBox1.Image = newProductImage;
+                            }
+                        }
 
                         // Обновляем состояние кнопок после изменения изображения
                         UpdateButtonsState();
@@ -946,48 +1045,10 @@ namespace Kursovaya
             }
         }
 
-        private string GetNextArticle()
-        {
-            string query = "SELECT Article FROM Dishes ORDER BY Article DESC LIMIT 1";
-
-            using (MySqlConnection con = new MySqlConnection(conString))
-            {
-                try
-                {
-                    con.Open();
-                    using (MySqlCommand cmd = new MySqlCommand(query, con))
-                    {
-                        object result = cmd.ExecuteScalar();
-
-                        if (result != null && result != DBNull.Value)
-                        {
-                            string lastArticle = result.ToString();
-
-                            // Преобразуем строку в число, увеличиваем на 1 и форматируем обратно
-                            if (int.TryParse(lastArticle, out int lastNumber))
-                            {
-                                int nextNumber = lastNumber + 1;
-                                return nextNumber.ToString("D6"); // D6 означает 6 цифр с ведущими нулями
-                            }
-                        }
-
-                        // Если нет записей или ошибка парсинга, начинаем с 000001
-                        return "000001";
-                    }
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Ошибка получения последнего артикула: {ex.Message}", "Ошибка",
-                                  MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return "000001";
-                }
-            }
-        }
-
         private void button2_Click(object sender, EventArgs e)
         {
             // Получаем данные из полей ввода
-            string article = GetNextArticle();
+            string article = textBox1.Text.Trim();
             string weight = textBox2.Text.Trim();
             string price = textBox3.Text.Trim();
             string nameDish = textBox4.Text.Trim();
@@ -1000,36 +1061,46 @@ namespace Kursovaya
             // Получаем путь к изображению
             string photoPath = pictureBox1.Image != null ? SaveImageToFolder(pictureBox1.Image) : "";
 
-            // ВАЛИДАЦИЯ ДАННЫХ (улучшенная)
+            // ВАЛИДАЦИЯ ДАННЫХ - сбор всех ошибок в одно сообщение
+            List<string> errors = new List<string>();
+
             if (string.IsNullOrEmpty(nameDish))
-            {
-                MessageBox.Show("Введите название блюда", "Ошибка",
-                              MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                textBox4.Focus();
-                return;
-            }
+                errors.Add("• Название блюда");
 
             if (string.IsNullOrEmpty(compound))
-            {
-                MessageBox.Show("Введите состав блюда", "Ошибка",
-                              MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                textBox5.Focus();
-                return;
-            }
+                errors.Add("• Состав блюда");
 
             if (string.IsNullOrEmpty(weight))
-            {
-                MessageBox.Show("Введите вес блюда", "Ошибка",
-                              MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                textBox2.Focus();
-                return;
-            }
+                errors.Add("• Вес блюда");
 
             if (string.IsNullOrEmpty(price))
+                errors.Add("• Цена блюда");
+
+            if (string.IsNullOrEmpty(article))
+                errors.Add("• Артикул блюда");
+
+            if (comboBox1.SelectedIndex < 0)
+                errors.Add("• Мероприятие (не выбрано)");
+
+            if (comboBox2.SelectedIndex < 0)
+                errors.Add("• Категория (не выбрана)");
+
+            // Если есть ошибки - выводим одним сообщением
+            if (errors.Count > 0)
             {
-                MessageBox.Show("Введите цену блюда", "Ошибка",
+                string errorMessage = "Пожалуйста, заполните следующие обязательные поля:\n\n" + string.Join("\n", errors);
+                MessageBox.Show(errorMessage, "Ошибка валидации",
                               MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                textBox3.Focus();
+
+                // Фокусируемся на первом пустом поле
+                if (string.IsNullOrEmpty(nameDish)) textBox4.Focus();
+                else if (string.IsNullOrEmpty(compound)) textBox5.Focus();
+                else if (string.IsNullOrEmpty(weight)) textBox2.Focus();
+                else if (string.IsNullOrEmpty(price)) textBox3.Focus();
+                else if (string.IsNullOrEmpty(article)) textBox1.Focus();
+                else if (comboBox1.SelectedIndex < 0) comboBox1.Focus();
+                else if (comboBox2.SelectedIndex < 0) comboBox2.Focus();
+
                 return;
             }
 
@@ -1081,17 +1152,17 @@ namespace Kursovaya
             }
 
             // Проверка максимальных значений
-            if (weightValue > 9999999.99m)
+            if (weightValue > 9999)
             {
-                MessageBox.Show("Максимальный вес: 9999999.99", "Ошибка",
+                MessageBox.Show("Максимальный вес: 9999", "Ошибка",
                               MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 textBox2.Focus();
                 return;
             }
 
-            if (priceValue > 9999999999.99m)
+            if (priceValue > 99999.99m)
             {
-                MessageBox.Show("Максимальная цена: 9999999999.99", "Ошибка",
+                MessageBox.Show("Максимальная цена: 99999.99", "Ошибка",
                               MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 textBox3.Focus();
                 return;
@@ -1186,7 +1257,8 @@ namespace Kursovaya
         {
             // Проверяем по комбинации обязательных полей
             string query = @"SELECT COUNT(*) FROM Dishes 
-                    WHERE Name = @nameDishes 
+                    WHERE Article = @article
+                    AND Name = @nameDishes 
                     AND Compound = @compoundDishes 
                     AND IdCategory = @idCategory
                     AND IdEvent = @idEvent";
@@ -1198,6 +1270,7 @@ namespace Kursovaya
                     con.Open();
                     using (MySqlCommand cmd = new MySqlCommand(query, con))
                     {
+                        cmd.Parameters.AddWithValue("@article", textBox1.Text.Trim());
                         cmd.Parameters.AddWithValue("@nameDishes", nameDish.Trim());
                         cmd.Parameters.AddWithValue("@compoundDishes", compound.Trim());
                         cmd.Parameters.AddWithValue("@idCategory", idCategory);
@@ -1220,7 +1293,8 @@ namespace Kursovaya
         private bool IsAnotherDishExistsForEdit(string nameDish, string compound, int idCategory, int idEvent, int currentArticle)
         {
             string query = @"SELECT COUNT(*) FROM Dishes 
-                    WHERE Name = @nameDishes 
+                    WHERE Article = @article
+                    AND Name = @nameDishes 
                     AND Compound = @compoundDishes 
                     AND IdCategory = @idCategory
                     AND IdEvent = @idEvent
@@ -1233,6 +1307,7 @@ namespace Kursovaya
                     con.Open();
                     using (MySqlCommand cmd = new MySqlCommand(query, con))
                     {
+                        cmd.Parameters.AddWithValue("@article", textBox1.Text.Trim());
                         cmd.Parameters.AddWithValue("@nameDishes", nameDish.Trim());
                         cmd.Parameters.AddWithValue("@compoundDishes", compound.Trim());
                         cmd.Parameters.AddWithValue("@idCategory", idCategory);
@@ -1252,7 +1327,7 @@ namespace Kursovaya
             }
         }
 
-        // Метод для сохранения изображения в папку Resources
+        // Метод для сохранения изображения в папку Resources (с автоматическим сжатием)
         private string SaveImageToFolder(Image image)
         {
             try
@@ -1271,16 +1346,30 @@ namespace Kursovaya
                 string fileName = $"dish_{Guid.NewGuid():N}.jpg";
                 string fullPath = Path.Combine(resourcesFolder, fileName);
 
-                // Создаем КОПИЮ изображения для сохранения
-                using (Bitmap bmp = new Bitmap(image.Width, image.Height))
+                // СЖИМАЕМ ИЗОБРАЖЕНИЕ до 3 МБ
+                using (Image compressedImage = CompressImage(image, 3 * 1024 * 1024))
                 {
-                    using (Graphics g = Graphics.FromImage(bmp))
+                    if (compressedImage != null)
                     {
-                        g.DrawImage(image, 0, 0, image.Width, image.Height);
-                    }
+                        // Сохраняем сжатое изображение
+                        compressedImage.Save(fullPath, System.Drawing.Imaging.ImageFormat.Jpeg);
 
-                    // Сохраняем КОПИЮ изображения
-                    bmp.Save(fullPath, System.Drawing.Imaging.ImageFormat.Jpeg);
+                        // Логируем результат (опционально)
+                        FileInfo fileInfo = new FileInfo(fullPath);
+                        System.Diagnostics.Debug.WriteLine($"Сжато: {fileInfo.Length / 1024} KB");
+                    }
+                    else
+                    {
+                        // Если сжатие не удалось, сохраняем оригинал
+                        using (Bitmap bmp = new Bitmap(image.Width, image.Height))
+                        {
+                            using (Graphics g = Graphics.FromImage(bmp))
+                            {
+                                g.DrawImage(image, 0, 0, image.Width, image.Height);
+                            }
+                            bmp.Save(fullPath, System.Drawing.Imaging.ImageFormat.Jpeg);
+                        }
+                    }
                 }
 
                 return fileName; // Возвращаем только имя файла
@@ -1710,8 +1799,6 @@ namespace Kursovaya
 
             // Проверяем, изменились ли данные
             bool dataChanged = HasDataChanged();
-
-            button2.Enabled = hasValidData;
 
             // Кнопка редактирования доступна когда выбрана запись, есть валидные данные И данные изменились
             button3.Enabled = (dataGridView1.CurrentRow != null) && hasValidData && dataChanged;
