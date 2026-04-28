@@ -132,3 +132,4 @@ C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\bin\Debug\Resources\3939
 C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\bin\Debug\cafe_coffee_shop_icon.ico
 C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\bin\Debug\Иконка.ico
 C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\obj\Debug\Kursovaya.csproj.AssemblyReference.cache
+C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\obj\Debug\Kursovaya.SelectFormPrint.resources

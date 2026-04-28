@@ -17,6 +17,7 @@ namespace Kursovaya
         string conString = $"host={Properties.Settings.Default.host};uid={Properties.Settings.Default.uid};pwd={Properties.Settings.Default.pwd};database={Properties.Settings.Default.database};";
         private DataTable cartItems;
         private OrderData orderData;
+        private decimal discountAmountValue;
         private int selectedProductRowIndex = -1;
         private bool isWordGenerated = false; // Флаг, что Word документ был создан
         private Timer inactivityTimer;
@@ -134,28 +135,41 @@ namespace Kursovaya
         {
             decimal totalAmount = orderData.TotalAmount;
             decimal discountAmount = 0;
+            discountAmountValue = 0;
             decimal discountPercent = 0;
             decimal amountAfterDiscount = totalAmount;
             decimal prepayment = 0;
+            string discountDescription = "";
 
             // Определяем размер скидки
             if (totalAmount >= 40000)
             {
                 discountPercent = 15;
+                discountDescription = " (15% при сумме заказа от 40 000 ₽ и выше)";
             }
             else if (totalAmount >= 30000)
             {
                 discountPercent = 10;
+                discountDescription = " (10% при сумме заказа от 30 000 ₽ и выше)";
             }
 
             // Рассчитываем суммы
-            discountAmount = totalAmount * discountPercent / 100;
+            discountAmountValue = totalAmount * discountPercent / 100;
+            //discountAmount = totalAmount * discountPercent / 100;
             amountAfterDiscount = totalAmount - discountAmount;
             prepayment = amountAfterDiscount / 2;
 
             // Обновляем интерфейс
-            label19.Text = totalAmount.ToString("C"); 
-            label23.Text = discountAmount.ToString("C"); 
+            label19.Text = totalAmount.ToString("C");
+
+            if (discountPercent > 0)
+            {
+                label23.Text = discountAmountValue.ToString("C") + discountDescription;
+            }
+            else
+            {
+                label23.Text = "0,00 ₽";
+            }
             //label21.Text = prepayment.ToString("C"); 
         }
 
@@ -508,12 +522,17 @@ namespace Kursovaya
 
         private void button2_Click(object sender, EventArgs e)
         {
-            groupBox1.Visible = true;
+            this.Hide();
+            SelectFormPrint selectFormPrint = new SelectFormPrint(cartItems, orderData, discountAmountValue, DocumentType.Preliminary);
+            selectFormPrint.ShowDialog();
 
-            //isWordGenerated = true;
-            //button1.Enabled = true;
-            //button2.Enabled = false;
-            //button3.Enabled = false;
+            // После закрытия формы выбора печати показываем текущую форму снова
+            this.Show();
+
+            isWordGenerated = true;
+            button1.Enabled = true;
+            button2.Enabled = false;
+            button3.Enabled = false;
         }
 
         private void button1_Click(object sender, EventArgs e)
@@ -591,7 +610,7 @@ namespace Kursovaya
 
                     // 6. Рассчитываем суммы с округлением до 2 знаков после запятой
                     decimal totalAmount = Math.Round(Convert.ToDecimal(CleanDecimalString(label19.Text)), 2);
-                    decimal discountAmount = Math.Round(Convert.ToDecimal(CleanDecimalString(label23.Text)), 2);
+                    decimal discountAmount = Math.Round(discountAmountValue, 2);
                     decimal finalAmount = Math.Round(totalAmount - discountAmount, 2);
                     decimal prepayment = Math.Round(Convert.ToDecimal(CleanDecimalString(label21.Text)), 2);
 
@@ -817,16 +836,6 @@ namespace Kursovaya
             button1.Enabled = true;
             button2.Enabled = false;
             button3.Enabled = false;
-        }
-
-        private void pictureBox1_Click(object sender, EventArgs e)
-        {
-            groupBox1.Hide();
-        }
-
-        private void button4_Click(object sender, EventArgs e)
-        {
-            groupBox1.Hide();
         }
     }
 }

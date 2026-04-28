@@ -39,7 +39,6 @@ namespace Kursovaya
             dataGridView1.BackgroundColor = System.Drawing.Color.FromArgb(255, 221, 153);
             dataGridView1.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
             dataGridView1.DefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(217, 152, 22);
-            textBox1.BackColor = System.Drawing.Color.FromArgb(255, 221, 153);
             string fullname = Properties.Settings.Default.userName;
             string formattedname = fullname;
 
@@ -225,24 +224,6 @@ namespace Kursovaya
 
         private void button1_Click_1(object sender, EventArgs e)
         {
-            string roleName = textBox1.Text.Trim();
-
-            // Проверка на существование
-            if (IsRolesExists(roleName))
-            {
-                MessageBox.Show("Роль с таким наименованием уже существует", "Ошибка",
-                              MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            // Валидация данных
-            if (string.IsNullOrEmpty(roleName))
-            {
-                MessageBox.Show("Заполните поле роли", "Ошибка",
-                              MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
             // Добавление в базу данных
             string query = "INSERT INTO Roles (Role) VALUES (@role)";
 
@@ -253,14 +234,12 @@ namespace Kursovaya
                     con.Open();
                     using (MySqlCommand cmd = new MySqlCommand(query, con))
                     {
-                        cmd.Parameters.AddWithValue("@role", roleName);
                         int rowsAffected = cmd.ExecuteNonQuery();
 
                         if (rowsAffected > 0)
                         {
                             MessageBox.Show("Роль успешно добавлена", "Успех",
                                           MessageBoxButtons.OK, MessageBoxIcon.Information);
-                            textBox1.Clear();
                             FillDataGridView();
                             ClearAllFields();
                         }
@@ -284,15 +263,6 @@ namespace Kursovaya
             }
 
             int selectedId = Convert.ToInt32(dataGridView1.CurrentRow.Cells["IDrole"].Value);
-            string newRoleName = textBox1.Text.Trim();
-
-            // Проверка на существование (исключая текущий статус)
-            if (IsRolesExists(newRoleName))
-            {
-                MessageBox.Show("Роль с таким наименованием уже существует", "Ошибка",
-                              MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
 
             // Обновление в базе данных
             string query = "UPDATE Roles SET Role = @role WHERE IDrole = @selectedId";
@@ -304,7 +274,6 @@ namespace Kursovaya
                     con.Open();
                     using (MySqlCommand cmd = new MySqlCommand(query, con))
                     {
-                        cmd.Parameters.AddWithValue("@role", newRoleName);
                         cmd.Parameters.AddWithValue("@selectedId", selectedId);
                         int rowsAffected = cmd.ExecuteNonQuery();
 
@@ -312,7 +281,6 @@ namespace Kursovaya
                         {
                             MessageBox.Show("Роль успешно обновлена", "Успех",
                                           MessageBoxButtons.OK, MessageBoxIcon.Information);
-                            textBox1.Clear();
                             FillDataGridView();
                             ClearAllFields();
                         }
@@ -365,9 +333,6 @@ namespace Kursovaya
                 {
                     // Заполняем поля данными из выбранной строки
                     DataGridViewRow selectedRow = dataGridView1.CurrentRow;
-
-                    // Основные данные
-                    textBox1.Text = selectedRow.Cells["Role"].Value?.ToString() ?? "";
                 }
                 catch (Exception ex)
                 {
@@ -423,7 +388,6 @@ namespace Kursovaya
                         {
                             MessageBox.Show("Роль успешно удалена", "Успех",
                                           MessageBoxButtons.OK, MessageBoxIcon.Information);
-                            textBox1.Clear();
                             FillDataGridView();
                             ClearAllFields();
                         }
@@ -441,7 +405,6 @@ namespace Kursovaya
         {
             dataGridView1.ClearSelection();
             dataGridView1.CurrentCell = null;
-            textBox1.Text = "";
         }
 
         private void Roles_Load(object sender, EventArgs e)

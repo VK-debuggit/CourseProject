@@ -318,6 +318,7 @@ namespace Kursovaya
             // 
             this.numericUpDown1.Location = new System.Drawing.Point(713, 561);
             this.numericUpDown1.Name = "numericUpDown1";
+            this.numericUpDown1.ReadOnly = true;
             this.numericUpDown1.Size = new System.Drawing.Size(79, 35);
             this.numericUpDown1.TabIndex = 28;
             this.numericUpDown1.ValueChanged += new System.EventHandler(this.numericUpDown1_ValueChanged);

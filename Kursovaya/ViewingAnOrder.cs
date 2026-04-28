@@ -49,8 +49,6 @@ namespace Kursovaya
             button1.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button2.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button3.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
-            button4.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
-            button5.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             textBox1.BackColor = System.Drawing.Color.FromArgb(255, 221, 153);
             comboBox1.BackColor = System.Drawing.Color.FromArgb(255, 221, 153);
             dataGridView1.BackgroundColor = System.Drawing.Color.FromArgb(255, 221, 153);
@@ -96,23 +94,6 @@ namespace Kursovaya
             ResetInactivityTimer(null, null);
         }
 
-        public class OrderData
-        {
-            public string NumberOrder { get; set; }
-            public string DateOrder { get; set; }
-            public string NameClient { get; set; }
-            public string NumberPhone { get; set; }
-            public string Event { get; set; }
-            public string Date { get; set; }
-            public string Time { get; set; }
-            public decimal TotalAmount { get; set; }
-            public decimal DiscountAmount { get; set; }
-            public decimal FinalAmount { get; set; }
-            public decimal Prepayment { get; set; }
-            public string Status { get; set; }
-            public string NameUser { get; set; } // Добавляем это свойство
-        }
-
         private void LoadOrderData()
         {
             try
@@ -153,14 +134,12 @@ namespace Kursovaya
                         {
                             if (reader.Read())
                             {
-                                // Правильное чтение TimeSpan
                                 string startTime = reader["StartTime"] != DBNull.Value ?
                                     ((TimeSpan)reader["StartTime"]).ToString(@"hh\:mm") : "";
                                 string endTime = reader["EndTime"] != DBNull.Value ?
                                     ((TimeSpan)reader["EndTime"]).ToString(@"hh\:mm") : "";
                                 string timeRange = $"{startTime} - {endTime}";
 
-                                // Получаем общую сумму из базы
                                 decimal finalAmount = reader["FinalAmount"] != DBNull.Value ?
                                     Convert.ToDecimal(reader["FinalAmount"]) : 0;
                                 decimal baseTotalAmount = reader["TotalAmount"] != DBNull.Value ?
@@ -168,12 +147,11 @@ namespace Kursovaya
                                 decimal discountAmount = reader["DiscountAmount"] != DBNull.Value ?
                                     Convert.ToDecimal(reader["DiscountAmount"]) : 0;
 
-                                // Вычисляем дополнительные расходы из сохраненной суммы
                                 decimal baseFinalAmount = finalAmount > 0 ? finalAmount : baseTotalAmount - discountAmount;
                                 additionalExpenses = finalAmount - (baseTotalAmount - discountAmount);
                                 if (additionalExpenses < 0) additionalExpenses = 0;
 
-                                // Создаем объект OrderData
+                                // Используем общий класс OrderData
                                 orderData = new OrderData
                                 {
                                     NumberOrder = reader["NumberOrder"].ToString(),
@@ -191,11 +169,7 @@ namespace Kursovaya
                                     Status = reader["OrderStatus"].ToString()
                                 };
 
-                                // Инициализируем состояние обновления
-                                // Если статус уже "Оплачен" или "Отменен", считаем что данные уже обновлены
                                 isDataUpdated = (orderData.Status == "Оплачен" || orderData.Status == "Отменен");
-
-                                // Заполняем Label на форме
                                 DisplayOrderInfo();
                             }
                             else
@@ -208,7 +182,6 @@ namespace Kursovaya
                         }
                     }
 
-                    // Загружаем состав заказа
                     LoadOrderComposition(con);
                 }
             }
@@ -740,8 +713,16 @@ namespace Kursovaya
 
         private void button2_Click(object sender, EventArgs e)
         {
-            groupBox1.Visible = true;
-            //GenerateWordTicket();
+            if (orderData == null || orderItems == null)
+            {
+                MessageBox.Show("Данные заказа не загружены", "Ошибка",
+                              MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            decimal additionalExpenses = GetAdditionalExpenses();
+            SelectFormPrint selectFormPrint = new SelectFormPrint(orderData, orderItems, DocumentType.Final, this, additionalExpenses);
+            selectFormPrint.ShowDialog();
         }
 
         private string GetTemplatePath()
@@ -1127,22 +1108,6 @@ namespace Kursovaya
                 e.Handled = true;
                 ValidateAndPasteAdditionalExpenses();
             }
-        }
-
-        private void pictureBox1_Click(object sender, EventArgs e)
-        {
-            groupBox1.Hide();
-        }
-
-        private void button5_Click(object sender, EventArgs e)
-        {
-            GenerateWordTicket();
-            groupBox1.Hide();
-        }
-
-        private void button4_Click(object sender, EventArgs e)
-        {
-            groupBox1.Hide();
         }
     }
 }
