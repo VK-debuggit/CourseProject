@@ -17,6 +17,8 @@ namespace Kursovaya
         private Timer inactivityTimer;
         private int inactivityTimeout;
         private int rowCount = 0;
+        private int? _lastInsertedStatusId = null; // Хранит ID последнего добавленного статуса
+
         public Statuses()
         {
             InitializeComponent();
@@ -43,6 +45,7 @@ namespace Kursovaya
             dataGridView1.BackgroundColor = System.Drawing.Color.FromArgb(255, 221, 153);
             dataGridView1.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
             dataGridView1.DefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(217, 152, 22);
+
             string fullname = Properties.Settings.Default.userName;
             string formattedname = fullname;
 
@@ -124,15 +127,34 @@ namespace Kursovaya
                     dataGridView1.Columns["IDstatus"].Visible = false;
                     dataGridView1.Columns.Add("Status", "Статус");
 
+                    // Временный список для хранения всех записей
+                    var statuses = new List<(int Id, string Name)>();
                     rowCount = 0;
+
                     while (rdr.Read())
                     {
-                        int rowIndex = dataGridView1.Rows.Add(
-                            rdr[0].ToString(),
-                            rdr[1].ToString()
-                        );
-
+                        int statusId = Convert.ToInt32(rdr[0]);
+                        string statusName = rdr[1].ToString();
+                        statuses.Add((statusId, statusName));
                         rowCount++;
+                    }
+
+                    // Если есть новая запись, перемещаем её в начало
+                    if (_lastInsertedStatusId.HasValue)
+                    {
+                        var newStatus = statuses.FirstOrDefault(s => s.Id == _lastInsertedStatusId.Value);
+                        if (newStatus.Id != 0)
+                        {
+                            statuses.Remove(newStatus);
+                            statuses.Insert(0, newStatus);
+                        }
+                        // Сбрасываем ID после использования НО не здесь, а после отображения
+                    }
+
+                    // Добавляем в DataGridView
+                    foreach (var status in statuses)
+                    {
+                        dataGridView1.Rows.Add(status.Id, status.Name);
                     }
 
                     label5.Text = rowCount.ToString();
@@ -142,6 +164,12 @@ namespace Kursovaya
                     {
                         MessageBox.Show("Данные не найдены", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
+
+                    // Сбрасываем ID после отображения
+                    _lastInsertedStatusId = null;
+
+                    // Очищаем выделение и поля
+                    ClearAllFields();
                 }
             }
         }
@@ -199,7 +227,7 @@ namespace Kursovaya
 
         private bool IsStatusExists(string statusName)
         {
-            string query = "SELECT COUNT(*) FROM Status WHERE status = @status;";
+            string query = "SELECT COUNT(*) FROM Status WHERE Status = @status;";
 
             using (MySqlConnection con = new MySqlConnection(conString))
             {
@@ -219,6 +247,33 @@ namespace Kursovaya
                     MessageBox.Show($"Ошибка проверки статуса: {ex.Message}", "Ошибка",
                                   MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return true; // В случае ошибки считаем, что статус существует
+                }
+            }
+        }
+
+        private bool IsStatusExistsExceptCurrent(int statusId, string statusName)
+        {
+            string query = "SELECT COUNT(*) FROM Status WHERE Status = @status AND IDstatus != @statusId;";
+
+            using (MySqlConnection con = new MySqlConnection(conString))
+            {
+                try
+                {
+                    con.Open();
+                    using (MySqlCommand cmd = new MySqlCommand(query, con))
+                    {
+                        cmd.Parameters.AddWithValue("@status", statusName.Trim());
+                        cmd.Parameters.AddWithValue("@statusId", statusId);
+
+                        int count = Convert.ToInt32(cmd.ExecuteScalar());
+                        return count > 0;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ошибка проверки статуса: {ex.Message}", "Ошибка",
+                                  MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return true;
                 }
             }
         }
@@ -243,8 +298,8 @@ namespace Kursovaya
                 return;
             }
 
-            // Добавление в базу данных
-            string query = "INSERT INTO Status (Status) VALUES (@status)";
+            // Добавление в базу данных с получением ID новой записи
+            string query = "INSERT INTO Status (Status) VALUES (@status); SELECT LAST_INSERT_ID();";
 
             using (MySqlConnection con = new MySqlConnection(conString))
             {
@@ -254,15 +309,22 @@ namespace Kursovaya
                     using (MySqlCommand cmd = new MySqlCommand(query, con))
                     {
                         cmd.Parameters.AddWithValue("@status", statusName);
-                        int rowsAffected = cmd.ExecuteNonQuery();
+                        // Получаем ID только что добавленного статуса
+                        int newId = Convert.ToInt32(cmd.ExecuteScalar());
 
-                        if (rowsAffected > 0)
+                        // Сохраняем ID новой записи
+                        _lastInsertedStatusId = newId;
+
+                        MessageBox.Show("Статус заказа успешно добавлен", "Успех",
+                                      MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        textBox1.Clear();
+                        FillDataGridView(); // Обновляем DataGridView
+
+                        // Выделяем и показываем первую строку (новый статус)
+                        if (dataGridView1.Rows.Count > 0)
                         {
-                            MessageBox.Show("Статус заказа успешно добавлен", "Успех",
-                                          MessageBoxButtons.OK, MessageBoxIcon.Information);
-                            textBox1.Clear();
-                            FillDataGridView(); // Обновляем DataGridView
-                            ClearAllFields();
+                            dataGridView1.Rows[0].Selected = true;
+                            dataGridView1.FirstDisplayedScrollingRowIndex = 0;
                         }
                     }
                 }
@@ -287,7 +349,7 @@ namespace Kursovaya
             string newStatusName = textBox1.Text.Trim();
 
             // Проверка на существование (исключая текущий статус)
-            if (IsStatusExists(newStatusName))
+            if (IsStatusExistsExceptCurrent(selectedId, newStatusName))
             {
                 MessageBox.Show("Статус заказа с таким наименованием уже существует", "Ошибка",
                               MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -314,7 +376,6 @@ namespace Kursovaya
                                           MessageBoxButtons.OK, MessageBoxIcon.Information);
                             textBox1.Clear();
                             FillDataGridView(); // Обновляем DataGridView
-                            ClearAllFields();
                         }
                     }
                 }
@@ -331,7 +392,8 @@ namespace Kursovaya
             UpdateButtonsState();
         }
 
-        void UpdateButtonsState() {
+        void UpdateButtonsState()
+        {
             // Включаем кнопку только если TextBox не пустой
             button1.Enabled = !string.IsNullOrWhiteSpace(textBox1.Text);
             string currentText = textBox1.Text.Trim();
@@ -395,7 +457,7 @@ namespace Kursovaya
             if (result != DialogResult.Yes)
                 return;
 
-            // Проверка на использование статуса в других таблицах (опционально)
+            // Проверка на использование статуса в других таблицах
             if (IsStatusInUse(selectedId))
             {
                 MessageBox.Show("Невозможно удалить статус заказа, так как он используется в других таблицах",
@@ -422,7 +484,6 @@ namespace Kursovaya
                                           MessageBoxButtons.OK, MessageBoxIcon.Information);
                             textBox1.Clear();
                             FillDataGridView(); // Обновляем DataGridView
-                            ClearAllFields();
                         }
                     }
                 }
@@ -477,6 +538,7 @@ namespace Kursovaya
         {
             // Очищаем все поля при загрузке формы
             ClearAllFields();
+            _lastInsertedStatusId = null;
         }
     }
 }

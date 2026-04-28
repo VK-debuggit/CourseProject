@@ -21,6 +21,7 @@ namespace Kursovaya
         private string originalPhone = "";
         private System.Windows.Forms.Timer searchTimer;
         private bool isSearching = false; // Флаг для отслеживания поиска
+        private int? _lastInsertedClientId = null; // Хранит ID последнего добавленного клиента
 
         // Статические поля для передачи данных
         public static string SelectedClientName { get; set; } = "";
@@ -54,13 +55,14 @@ namespace Kursovaya
             button2.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button3.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button4.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
-            button5.BackColor = System.Drawing.Color.FromArgb(217, 152, 22); // Цвет для кнопки очистки
+            button5.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             textBox1.BackColor = System.Drawing.Color.FromArgb(255, 221, 153);
             maskedTextBox1.BackColor = System.Drawing.Color.FromArgb(255, 221, 153);
             maskedTextBox2.BackColor = System.Drawing.Color.FromArgb(255, 221, 153);
             dataGridView1.BackgroundColor = System.Drawing.Color.FromArgb(255, 221, 153);
             dataGridView1.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
             dataGridView1.DefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(217, 152, 22);
+
             string fullname = Properties.Settings.Default.userName;
             string formattedname = fullname;
 
@@ -121,22 +123,16 @@ namespace Kursovaya
             ResetInactivityTimer(null, null);
         }
 
-        // Обработчик для кнопки очистки поля поиска
         private void button5_Click(object sender, EventArgs e)
         {
             ClearSearchField();
         }
 
-        // Метод для очистки поля поиска
         private void ClearSearchField()
         {
-            // Останавливаем таймер поиска
             searchTimer.Stop();
-
-            // Очищаем поле поиска
             maskedTextBox2.Text = "";
-
-            // Показываем все записи
+            _lastInsertedClientId = null; // Сбрасываем ID при очистке поиска
             FillDataGridView();
         }
 
@@ -160,19 +156,15 @@ namespace Kursovaya
             SetCursorToFirstEmptyPosition(maskedTextBox2);
         }
 
-        // Метод для установки курсора на первую пустую позицию в маске
         private void SetCursorToFirstEmptyPosition(MaskedTextBox maskedTextBox)
         {
-            // Проверяем, есть ли уже введенный номер
             if (!string.IsNullOrWhiteSpace(maskedTextBox.Text) &&
                 !maskedTextBox.Text.Contains(maskedTextBox.PromptChar.ToString()))
             {
-                // Если номер уже введен полностью, ставим курсор в конец
                 maskedTextBox.SelectionStart = maskedTextBox.Text.Length;
                 return;
             }
 
-            // Ищем первую позицию с символом-заполнителем (PromptChar)
             for (int i = 0; i < maskedTextBox.Text.Length; i++)
             {
                 if (maskedTextBox.Text[i] == maskedTextBox.PromptChar)
@@ -183,17 +175,12 @@ namespace Kursovaya
                 }
             }
 
-            // Если не нашли пустых позиций, ставим курсор в конец
             maskedTextBox.SelectionStart = maskedTextBox.Text.Length;
         }
 
-        // Обработчик изменения текста в поле поиска
         private void maskedTextBox2_TextChanged(object sender, EventArgs e)
         {
-            // Останавливаем предыдущий таймер
             searchTimer.Stop();
-
-            // Запускаем новый таймер
             searchTimer.Start();
         }
 
@@ -203,22 +190,20 @@ namespace Kursovaya
 
             string searchText = maskedTextBox2.Text;
 
-            // Если поле пустое - показываем все
             if (string.IsNullOrWhiteSpace(searchText))
             {
+                _lastInsertedClientId = null; // Сбрасываем ID при очистке поиска
                 FillDataGridView();
                 return;
             }
 
-            // Убираем символы маски, оставляем только цифры
             string digitsOnly = new string(searchText.Where(char.IsDigit).ToArray());
 
-            // Если есть хотя бы 1 цифра - ищем
             if (digitsOnly.Length > 0)
             {
-                isSearching = true; // Устанавливаем флаг поиска
+                isSearching = true;
                 FillDataGridViewWithSearch(digitsOnly);
-                isSearching = false; // Сбрасываем флаг
+                isSearching = false;
             }
             else
             {
@@ -230,7 +215,6 @@ namespace Kursovaya
 
         private void button4_Click(object sender, EventArgs e)
         {
-            // Проверяем, выбрана ли строка
             if (dataGridView1.SelectedRows.Count == 0)
             {
                 MessageBox.Show("Выберите клиента из списка", "Ошибка",
@@ -238,10 +222,8 @@ namespace Kursovaya
                 return;
             }
 
-            // Получаем выбранную строку
             DataGridViewRow selectedRow = dataGridView1.SelectedRows[0];
 
-            // Проверяем, что строка не пустая
             if (selectedRow == null || selectedRow.Cells["Name"].Value == null)
             {
                 MessageBox.Show("Выберите клиента из списка", "Ошибка",
@@ -249,13 +231,11 @@ namespace Kursovaya
                 return;
             }
 
-            // Сохраняем выбранные данные
             SelectedClientName = selectedRow.Cells["Name"].Value.ToString();
             SelectedClientPhone = selectedRow.Cells["NumberPhone"].Value?.ToString() ?? "";
             ClientWasSelected = true;
 
             inactivityTimer.Stop();
-            // Закрываем форму
             allowClose = true;
             this.Close();
         }
@@ -279,10 +259,8 @@ namespace Kursovaya
 
             List<string> conditions = new List<string>();
 
-            // Добавляем условие поиска 
             if (!string.IsNullOrEmpty(where))
             {
-                // Убираем все нецифровые символы для поиска
                 string digitsOnly = new string(where.Where(char.IsDigit).ToArray());
                 if (!string.IsNullOrEmpty(digitsOnly))
                 {
@@ -290,7 +268,6 @@ namespace Kursovaya
                 }
             }
 
-            // Объединяем все условия
             if (conditions.Count > 0)
             {
                 SelectQuery += " WHERE " + string.Join(" AND ", conditions);
@@ -311,21 +288,40 @@ namespace Kursovaya
                     dataGridView1.Columns.Add("Name", "ФИО");
                     dataGridView1.Columns.Add("NumberPhone", "Номер телефона");
 
+                    // Временный список для хранения всех записей
+                    var clients = new List<(int Id, string Name, string Phone)>();
                     rowCount = 0;
+
                     while (rdr.Read())
                     {
-                        int rowIndex = dataGridView1.Rows.Add(
-                            rdr[0].ToString(),
-                            rdr[1].ToString(),
-                            rdr[2].ToString()
-                        );
-
+                        int clientId = Convert.ToInt32(rdr[0]);
+                        string clientName = rdr[1].ToString();
+                        string clientPhone = rdr[2].ToString();
+                        clients.Add((clientId, clientName, clientPhone));
                         rowCount++;
+                    }
+
+                    // Если есть новая запись, перемещаем её в начало
+                    if (_lastInsertedClientId.HasValue)
+                    {
+                        var newClient = clients.FirstOrDefault(c => c.Id == _lastInsertedClientId.Value);
+                        if (newClient.Id != 0)
+                        {
+                            clients.Remove(newClient);
+                            clients.Insert(0, newClient);
+                        }
+                        // Сбрасываем ID после использования
+                        _lastInsertedClientId = null;
+                    }
+
+                    // Добавляем в DataGridView
+                    foreach (var client in clients)
+                    {
+                        dataGridView1.Rows.Add(client.Id, client.Name, client.Phone);
                     }
 
                     label5.Text = rowCount.ToString();
 
-                    // Показываем информацию о загруженных данных только если был поиск
                     if (rowCount == 0 && !string.IsNullOrEmpty(where))
                     {
                         MessageBox.Show("Данные не найдены", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -350,7 +346,6 @@ namespace Kursovaya
             {
                 int cursorPos = tb.SelectionStart;
 
-                // Делаем каждое слово с заглавной буквы
                 string newText = System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(tb.Text.ToLower());
 
                 if (tb.Text != newText)
@@ -360,10 +355,8 @@ namespace Kursovaya
                 }
             }
 
-            // Если вводится пробел
             if (e.KeyChar == ' ')
             {
-                // Запрещаем пробел в начале или после пробела/дефиса
                 if (tb.Text.Length == 0 || tb.Text[tb.Text.Length - 1] == ' ' || tb.Text[tb.Text.Length - 1] == '-')
                 {
                     e.Handled = true;
@@ -373,10 +366,8 @@ namespace Kursovaya
                 return;
             }
 
-            // Если вводится дефис
             if (e.KeyChar == '-')
             {
-                // Запрещаем дефис в начале или после пробела/дефиса
                 if (tb.Text.Length == 0 || tb.Text[tb.Text.Length - 1] == ' ' || tb.Text[tb.Text.Length - 1] == '-')
                 {
                     e.Handled = true;
@@ -386,7 +377,6 @@ namespace Kursovaya
                 return;
             }
 
-            // Проверяем русские буквы
             if ((e.KeyChar >= 'А' && e.KeyChar <= 'Я') ||
                 (e.KeyChar >= 'а' && e.KeyChar <= 'я') ||
                 e.KeyChar == 'Ё' || e.KeyChar == 'ё')
@@ -426,7 +416,6 @@ namespace Kursovaya
                     using (MySqlCommand cmd = new MySqlCommand(query, con))
                     {
                         cmd.Parameters.AddWithValue("@numberPhone", numberPhone.Trim());
-
                         int count = Convert.ToInt32(cmd.ExecuteScalar());
                         return count > 0;
                     }
@@ -445,10 +434,7 @@ namespace Kursovaya
             if (string.IsNullOrWhiteSpace(phoneNumber))
                 return true;
 
-            // Удаляем все нецифровые символы
             string digitsOnly = new string(phoneNumber.Where(char.IsDigit).ToArray());
-
-            // Проверяем минимальное количество цифр
             return digitsOnly.Length < 10;
         }
 
@@ -462,19 +448,14 @@ namespace Kursovaya
             if (parts.Length == 0)
                 return fullName;
 
-            // Обрабатываем фамилию (может быть двойной через дефис)
             string lastName = parts[0];
-
             string initials = "";
 
-            // Обрабатываем имя
             if (parts.Length > 1)
             {
                 string firstName = parts[1];
-                // Проверяем, не является ли имя двойным (через дефис)
                 if (firstName.Contains('-'))
                 {
-                    // Для двойных имен берем первые буквы каждой части
                     string[] firstNames = firstName.Split('-');
                     initials = string.Join("", firstNames.Select(n => n[0] + "."));
                 }
@@ -484,13 +465,11 @@ namespace Kursovaya
                 }
             }
 
-            // Обрабатываем отчество
             if (parts.Length > 2)
             {
                 string patronymic = parts[2];
                 if (patronymic.Contains('-'))
                 {
-                    // Для двойных отчеств берем первые буквы каждой части
                     string[] patronymics = patronymic.Split('-');
                     initials += string.Join("", patronymics.Select(p => p[0] + "."));
                 }
@@ -508,23 +487,17 @@ namespace Kursovaya
             if (string.IsNullOrWhiteSpace(phoneNumber))
                 return phoneNumber;
 
-            // Убираем все символы, кроме цифр
             string digitsOnly = new string(phoneNumber.Where(char.IsDigit).ToArray());
 
-            // Если номер начинается с 7 или 8 и имеет 11 цифр
             if (digitsOnly.Length == 11 && (digitsOnly[0] == '7' || digitsOnly[0] == '8'))
             {
-                // Форматируем как +7(XXX)XXX-XX-XX
                 return $"+7({digitsOnly.Substring(1, 3)}){digitsOnly.Substring(4, 3)}-{digitsOnly.Substring(7, 2)}-{digitsOnly.Substring(9, 2)}";
             }
-            // Если номер имеет 10 цифр (без кода страны)
             else if (digitsOnly.Length == 10)
             {
-                // Форматируем как +7(XXX)XXX-XX-XX
                 return $"+7({digitsOnly.Substring(0, 3)}){digitsOnly.Substring(3, 3)}-{digitsOnly.Substring(6, 2)}-{digitsOnly.Substring(8, 2)}";
             }
 
-            // Если формат не распознан, возвращаем как есть
             return phoneNumber;
         }
 
@@ -540,10 +513,8 @@ namespace Kursovaya
                 return;
             }
 
-            // Преобразуем телефон в нужный формат
             string formattedPhone = FormatPhoneNumber(numberPhone);
 
-            // Проверка на существование
             if (IsClientExists(formattedPhone))
             {
                 MessageBox.Show("Клиент с таким телефоном уже существует", "Ошибка",
@@ -551,7 +522,6 @@ namespace Kursovaya
                 return;
             }
 
-            // Валидация данных
             if (string.IsNullOrEmpty(nameUser))
             {
                 MessageBox.Show("Заполните поле ФИО", "Ошибка",
@@ -559,7 +529,7 @@ namespace Kursovaya
                 return;
             }
 
-            string query = "INSERT INTO Clients (Name, NumberPhone) VALUES (@name, @numberPhone)";
+            string query = "INSERT INTO Clients (Name, NumberPhone) VALUES (@name, @numberPhone); SELECT LAST_INSERT_ID();";
 
             using (MySqlConnection con = new MySqlConnection(conString))
             {
@@ -568,19 +538,27 @@ namespace Kursovaya
                     con.Open();
                     using (MySqlCommand cmd = new MySqlCommand(query, con))
                     {
-                        // Преобразуем ФИО в нужный формат
                         string formattedName = FormatFIO(nameUser);
 
                         cmd.Parameters.AddWithValue("@name", formattedName);
                         cmd.Parameters.AddWithValue("@numberPhone", formattedPhone);
-                        int rowsAffected = cmd.ExecuteNonQuery();
 
-                        if (rowsAffected > 0)
+                        // Получаем ID только что добавленного клиента
+                        int newId = Convert.ToInt32(cmd.ExecuteScalar());
+
+                        // Сохраняем ID новой записи
+                        _lastInsertedClientId = newId;
+
+                        MessageBox.Show("Клиент успешно добавлен", "Успех",
+                                      MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        ClearAllFields();
+                        FillDataGridView();
+
+                        // Выделяем и показываем первую строку (нового клиента)
+                        if (dataGridView1.Rows.Count > 0)
                         {
-                            MessageBox.Show("Клиент успешно добавлен", "Успех",
-                                          MessageBoxButtons.OK, MessageBoxIcon.Information);
-                            ClearAllFields();
-                            FillDataGridView();
+                            dataGridView1.Rows[0].Selected = true;
+                            dataGridView1.FirstDisplayedScrollingRowIndex = 0;
                         }
                     }
                 }
@@ -620,10 +598,8 @@ namespace Kursovaya
                 return;
             }
 
-            // Преобразуем телефон в нужный формат
             string formattedPhone = FormatPhoneNumber(newClientNumber);
 
-            // Проверка на существование (исключая текущего клиента)
             if (IsAnotherClientExists(formattedPhone, selectedId))
             {
                 MessageBox.Show("Клиент с таким телефоном уже существует", "Ошибка",
@@ -640,7 +616,6 @@ namespace Kursovaya
                     con.Open();
                     using (MySqlCommand cmd = new MySqlCommand(query, con))
                     {
-                        // Преобразуем ФИО в нужный формат
                         string formattedName = FormatFIO(newClientName);
 
                         cmd.Parameters.AddWithValue("@clientName", formattedName);
@@ -650,6 +625,9 @@ namespace Kursovaya
 
                         if (rowsAffected > 0)
                         {
+                            // Сбрасываем ID последнего добавленного клиента при редактировании
+                            _lastInsertedClientId = null;
+
                             MessageBox.Show("Клиент успешно обновлен", "Успех",
                                           MessageBoxButtons.OK, MessageBoxIcon.Information);
                             ClearAllFields();
@@ -678,7 +656,6 @@ namespace Kursovaya
                     {
                         cmd.Parameters.AddWithValue("@numberPhone", numberPhone.Trim());
                         cmd.Parameters.AddWithValue("@currentClientId", currentClientId);
-
                         int count = Convert.ToInt32(cmd.ExecuteScalar());
                         return count > 0;
                     }
@@ -705,7 +682,6 @@ namespace Kursovaya
             int selectedId = Convert.ToInt32(selectedRow.Cells["IDclient"].Value);
             string clientNumber = selectedRow.Cells["NumberPhone"].Value.ToString();
 
-            // Подтверждение удаления
             DialogResult result = MessageBox.Show(
                 $"Вы уверены, что хотите удалить клиента с телефоном \"{clientNumber}\"?",
                 "Подтверждение удаления",
@@ -715,7 +691,6 @@ namespace Kursovaya
             if (result != DialogResult.Yes)
                 return;
 
-            // Проверка на использование статуса в других таблицах (опционально)
             if (IsClientInUse(selectedId))
             {
                 MessageBox.Show("Невозможно удалить клиента, так как он используется в других таблицах",
@@ -723,7 +698,6 @@ namespace Kursovaya
                 return;
             }
 
-            // Удаление из базы данных
             string query = "DELETE FROM Clients WHERE IDclient = @clientId";
 
             using (MySqlConnection con = new MySqlConnection(conString))
@@ -738,6 +712,9 @@ namespace Kursovaya
 
                         if (rowsAffected > 0)
                         {
+                            // Сбрасываем ID последнего добавленного клиента при удалении
+                            _lastInsertedClientId = null;
+
                             MessageBox.Show("Клиент успешно удален", "Успех",
                                           MessageBoxButtons.OK, MessageBoxIcon.Information);
                             ClearAllFields();
@@ -755,13 +732,13 @@ namespace Kursovaya
 
         private void textBox1_TextChanged(object sender, EventArgs e)
         {
-            if (!isSearching) // Не обновляем кнопки во время поиска
+            if (!isSearching)
                 UpdateButtonsState();
         }
 
         private void maskedTextBox1_TextChanged(object sender, EventArgs e)
         {
-            if (!isSearching) // Не обновляем кнопки во время поиска
+            if (!isSearching)
                 UpdateButtonsState();
         }
 
@@ -774,7 +751,6 @@ namespace Kursovaya
             bool hasValidNumber = !IsEmptyPhoneNumber(currentTextNumber);
             bool hasSelection = dataGridView1.SelectedRows.Count > 0;
 
-            // Кнопка добавления доступна только когда есть валидные данные
             button1.Enabled = hasValidName && hasValidNumber;
 
             if (hasSelection && hasValidName && hasValidNumber)
@@ -787,7 +763,7 @@ namespace Kursovaya
                 }
                 else
                 {
-                    dataChanged = true; // Если оригинальные данные не сохранены, считаем что изменились
+                    dataChanged = true;
                 }
 
                 button2.Enabled = dataChanged;
@@ -797,13 +773,8 @@ namespace Kursovaya
                 button2.Enabled = false;
             }
 
-            // Кнопка удаления доступна только когда есть выделение
             button3.Enabled = hasSelection;
-
-            // Кнопка "Вернуться в заказ" доступна только когда есть выделение
             button4.Enabled = hasSelection;
-
-            // Кнопка "Очистить поиск" всегда активна (если нужна очистка)
             button5.Enabled = true;
         }
 
@@ -816,13 +787,10 @@ namespace Kursovaya
                 try
                 {
                     con.Open();
-
                     using (MySqlCommand cmd = new MySqlCommand(checkQuery, con))
                     {
                         cmd.Parameters.AddWithValue("@clientId", clientId);
-
                         int count = Convert.ToInt32(cmd.ExecuteScalar());
-
                         return count > 0;
                     }
                 }
@@ -837,11 +805,9 @@ namespace Kursovaya
 
         private void dataGridView1_SelectionChanged(object sender, EventArgs e)
         {
-            // Если идет поиск - не обрабатываем изменение выделения
             if (isSearching)
                 return;
 
-            // Если есть выделенная строка - заполняем поля, если нет - очищаем
             if (dataGridView1.SelectedRows.Count > 0)
             {
                 DataGridViewRow selectedRow = dataGridView1.SelectedRows[0];
@@ -850,7 +816,6 @@ namespace Kursovaya
                     textBox1.Text = selectedRow.Cells["Name"].Value?.ToString() ?? "";
                     maskedTextBox1.Text = selectedRow.Cells["NumberPhone"].Value?.ToString() ?? "";
 
-                    // Сохраняем оригинальные данные для сравнения
                     originalName = textBox1.Text;
                     originalPhone = maskedTextBox1.Text;
                 }
@@ -860,21 +825,19 @@ namespace Kursovaya
             }
             else
             {
-                // Если нет выделенной строки, очищаем поля ввода данных
                 textBox1.Text = "";
                 maskedTextBox1.Text = "";
                 originalName = "";
                 originalPhone = "";
             }
 
-            // Обновляем состояние кнопок
             UpdateButtonsState();
         }
 
         private void CreatingAClient_Load(object sender, EventArgs e)
         {
-            // Очищаем все поля при загрузке формы
             ClearAllFields();
+            _lastInsertedClientId = null;
         }
 
         void FillDataGridViewWithSearch(string searchDigits)
@@ -889,10 +852,8 @@ namespace Kursovaya
                 try
                 {
                     con.Open();
-
                     using (MySqlCommand cmd = new MySqlCommand(SelectQuery, con))
                     {
-                        // Используем параметризованный запрос для безопасности
                         cmd.Parameters.AddWithValue("@searchDigits", searchDigits);
 
                         using (MySqlDataReader rdr = cmd.ExecuteReader())
@@ -908,26 +869,20 @@ namespace Kursovaya
                             rowCount = 0;
                             while (rdr.Read())
                             {
-                                int rowIndex = dataGridView1.Rows.Add(
+                                dataGridView1.Rows.Add(
                                     rdr[0].ToString(),
                                     rdr[1].ToString(),
                                     rdr[2].ToString()
                                 );
-
                                 rowCount++;
                             }
 
                             label5.Text = rowCount.ToString();
-
-                            // Только снимаем выделение, но НЕ очищаем поля ввода данных
                             dataGridView1.ClearSelection();
                             dataGridView1.CurrentCell = null;
-
-                            // Очищаем оригинальные данные, но не поля ввода
                             originalName = "";
                             originalPhone = "";
 
-                            // Если ничего не найдено
                             if (rowCount == 0 && searchDigits.Length > 0)
                             {
                                 MessageBox.Show("Клиенты не найдены", "Информация",
@@ -940,16 +895,13 @@ namespace Kursovaya
                 {
                     MessageBox.Show($"Ошибка поиска: {ex.Message}", "Ошибка",
                                   MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    // В случае ошибки показываем все записи
                     FillDataGridView();
                 }
             }
         }
 
-        // Метод для очистки полей данных без вызова событий
         private void ClearDataFieldsWithoutEvents()
         {
-            // Отключаем события на время очистки
             textBox1.TextChanged -= textBox1_TextChanged;
             maskedTextBox1.TextChanged -= maskedTextBox1_TextChanged;
 
@@ -958,12 +910,10 @@ namespace Kursovaya
             originalName = "";
             originalPhone = "";
 
-            // Включаем события обратно
             textBox1.TextChanged += textBox1_TextChanged;
             maskedTextBox1.TextChanged += maskedTextBox1_TextChanged;
         }
 
-        // Новый метод для очистки всех полей и снятия выделения
         private void ClearAllFields()
         {
             ClearDataFieldsWithoutEvents();
@@ -972,7 +922,6 @@ namespace Kursovaya
             UpdateButtonsState();
         }
 
-        // Обработчик клика по DataGridView
         private void dataGridView1_CellClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex < 0)

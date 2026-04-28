@@ -17,6 +17,7 @@ namespace Kursovaya
         private Timer inactivityTimer;
         private int inactivityTimeout;
         private int rowCount = 0;
+        private int? _lastInsertedEventId = null; // Хранит ID последнего добавленного мероприятия
 
         public Events()
         {
@@ -44,6 +45,7 @@ namespace Kursovaya
             dataGridView1.BackgroundColor = System.Drawing.Color.FromArgb(255, 221, 153);
             dataGridView1.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
             dataGridView1.DefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(217, 152, 22);
+
             string fullname = Properties.Settings.Default.userName;
             string formattedname = fullname;
 
@@ -125,15 +127,33 @@ namespace Kursovaya
                     dataGridView1.Columns["IDevent"].Visible = false;
                     dataGridView1.Columns.Add("Event", "Мероприятие");
 
+                    // Временный список для хранения всех записей
+                    var events = new List<(int Id, string Name)>();
                     rowCount = 0;
+
                     while (rdr.Read())
                     {
-                        int rowIndex = dataGridView1.Rows.Add(
-                            rdr[0].ToString(),
-                            rdr[1].ToString()
-                        );
-
+                        int eventId = Convert.ToInt32(rdr[0]);
+                        string eventName = rdr[1].ToString();
+                        events.Add((eventId, eventName));
                         rowCount++;
+                    }
+
+                    // Если есть новая запись, перемещаем её в начало
+                    if (_lastInsertedEventId.HasValue)
+                    {
+                        var newEvent = events.FirstOrDefault(e => e.Id == _lastInsertedEventId.Value);
+                        if (newEvent.Id != 0)
+                        {
+                            events.Remove(newEvent);
+                            events.Insert(0, newEvent);
+                        }
+                    }
+
+                    // Добавляем в DataGridView
+                    foreach (var eventItem in events)
+                    {
+                        dataGridView1.Rows.Add(eventItem.Id, eventItem.Name);
                     }
 
                     label5.Text = rowCount.ToString();
@@ -143,6 +163,12 @@ namespace Kursovaya
                     {
                         MessageBox.Show("Данные не найдены", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
+
+                    // Сбрасываем ID после отображения
+                    _lastInsertedEventId = null;
+
+                    // Очищаем выделение и поля
+                    ClearAllFields();
                 }
             }
         }
@@ -219,7 +245,34 @@ namespace Kursovaya
                 {
                     MessageBox.Show($"Ошибка проверки мероприятия: {ex.Message}", "Ошибка",
                                   MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return true; // В случае ошибки считаем, что статус существует
+                    return true; // В случае ошибки считаем, что мероприятие существует
+                }
+            }
+        }
+
+        private bool IsEventExistsExceptCurrent(int eventId, string eventName)
+        {
+            string query = "SELECT COUNT(*) FROM Events WHERE Event = @event AND IDevent != @eventId;";
+
+            using (MySqlConnection con = new MySqlConnection(conString))
+            {
+                try
+                {
+                    con.Open();
+                    using (MySqlCommand cmd = new MySqlCommand(query, con))
+                    {
+                        cmd.Parameters.AddWithValue("@event", eventName.Trim());
+                        cmd.Parameters.AddWithValue("@eventId", eventId);
+
+                        int count = Convert.ToInt32(cmd.ExecuteScalar());
+                        return count > 0;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ошибка проверки мероприятия: {ex.Message}", "Ошибка",
+                                  MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return true;
                 }
             }
         }
@@ -244,8 +297,8 @@ namespace Kursovaya
                 return;
             }
 
-            // Добавление в базу данных
-            string query = "INSERT INTO Events (Event) VALUES (@event)";
+            // Добавление в базу данных с получением ID новой записи
+            string query = "INSERT INTO Events (Event) VALUES (@event); SELECT LAST_INSERT_ID();";
 
             using (MySqlConnection con = new MySqlConnection(conString))
             {
@@ -255,15 +308,22 @@ namespace Kursovaya
                     using (MySqlCommand cmd = new MySqlCommand(query, con))
                     {
                         cmd.Parameters.AddWithValue("@event", eventName);
-                        int rowsAffected = cmd.ExecuteNonQuery();
+                        // Получаем ID только что добавленного мероприятия
+                        int newId = Convert.ToInt32(cmd.ExecuteScalar());
 
-                        if (rowsAffected > 0)
+                        // Сохраняем ID новой записи
+                        _lastInsertedEventId = newId;
+
+                        MessageBox.Show("Мероприятие успешно добавлено", "Успех",
+                                      MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        textBox1.Clear();
+                        FillDataGridView(); // Обновляем DataGridView
+
+                        // Выделяем и показываем первую строку (новое мероприятие)
+                        if (dataGridView1.Rows.Count > 0)
                         {
-                            MessageBox.Show("Мероприятие успешно добавлено", "Успех",
-                                          MessageBoxButtons.OK, MessageBoxIcon.Information);
-                            textBox1.Clear();
-                            FillDataGridView(); // Обновляем DataGridView
-                            ClearAllFields();
+                            dataGridView1.Rows[0].Selected = true;
+                            dataGridView1.FirstDisplayedScrollingRowIndex = 0;
                         }
                     }
                 }
@@ -287,8 +347,8 @@ namespace Kursovaya
             int selectedId = Convert.ToInt32(dataGridView1.CurrentRow.Cells["IDevent"].Value);
             string newEventName = textBox1.Text.Trim();
 
-            // Проверка на существование (исключая текущий статус)
-            if (IsEventExists(newEventName))
+            // Проверка на существование (исключая текущее мероприятие)
+            if (IsEventExistsExceptCurrent(selectedId, newEventName))
             {
                 MessageBox.Show("Мероприятие с таким наименованием уже существует", "Ошибка",
                               MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -315,7 +375,6 @@ namespace Kursovaya
                                           MessageBoxButtons.OK, MessageBoxIcon.Information);
                             textBox1.Clear();
                             FillDataGridView(); // Обновляем DataGridView
-                            ClearAllFields();
                         }
                     }
                 }
@@ -397,7 +456,7 @@ namespace Kursovaya
             if (result != DialogResult.Yes)
                 return;
 
-            // Проверка на использование статуса в других таблицах (опционально)
+            // Проверка на использование мероприятия в других таблицах
             if (IsEventInUse(selectedId))
             {
                 MessageBox.Show("Невозможно удалить мероприятие, так как оно используется в других таблицах",
@@ -424,7 +483,6 @@ namespace Kursovaya
                                           MessageBoxButtons.OK, MessageBoxIcon.Information);
                             textBox1.Clear();
                             FillDataGridView(); // Обновляем DataGridView
-                            ClearAllFields();
                         }
                     }
                 }
@@ -438,8 +496,7 @@ namespace Kursovaya
 
         private bool IsEventInUse(int eventId)
         {
-            // Замените на ваши реальные таблицы и названия столбцов
-            string checkQueries = @"SELECT COUNT(*) FROM Dishes WHERE IdEvent = @eventId;";
+            string checkQueries = @"SELECT COUNT(*) FROM Orders WHERE IdEvent = @eventId;";
 
             using (MySqlConnection con = new MySqlConnection(conString))
             {
@@ -480,6 +537,7 @@ namespace Kursovaya
         {
             // Очищаем все поля при загрузке формы
             ClearAllFields();
+            _lastInsertedEventId = null;
         }
     }
 }
