@@ -138,7 +138,7 @@ namespace Kursovaya
 
             if (!string.IsNullOrEmpty(searchText))
             {
-                dv.RowFilter = $"CONVERT(NumberOrder, 'System.String') LIKE '%{searchText}%'";
+                dv.RowFilter = $"CONVERT(NumberOrder, 'System.String') LIKE '{searchText}%'";
             }
 
             // Отображаем отфильтрованные данные в DataGridView
@@ -248,7 +248,7 @@ namespace Kursovaya
             LEFT JOIN CafeActivities.Status s ON p.IdStatus = s.IDstatus
             LEFT JOIN CafeActivities.Schedule r ON p.IdSchedule = r.IDschedule
             LEFT JOIN CafeActivities.Users w ON p.IdUser = w.IDuser
-            ORDER BY p.NumberOrder DESC;";
+            ORDER BY p.NumberOrder ASC;";
 
             try
             {

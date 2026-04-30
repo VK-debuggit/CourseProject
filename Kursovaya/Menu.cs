@@ -21,6 +21,7 @@ namespace Kursovaya
         private int rowCount = 0;
         private Image newProductImage;
         private string originalImageFilePath;
+        private string _lastInsertedDishId = null; // Хранит артикул последнего добавленного блюда (как строку)
 
         // Переменные для пагинации 
         private int currentPage = 1;
@@ -90,11 +91,10 @@ namespace Kursovaya
             this.WindowState = FormWindowState.Maximized;
         }
 
-        // ========== ПАГИНАЦИЯ (как в ViewingOrdersForMeneger) ==========
+        // ========== ПАГИНАЦИЯ ==========
 
         void Pagination()
         {
-            // Удаляем старые элементы пагинации
             for (int j = 0, count = this.Controls.Count; j < count; ++j)
             {
                 if (this.Controls[j].Name.StartsWith("page") ||
@@ -107,16 +107,13 @@ namespace Kursovaya
                 }
             }
 
-            // Вычисляем количество страниц
             totalPages = dataGridView1.Rows.Count / 20;
             if (Convert.ToBoolean(dataGridView1.Rows.Count % 20)) totalPages += 1;
             if (totalPages == 0) totalPages = 1;
 
-            // Позиционируем пагинацию под DataGridView
             int yPosition = dataGridView1.Bottom + 10;
             int leftMargin = 13;
 
-            // Кнопка "Назад"
             Button btnPrev = new Button();
             btnPrev.Name = "btnPrev";
             btnPrev.Text = "◀";
@@ -129,7 +126,6 @@ namespace Kursovaya
             btnPrev.FlatAppearance.BorderSize = 0;
             this.Controls.Add(btnPrev);
 
-            // Ссылки на страницы
             int x = leftMargin + 35;
             int step = 20;
 
@@ -161,7 +157,6 @@ namespace Kursovaya
                 x += step;
             }
 
-            // Кнопка "Вперед"
             Button btnNext = new Button();
             btnNext.Name = "btnNext";
             btnNext.Text = "▶";
@@ -308,14 +303,9 @@ namespace Kursovaya
             return base.ProcessCmdKey(ref msg, keyData);
         }
 
-        // ========== ОБНОВЛЕНИЕ КОЛИЧЕСТВА ЗАПИСЕЙ ==========
-
         private void UpdateRowCount()
         {
-            // Общее количество строк в DataGridView
             int totalCount = dataGridView1.Rows.Count;
-
-            // Количество строк в БД (все блюда)
             int totalInDatabase = 0;
             string q = "SELECT COUNT(*) FROM CafeActivities.Dishes;";
             using (MySqlConnection con = new MySqlConnection(conString))
@@ -327,7 +317,6 @@ namespace Kursovaya
                 }
             }
 
-            // Количество строк на текущей странице (видимых)
             int visibleCount = 0;
             for (int i = (currentPage - 1) * 20; i < currentPage * 20 && i < totalCount; i++)
             {
@@ -390,6 +379,7 @@ namespace Kursovaya
 
         void FillDataGridView()
         {
+            // Сортировка по наименованию в алфавитном порядке (Name ASC)
             string SelectQuery = @"SELECT 
 	                                p.Article, 
                                     c.Event as Event, 
@@ -402,7 +392,7 @@ namespace Kursovaya
                                     FROM CafeActivities.Dishes p
                                     LEFT JOIN Categories d ON p.IdCategory = d.IDcategory
                                     LEFT JOIN Events c ON p.IdEvent = c.IDevent
-                                    ORDER BY p.Article DESC;";
+                                    ORDER BY p.Name ASC;";
 
             using (MySqlConnection con = new MySqlConnection(conString))
             {
@@ -422,19 +412,33 @@ namespace Kursovaya
                         imageColumn.ImageLayout = DataGridViewImageCellLayout.Zoom;
                         imageColumn.Width = 80;
 
+                        // Порядок колонок
                         dataGridView1.Columns.Add("Article", "Артикул");
+                        dataGridView1.Columns.Add("Name", "Название");
+                        dataGridView1.Columns["Name"].DefaultCellStyle.WrapMode = DataGridViewTriState.True;
                         dataGridView1.Columns.Add("Event", "Мероприятие");
                         dataGridView1.Columns.Add("Category", "Категория");
-                        dataGridView1.Columns.Add("Name", "Наименование");
                         dataGridView1.Columns.Add("Compound", "Описание");
+                        dataGridView1.Columns["Compound"].DefaultCellStyle.WrapMode = DataGridViewTriState.True;
                         dataGridView1.Columns.Add("Weight", "Вес");
                         dataGridView1.Columns.Add("Price", "Цена");
                         dataGridView1.Columns.Add(imageColumn);
 
+                        // Временный список для хранения всех записей
+                        var dishes = new List<(string Article, string Event, string Category, string Name, string Compound, string Weight, string Price, Image Photo, string PhotoFileName)>();
                         rowCount = 0;
+
+                        string imagesFolder = @".\Resources\";
+
                         while (rdr.Read())
                         {
-                            string imagesFolder = @".\Resources\";
+                            string article = rdr["Article"].ToString();
+                            string name = rdr["Name"].ToString();
+                            string eventName = rdr["Event"].ToString();
+                            string categoryName = rdr["Category"].ToString();
+                            string compound = rdr["Compound"].ToString();
+                            string weight = rdr["Weight"].ToString();
+                            string price = rdr["Price"].ToString();
                             string photoFileName = rdr["Photo"].ToString();
                             string fullImagePath = Path.Combine(imagesFolder, photoFileName);
                             Image img = null;
@@ -447,18 +451,36 @@ namespace Kursovaya
                                 }
                             }
 
-                            dataGridView1.Rows.Add(
-                                rdr["Article"].ToString(),
-                                rdr["Event"].ToString(),
-                                rdr["Category"].ToString(),
-                                rdr["Name"].ToString(),
-                                rdr["Compound"].ToString(),
-                                rdr["Weight"].ToString(),
-                                rdr["Price"].ToString(),
-                                img
-                            );
-
+                            dishes.Add((article, eventName, categoryName, name, compound, weight, price, img, photoFileName));
                             rowCount++;
+                        }
+
+                        // Если есть новая запись, перемещаем её в начало
+                        if (!string.IsNullOrEmpty(_lastInsertedDishId))
+                        {
+                            var newDish = dishes.FirstOrDefault(d => d.Article == _lastInsertedDishId);
+                            if (newDish.Article != null)
+                            {
+                                dishes.Remove(newDish);
+                                dishes.Insert(0, newDish);
+                            }
+                            // Сбрасываем ID после использования
+                            _lastInsertedDishId = null;
+                        }
+
+                        // Добавляем в DataGridView
+                        foreach (var dish in dishes)
+                        {
+                            dataGridView1.Rows.Add(
+                                dish.Article,
+                                dish.Name,
+                                dish.Event,
+                                dish.Category,
+                                dish.Compound,
+                                dish.Weight,
+                                dish.Price,
+                                dish.Photo
+                            );
                         }
 
                         label14.Text = rowCount.ToString();
@@ -491,7 +513,7 @@ namespace Kursovaya
                 {
                     comboBox2.Items.Add(rdr[1].ToString());
                 }
-                comboBox2.SelectedIndex = 0;
+                if (comboBox2.Items.Count > 0) comboBox2.SelectedIndex = 0;
                 con.Close();
             }
         }
@@ -508,7 +530,7 @@ namespace Kursovaya
                 {
                     comboBox1.Items.Add(rdr[1].ToString());
                 }
-                comboBox1.SelectedIndex = 0;
+                if (comboBox1.Items.Count > 0) comboBox1.SelectedIndex = 0;
                 con.Close();
             }
         }
@@ -523,10 +545,7 @@ namespace Kursovaya
             if (tb.Text.Length > 0 && char.IsLower(tb.Text[0]))
             {
                 int cursorPos = tb.SelectionStart;
-
-                // Делаем только первую букву заглавной
                 string newText = char.ToUpper(tb.Text[0]) + tb.Text.Substring(1);
-
                 if (tb.Text != newText)
                 {
                     tb.Text = newText;
@@ -534,10 +553,8 @@ namespace Kursovaya
                 }
             }
 
-            // Если вводится пробел
             if (e.KeyChar == ' ')
             {
-                // Запрещаем пробел в начале или после пробела/дефиса
                 if (tb.Text.Length == 0 || tb.Text[tb.Text.Length - 1] == ' ' || tb.Text[tb.Text.Length - 1] == '-')
                 {
                     e.Handled = true;
@@ -547,10 +564,8 @@ namespace Kursovaya
                 return;
             }
 
-            // Если вводится дефис
             if (e.KeyChar == '-')
             {
-                // Запрещаем дефис в начале или после пробела/дефиса
                 if (tb.Text.Length == 0 || tb.Text[tb.Text.Length - 1] == ' ' || tb.Text[tb.Text.Length - 1] == '-')
                 {
                     e.Handled = true;
@@ -560,7 +575,6 @@ namespace Kursovaya
                 return;
             }
 
-            // Проверяем русские буквы
             if ((e.KeyChar >= 'А' && e.KeyChar <= 'Я') ||
                 (e.KeyChar >= 'а' && e.KeyChar <= 'я') ||
                 e.KeyChar == 'Ё' || e.KeyChar == 'ё')
@@ -574,15 +588,10 @@ namespace Kursovaya
 
         private void textBox1_KeyPress(object sender, KeyPressEventArgs e)
         {
-            // Разрешаем управляющие символы
             if (char.IsControl(e.KeyChar))
                 return;
-
-            // Цифры
             if (char.IsDigit(e.KeyChar))
                 return;
-
-            // Запрещаем все остальные символы
             e.Handled = true;
         }
 
@@ -590,34 +599,26 @@ namespace Kursovaya
         {
             TextBox tb = (TextBox)sender;
 
-            // Разрешаем управляющие символы
             if (char.IsControl(e.KeyChar))
                 return;
 
-            // Разрешаем цифры
             if (char.IsDigit(e.KeyChar))
             {
-                // Получаем текст до вставки
                 string textBefore = tb.Text.Substring(0, tb.SelectionStart) + tb.Text.Substring(tb.SelectionStart + tb.SelectionLength);
-
-                // Проверяем общую длину числа (с учетом новой цифры)
-                if (textBefore.Replace(".", "").Length + 1 > 12) // Максимум 12 цифр (10 до точки + 2 после)
+                if (textBefore.Replace(".", "").Length + 1 > 12)
                 {
                     e.Handled = true;
                     return;
                 }
 
-                // Проверяем цифры после точки
                 int dotIndex = tb.Text.IndexOf('.');
                 if (dotIndex != -1)
                 {
                     int cursorPosition = tb.SelectionStart;
                     int digitsAfterDot = tb.Text.Length - dotIndex - 1;
 
-                    // Если курсор находится после точки и уже есть 2 цифры после точки
                     if (cursorPosition > dotIndex && digitsAfterDot >= 2)
                     {
-                        // Если выбрана часть текста, разрешаем замену
                         if (tb.SelectionLength == 0)
                         {
                             e.Handled = true;
@@ -630,24 +631,20 @@ namespace Kursovaya
                 return;
             }
 
-            // Разрешаем десятичную точку
             if (e.KeyChar == '.')
             {
-                // Запрещаем несколько точек
                 if (tb.Text.Contains('.'))
                 {
                     e.Handled = true;
                     return;
                 }
 
-                // Запрещаем точку в начале
                 if (tb.Text.Length == 0)
                 {
                     e.Handled = true;
                     return;
                 }
 
-                // Проверяем, что перед точкой не более 10 цифр
                 if (tb.Text.Length > 10)
                 {
                     e.Handled = true;
@@ -658,7 +655,6 @@ namespace Kursovaya
                 return;
             }
 
-            // Запрещаем все остальные символы
             e.Handled = true;
         }
 
@@ -666,34 +662,26 @@ namespace Kursovaya
         {
             TextBox tb = (TextBox)sender;
 
-            // Разрешаем управляющие символы
             if (char.IsControl(e.KeyChar))
                 return;
 
-            // Разрешаем цифры
             if (char.IsDigit(e.KeyChar))
             {
-                // Получаем текст до вставки
                 string textBefore = tb.Text.Substring(0, tb.SelectionStart) + tb.Text.Substring(tb.SelectionStart + tb.SelectionLength);
-
-                // Проверяем общую длину числа (с учетом новой цифры)
-                if (textBefore.Replace(".", "").Length + 1 > 9) // Максимум 9 цифр (7 до точки + 2 после)
+                if (textBefore.Replace(".", "").Length + 1 > 9)
                 {
                     e.Handled = true;
                     return;
                 }
 
-                // Проверяем цифры после точки
                 int dotIndex = tb.Text.IndexOf('.');
                 if (dotIndex != -1)
                 {
                     int cursorPosition = tb.SelectionStart;
                     int digitsAfterDot = tb.Text.Length - dotIndex - 1;
 
-                    // Если курсор находится после точки и уже есть 2 цифры после точки
                     if (cursorPosition > dotIndex && digitsAfterDot >= 2)
                     {
-                        // Если выбрана часть текста, разрешаем замену
                         if (tb.SelectionLength == 0)
                         {
                             e.Handled = true;
@@ -706,24 +694,20 @@ namespace Kursovaya
                 return;
             }
 
-            // Разрешаем десятичную точку
             if (e.KeyChar == '.')
             {
-                // Запрещаем несколько точек
                 if (tb.Text.Contains('.'))
                 {
                     e.Handled = true;
                     return;
                 }
 
-                // Запрещаем точку в начале
                 if (tb.Text.Length == 0)
                 {
                     e.Handled = true;
                     return;
                 }
 
-                // Проверяем, что перед точкой не более 7 цифр
                 if (tb.Text.Length > 7)
                 {
                     e.Handled = true;
@@ -734,7 +718,6 @@ namespace Kursovaya
                 return;
             }
 
-            // Запрещаем все остальные символы
             e.Handled = true;
         }
 
@@ -742,11 +725,9 @@ namespace Kursovaya
         {
             TextBox tb = (TextBox)sender;
 
-            // Разрешаем управляющие символы (Backspace, Enter, etc.)
             if (char.IsControl(e.KeyChar))
                 return;
 
-            // Разрешаем русские буквы (верхний и нижний регистр)
             if ((e.KeyChar >= 'А' && e.KeyChar <= 'Я') ||
                 (e.KeyChar >= 'а' && e.KeyChar <= 'я') ||
                 e.KeyChar == 'Ё' || e.KeyChar == 'ё')
@@ -755,42 +736,36 @@ namespace Kursovaya
                 return;
             }
 
-            // Разрешаем цифры (для указания веса, количества)
             if (char.IsDigit(e.KeyChar))
             {
                 e.Handled = false;
                 return;
             }
 
-            // Разрешаем пробел
             if (e.KeyChar == ' ')
             {
-                // Запрещаем пробел в начале
                 if (tb.Text.Length == 0)
                 {
                     e.Handled = true;
                     return;
                 }
 
-                // Запрещаем пробел после пробела
                 if (tb.Text.Length > 0 && tb.Text[tb.Text.Length - 1] == ' ')
                 {
                     e.Handled = true;
                     return;
                 }
 
-                // Разрешаем пробел
                 e.Handled = false;
                 return;
             }
 
-            // Разрешаем знаки препинания и часто используемые символы
             char[] allowedSymbols = {
-        '.', ',', '!', '?', ';', ':', '-', '—',  // знаки препинания
-        '(', ')', '"', '\'', '«', '»',           // кавычки и скобки
-        '/', '\\', '№', '#', '*',                // специальные символы
-        '+', '=', '%', '&', '@'                  // математические символы
-    };
+                '.', ',', '!', '?', ';', ':', '-', '—',
+                '(', ')', '"', '\'', '«', '»',
+                '/', '\\', '№', '#', '*',
+                '+', '=', '%', '&', '@'
+            };
 
             if (allowedSymbols.Contains(e.KeyChar))
             {
@@ -798,177 +773,7 @@ namespace Kursovaya
                 return;
             }
 
-            // Автоматическое преобразование первой буквы предложения в заглавную
-            if (tb.Text.Length > 0)
-            {
-                int cursorPos = tb.SelectionStart;
-
-                // Разделяем текст по точкам с пробелом
-                string[] sentences = tb.Text.Split(new[] { ". " }, StringSplitOptions.None);
-
-                // Обрабатываем каждое предложение
-                for (int i = 0; i < sentences.Length; i++)
-                {
-                    if (!string.IsNullOrEmpty(sentences[i]))
-                    {
-                        // Делаем первую букву каждого предложения заглавной
-                        if (sentences[i].Length > 0 && char.IsLower(sentences[i][0]))
-                        {
-                            sentences[i] = char.ToUpper(sentences[i][0]) + sentences[i].Substring(1);
-                        }
-                    }
-                }
-
-                // Собираем текст обратно
-                string newText = string.Join(". ", sentences);
-
-                if (tb.Text != newText)
-                {
-                    tb.Text = newText;
-                    tb.SelectionStart = cursorPos;
-                }
-            }
-
-            // Все остальные символы запрещаем
             e.Handled = true;
-        }
-
-        // Метод для загрузки изображения в pictureBox из Resources
-        private void LoadImageToPictureBox(string photoFileName)
-        {
-            try
-            {
-                if (string.IsNullOrEmpty(photoFileName))
-                {
-                    pictureBox1.Image = null;
-                    return;
-                }
-
-                string resourcesFolder = @".\Resources\";
-                string fullImagePath = Path.Combine(resourcesFolder, photoFileName);
-
-                if (File.Exists(fullImagePath))
-                {
-                    using (var fs = new FileStream(fullImagePath, FileMode.Open, FileAccess.Read))
-                    {
-                        pictureBox1.Image = Image.FromStream(fs);
-                    }
-                }
-                else
-                {
-                    pictureBox1.Image = null;
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Ошибка загрузки изображения: {ex.Message}");
-                pictureBox1.Image = null;
-            }
-        }
-
-        // Метод проверки типа файла
-        private bool IsFileTypeValid(string filePath)
-        {
-            string[] allowedExtensions = { ".jpg", ".jpeg", ".png" };
-            string fileExtension = Path.GetExtension(filePath).ToLower();
-
-            return allowedExtensions.Contains(fileExtension);
-        }
-
-        // Метод проверки размера файла (упрощенная версия)
-        private bool IsFileSizeValid(string filePath)
-        {
-            try
-            {
-                FileInfo fileInfo = new FileInfo(filePath);
-                long maxSize = 10 * 1024 * 1024; // 10 МБ (сжатие все равно уменьшит до 3 МБ)
-
-                if (fileInfo.Length > maxSize)
-                {
-                    MessageBox.Show($"Размер файла {fileInfo.Length / (1024 * 1024)} МБ превышает 10 МБ. " +
-                                  "Пожалуйста, выберите изображение меньшего размера.",
-                                  "Превышен размер файла",
-                                  MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return false;
-                }
-                return true;
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Ошибка проверки размера файла: {ex.Message}", "Ошибка",
-                              MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Сжимает изображение до указанного размера, сохраняя качество
-        /// </summary>
-        /// <param name="sourceImage">Исходное изображение</param>
-        /// <param name="targetSizeBytes">Целевой размер в байтах (3 МБ = 3 * 1024 * 1024)</param>
-        /// <returns>Сжатое изображение</returns>
-        private Image CompressImage(Image sourceImage, long targetSizeBytes = 3 * 1024 * 1024)
-        {
-            if (sourceImage == null) return null;
-
-            int quality = 90; // Начинаем с высокого качества
-            Image resultImage = null;
-
-            using (MemoryStream ms = new MemoryStream())
-            {
-                do
-                {
-                    // Сохраняем с текущим качеством
-                    SaveJpegWithQuality(sourceImage, ms, quality);
-
-                    if (ms.Length <= targetSizeBytes || quality <= 10)
-                    {
-                        // Достигли нужного размера - возвращаем копию
-                        resultImage = Image.FromStream(new MemoryStream(ms.ToArray()));
-                        break;
-                    }
-
-                    // Уменьшаем качество и пробуем снова
-                    quality -= 10;
-                    ms.SetLength(0); // Очищаем поток
-                    ms.Position = 0;
-
-                } while (quality > 0);
-            }
-
-            return resultImage;
-        }
-
-        /// <summary>
-        /// Сохраняет изображение в JPEG с указанным качеством
-        /// </summary>
-        private void SaveJpegWithQuality(Image image, Stream stream, int quality)
-        {
-            // Получаем кодировщик JPEG
-            ImageCodecInfo jpegCodec = GetEncoderInfo("image/jpeg");
-
-            if (jpegCodec == null)
-            {
-                // Если кодировщик не найден, сохраняем стандартным методом
-                image.Save(stream, System.Drawing.Imaging.ImageFormat.Jpeg);
-                return;
-            }
-
-            // Настраиваем параметры качества
-            using (EncoderParameters encoderParams = new EncoderParameters(1))
-            {
-                encoderParams.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, quality);
-                image.Save(stream, jpegCodec, encoderParams);
-            }
-        }
-
-        /// <summary>
-        /// Получает информацию о кодировщике по MIME типу
-        /// </summary>
-        private ImageCodecInfo GetEncoderInfo(string mimeType)
-        {
-            ImageCodecInfo[] codecs = ImageCodecInfo.GetImageEncoders();
-            return codecs.FirstOrDefault(codec => codec.MimeType == mimeType);
         }
 
         private void button1_Click(object sender, EventArgs e)
@@ -982,7 +787,6 @@ namespace Kursovaya
                 {
                     try
                     {
-                        // Сохраняем путь к выбранному файлу
                         originalImageFilePath = openFileDialog.FileName;
 
                         if (!IsFileTypeValid(originalImageFilePath))
@@ -999,17 +803,13 @@ namespace Kursovaya
                         }
 
                         pictureBox1.SizeMode = PictureBoxSizeMode.Zoom;
-
-                        // Загружаем изображение из выбранного файла
                         newProductImage = Image.FromFile(originalImageFilePath);
 
-                        // Сразу сжимаем изображение для отображения
                         using (Image compressed = CompressImage(newProductImage, 3 * 1024 * 1024))
                         {
                             if (compressed != null)
                             {
                                 pictureBox1.Image = (Image)compressed.Clone();
-                                // Заменяем newProductImage сжатой версией
                                 newProductImage.Dispose();
                                 newProductImage = (Image)compressed.Clone();
                             }
@@ -1019,7 +819,6 @@ namespace Kursovaya
                             }
                         }
 
-                        // Обновляем состояние кнопок после изменения изображения
                         UpdateButtonsState();
                     }
                     catch (Exception ex)
@@ -1031,7 +830,133 @@ namespace Kursovaya
             }
         }
 
-        // Проверка на уникальность артикула
+        private bool IsFileTypeValid(string filePath)
+        {
+            string[] allowedExtensions = { ".jpg", ".jpeg", ".png" };
+            string fileExtension = Path.GetExtension(filePath).ToLower();
+            return allowedExtensions.Contains(fileExtension);
+        }
+
+        private bool IsFileSizeValid(string filePath)
+        {
+            try
+            {
+                FileInfo fileInfo = new FileInfo(filePath);
+                long maxSize = 10 * 1024 * 1024;
+                if (fileInfo.Length > maxSize)
+                {
+                    MessageBox.Show($"Размер файла {fileInfo.Length / (1024 * 1024)} МБ превышает 10 МБ.",
+                                  "Превышен размер файла",
+                                  MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return false;
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка проверки размера файла: {ex.Message}", "Ошибка",
+                              MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
+        }
+
+        private Image CompressImage(Image sourceImage, long targetSizeBytes = 3 * 1024 * 1024)
+        {
+            if (sourceImage == null) return null;
+
+            int quality = 90;
+            Image resultImage = null;
+
+            using (MemoryStream ms = new MemoryStream())
+            {
+                do
+                {
+                    SaveJpegWithQuality(sourceImage, ms, quality);
+
+                    if (ms.Length <= targetSizeBytes || quality <= 10)
+                    {
+                        resultImage = Image.FromStream(new MemoryStream(ms.ToArray()));
+                        break;
+                    }
+
+                    quality -= 10;
+                    ms.SetLength(0);
+                    ms.Position = 0;
+
+                } while (quality > 0);
+            }
+
+            return resultImage;
+        }
+
+        private void SaveJpegWithQuality(Image image, Stream stream, int quality)
+        {
+            ImageCodecInfo jpegCodec = GetEncoderInfo("image/jpeg");
+
+            if (jpegCodec == null)
+            {
+                image.Save(stream, System.Drawing.Imaging.ImageFormat.Jpeg);
+                return;
+            }
+
+            using (EncoderParameters encoderParams = new EncoderParameters(1))
+            {
+                encoderParams.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, quality);
+                image.Save(stream, jpegCodec, encoderParams);
+            }
+        }
+
+        private ImageCodecInfo GetEncoderInfo(string mimeType)
+        {
+            ImageCodecInfo[] codecs = ImageCodecInfo.GetImageEncoders();
+            return codecs.FirstOrDefault(codec => codec.MimeType == mimeType);
+        }
+
+        private string SaveImageToFolder(Image image)
+        {
+            try
+            {
+                if (image == null)
+                    return "";
+
+                string resourcesFolder = Path.Combine(Directory.GetCurrentDirectory(), "Resources");
+                if (!Directory.Exists(resourcesFolder))
+                {
+                    Directory.CreateDirectory(resourcesFolder);
+                }
+
+                string fileName = $"dish_{Guid.NewGuid():N}.jpg";
+                string fullPath = Path.Combine(resourcesFolder, fileName);
+
+                using (Image compressedImage = CompressImage(image, 3 * 1024 * 1024))
+                {
+                    if (compressedImage != null)
+                    {
+                        compressedImage.Save(fullPath, System.Drawing.Imaging.ImageFormat.Jpeg);
+                    }
+                    else
+                    {
+                        using (Bitmap bmp = new Bitmap(image.Width, image.Height))
+                        {
+                            using (Graphics g = Graphics.FromImage(bmp))
+                            {
+                                g.DrawImage(image, 0, 0, image.Width, image.Height);
+                            }
+                            bmp.Save(fullPath, System.Drawing.Imaging.ImageFormat.Jpeg);
+                        }
+                    }
+                }
+
+                return fileName;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка сохранения изображения: {ex.Message}", "Ошибка",
+                              MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return "";
+            }
+        }
+
         private bool IsArticleExists(string article)
         {
             string query = "SELECT COUNT(*) FROM Dishes WHERE Article = @article";
@@ -1044,7 +969,6 @@ namespace Kursovaya
                     using (MySqlCommand cmd = new MySqlCommand(query, con))
                     {
                         cmd.Parameters.AddWithValue("@article", article.Trim());
-
                         int count = Convert.ToInt32(cmd.ExecuteScalar());
                         return count > 0;
                     }
@@ -1058,220 +982,10 @@ namespace Kursovaya
             }
         }
 
-        private void button2_Click(object sender, EventArgs e)
-        {
-            // Получаем данные из полей ввода
-            string article = textBox1.Text.Trim();
-            string weight = textBox2.Text.Trim();
-            string price = textBox3.Text.Trim();
-            string nameDish = textBox4.Text.Trim();
-            string compound = textBox5.Text.Trim();
-
-            // Получаем выбранные значения из ComboBox
-            int idEvent = comboBox1.SelectedIndex + 1;
-            int idCategory = comboBox2.SelectedIndex + 1;
-
-            // Получаем путь к изображению
-            string photoPath = pictureBox1.Image != null ? SaveImageToFolder(pictureBox1.Image) : "";
-
-            // ВАЛИДАЦИЯ ДАННЫХ - сбор всех ошибок в одно сообщение
-            List<string> errors = new List<string>();
-
-            if (string.IsNullOrEmpty(nameDish))
-                errors.Add("• Название блюда");
-
-            if (string.IsNullOrEmpty(compound))
-                errors.Add("• Состав блюда");
-
-            if (string.IsNullOrEmpty(weight))
-                errors.Add("• Вес блюда");
-
-            if (string.IsNullOrEmpty(price))
-                errors.Add("• Цена блюда");
-
-            if (string.IsNullOrEmpty(article))
-                errors.Add("• Артикул блюда");
-
-            if (comboBox1.SelectedIndex < 0)
-                errors.Add("• Мероприятие (не выбрано)");
-
-            if (comboBox2.SelectedIndex < 0)
-                errors.Add("• Категория (не выбрана)");
-
-            // Если есть ошибки - выводим одним сообщением
-            if (errors.Count > 0)
-            {
-                string errorMessage = "Пожалуйста, заполните следующие обязательные поля:\n\n" + string.Join("\n", errors);
-                MessageBox.Show(errorMessage, "Ошибка валидации",
-                              MessageBoxButtons.OK, MessageBoxIcon.Warning);
-
-                // Фокусируемся на первом пустом поле
-                if (string.IsNullOrEmpty(nameDish)) textBox4.Focus();
-                else if (string.IsNullOrEmpty(compound)) textBox5.Focus();
-                else if (string.IsNullOrEmpty(weight)) textBox2.Focus();
-                else if (string.IsNullOrEmpty(price)) textBox3.Focus();
-                else if (string.IsNullOrEmpty(article)) textBox1.Focus();
-                else if (comboBox1.SelectedIndex < 0) comboBox1.Focus();
-                else if (comboBox2.SelectedIndex < 0) comboBox2.Focus();
-
-                return;
-            }
-
-            // Проверка числовых значений с учетом разных форматов разделителей
-            // Используем CultureInfo.InvariantCulture для корректного парсинга с точкой
-            if (!decimal.TryParse(weight, System.Globalization.NumberStyles.Any,
-                                 System.Globalization.CultureInfo.InvariantCulture,
-                                 out decimal weightValue) || weightValue <= 0)
-            {
-                MessageBox.Show("Введите корректный вес блюда (положительное число, например: 123.45)", "Ошибка",
-                              MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                textBox2.Focus();
-                return;
-            }
-
-            if (!decimal.TryParse(price, System.Globalization.NumberStyles.Any,
-                                 System.Globalization.CultureInfo.InvariantCulture,
-                                 out decimal priceValue) || priceValue <= 0)
-            {
-                MessageBox.Show("Введите корректную цену блюда (положительное число, например: 123.45)", "Ошибка",
-                              MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                textBox3.Focus();
-                return;
-            }
-
-            // Дополнительная проверка формата (опционально)
-            if (weight.Contains("."))
-            {
-                string[] weightParts = weight.Split('.');
-                if (weightParts.Length > 1 && weightParts[1].Length != 2)
-                {
-                    MessageBox.Show("Введите вес в формате: до 7 цифр до точки и ровно 2 цифры после точки", "Ошибка",
-                                  MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    textBox2.Focus();
-                    return;
-                }
-            }
-
-            if (price.Contains("."))
-            {
-                string[] priceParts = price.Split('.');
-                if (priceParts.Length > 1 && priceParts[1].Length != 2)
-                {
-                    MessageBox.Show("Введите цену в формате: до 10 цифр до точки и ровно 2 цифры после точки", "Ошибка",
-                                  MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    textBox3.Focus();
-                    return;
-                }
-            }
-
-            // Проверка максимальных значений
-            if (weightValue > 9999)
-            {
-                MessageBox.Show("Максимальный вес: 9999", "Ошибка",
-                              MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                textBox2.Focus();
-                return;
-            }
-
-            if (priceValue > 99999.99m)
-            {
-                MessageBox.Show("Максимальная цена: 99999.99", "Ошибка",
-                              MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                textBox3.Focus();
-                return;
-            }
-
-            // Улучшенная проверка дубликатов (обязательные поля)
-            if (IsDishExists(nameDish, compound, idCategory, idEvent))
-            {
-                MessageBox.Show("Такое блюдо уже существует в базе данных.\n\n" +
-                               "Измените название, состав или выберите другую категорию/мероприятие.",
-                               "Ошибка",
-                               MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            // Уникальность артикула (дополнительная проверка)
-            if (IsArticleExists(article))
-            {
-                MessageBox.Show("Блюдо с таким артикулом уже существует", "Ошибка",
-                              MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            // Добавление в базу данных
-            string query = @"INSERT INTO Dishes (Article, IdEvent, IdCategory, Name, Compound, Weight, Price, Photo) 
-     VALUES (@article, @idEvent, @idCategory, @nameDishes, @compoundDishes, @weight, @price, @photo)";
-
-            using (MySqlConnection con = new MySqlConnection(conString))
-            {
-                try
-                {
-                    con.Open();
-                    using (MySqlCommand cmd = new MySqlCommand(query, con))
-                    {
-                        // Сохраняем значения как decimal для базы данных
-                        cmd.Parameters.AddWithValue("@article", article);
-                        cmd.Parameters.AddWithValue("@weight", weightValue);
-                        cmd.Parameters.AddWithValue("@price", priceValue);
-                        cmd.Parameters.AddWithValue("@nameDishes", nameDish);
-                        cmd.Parameters.AddWithValue("@compoundDishes", compound);
-                        cmd.Parameters.AddWithValue("@photo", photoPath);
-                        cmd.Parameters.AddWithValue("@idEvent", idEvent);
-                        cmd.Parameters.AddWithValue("@idCategory", idCategory);
-
-                        int rowsAffected = cmd.ExecuteNonQuery();
-
-                        if (rowsAffected > 0)
-                        {
-                            MessageBox.Show("Блюдо успешно добавлено", "Успех",
-                                          MessageBoxButtons.OK, MessageBoxIcon.Information);
-                            ClearForm();
-                            FillDataGridView();
-                            ClearAllFields();
-                            Pagination();
-                        }
-                        else
-                        {
-                            MessageBox.Show("Не удалось добавить блюдо", "Ошибка",
-                                          MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        }
-                    }
-                }
-                catch (FormatException)
-                {
-                    MessageBox.Show("Неверный формат данных", "Ошибка",
-                                  MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-                catch (MySqlException ex)
-                {
-                    // Обработка ошибок MySQL (например, нарушение уникальности)
-                    if (ex.Number == 1062) // Ошибка дублирования ключа в MySQL
-                    {
-                        MessageBox.Show("Такое блюдо уже существует в базе данных!", "Ошибка",
-                                      MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
-                    else
-                    {
-                        MessageBox.Show($"Ошибка базы данных: {ex.Message}", "Ошибка",
-                                      MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Ошибка добавления блюда: {ex.Message}", "Ошибка",
-                                  MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            }
-        }
-
-        // Метод проверки на дублирование блюда
         private bool IsDishExists(string nameDish, string compound, int idCategory, int idEvent)
         {
-            // Проверяем по комбинации обязательных полей
             string query = @"SELECT COUNT(*) FROM Dishes 
-                    WHERE Article = @article
-                    AND Name = @nameDishes 
+                    WHERE Name = @nameDishes 
                     AND Compound = @compoundDishes 
                     AND IdCategory = @idCategory
                     AND IdEvent = @idEvent";
@@ -1283,7 +997,6 @@ namespace Kursovaya
                     con.Open();
                     using (MySqlCommand cmd = new MySqlCommand(query, con))
                     {
-                        cmd.Parameters.AddWithValue("@article", textBox1.Text.Trim());
                         cmd.Parameters.AddWithValue("@nameDishes", nameDish.Trim());
                         cmd.Parameters.AddWithValue("@compoundDishes", compound.Trim());
                         cmd.Parameters.AddWithValue("@idCategory", idCategory);
@@ -1297,17 +1010,15 @@ namespace Kursovaya
                 {
                     MessageBox.Show($"Ошибка проверки дубликата: {ex.Message}", "Ошибка",
                                   MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return true; // В случае ошибки считаем, что блюдо существует
+                    return true;
                 }
             }
         }
 
-        // Метод для проверки дубликатов при редактировании
         private bool IsAnotherDishExistsForEdit(string nameDish, string compound, int idCategory, int idEvent, int currentArticle)
         {
             string query = @"SELECT COUNT(*) FROM Dishes 
-                    WHERE Article = @article
-                    AND Name = @nameDishes 
+                    WHERE Name = @nameDishes 
                     AND Compound = @compoundDishes 
                     AND IdCategory = @idCategory
                     AND IdEvent = @idEvent
@@ -1320,7 +1031,6 @@ namespace Kursovaya
                     con.Open();
                     using (MySqlCommand cmd = new MySqlCommand(query, con))
                     {
-                        cmd.Parameters.AddWithValue("@article", textBox1.Text.Trim());
                         cmd.Parameters.AddWithValue("@nameDishes", nameDish.Trim());
                         cmd.Parameters.AddWithValue("@compoundDishes", compound.Trim());
                         cmd.Parameters.AddWithValue("@idCategory", idCategory);
@@ -1340,86 +1050,131 @@ namespace Kursovaya
             }
         }
 
-        // Метод для сохранения изображения в папку Resources (с автоматическим сжатием)
-        private string SaveImageToFolder(Image image)
+        private void button2_Click(object sender, EventArgs e)
         {
-            try
+            string article = textBox1.Text.Trim();
+            string weight = textBox2.Text.Trim();
+            string price = textBox3.Text.Trim();
+            string nameDish = textBox4.Text.Trim();
+            string compound = textBox5.Text.Trim();
+
+            int idEvent = comboBox1.SelectedIndex + 1;
+            int idCategory = comboBox2.SelectedIndex + 1;
+
+            string photoPath = pictureBox1.Image != null ? SaveImageToFolder(pictureBox1.Image) : "";
+
+            List<string> errors = new List<string>();
+
+            if (string.IsNullOrEmpty(nameDish)) errors.Add("• Название блюда");
+            if (string.IsNullOrEmpty(compound)) errors.Add("• Состав блюда");
+            if (string.IsNullOrEmpty(weight)) errors.Add("• Вес блюда");
+            if (string.IsNullOrEmpty(price)) errors.Add("• Цена блюда");
+            if (string.IsNullOrEmpty(article)) errors.Add("• Артикул блюда");
+            if (comboBox1.SelectedIndex < 0) errors.Add("• Мероприятие (не выбрано)");
+            if (comboBox2.SelectedIndex < 0) errors.Add("• Категория (не выбрана)");
+
+            if (errors.Count > 0)
             {
-                if (image == null)
-                    return "";
+                string errorMessage = "Пожалуйста, заполните следующие обязательные поля:\n\n" + string.Join("\n", errors);
+                MessageBox.Show(errorMessage, "Ошибка валидации",
+                              MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
 
-                // Создаем папку Resources если ее нет
-                string resourcesFolder = Path.Combine(Directory.GetCurrentDirectory(), "Resources");
-                if (!Directory.Exists(resourcesFolder))
+            if (!decimal.TryParse(weight, System.Globalization.NumberStyles.Any,
+                                 System.Globalization.CultureInfo.InvariantCulture,
+                                 out decimal weightValue) || weightValue <= 0)
+            {
+                MessageBox.Show("Введите корректный вес блюда", "Ошибка",
+                              MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                textBox2.Focus();
+                return;
+            }
+
+            if (!decimal.TryParse(price, System.Globalization.NumberStyles.Any,
+                                 System.Globalization.CultureInfo.InvariantCulture,
+                                 out decimal priceValue) || priceValue <= 0)
+            {
+                MessageBox.Show("Введите корректную цену блюда", "Ошибка",
+                              MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                textBox3.Focus();
+                return;
+            }
+
+            if (IsArticleExists(article))
+            {
+                MessageBox.Show("Блюдо с таким артикулом уже существует", "Ошибка",
+                              MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            if (IsDishExists(nameDish, compound, idCategory, idEvent))
+            {
+                MessageBox.Show("Такое блюдо уже существует в базе данных.", "Ошибка",
+                              MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            string query = @"INSERT INTO Dishes (Article, IdEvent, IdCategory, Name, Compound, Weight, Price, Photo) 
+                            VALUES (@article, @idEvent, @idCategory, @nameDishes, @compoundDishes, @weight, @price, @photo)";
+
+            using (MySqlConnection con = new MySqlConnection(conString))
+            {
+                try
                 {
-                    Directory.CreateDirectory(resourcesFolder);
-                }
-
-                // Генерируем уникальное имя файла с использованием GUID
-                string fileName = $"dish_{Guid.NewGuid():N}.jpg";
-                string fullPath = Path.Combine(resourcesFolder, fileName);
-
-                // СЖИМАЕМ ИЗОБРАЖЕНИЕ до 3 МБ
-                using (Image compressedImage = CompressImage(image, 3 * 1024 * 1024))
-                {
-                    if (compressedImage != null)
+                    con.Open();
+                    using (MySqlCommand cmd = new MySqlCommand(query, con))
                     {
-                        // Сохраняем сжатое изображение
-                        compressedImage.Save(fullPath, System.Drawing.Imaging.ImageFormat.Jpeg);
+                        cmd.Parameters.AddWithValue("@article", article);
+                        cmd.Parameters.AddWithValue("@weight", weightValue);
+                        cmd.Parameters.AddWithValue("@price", priceValue);
+                        cmd.Parameters.AddWithValue("@nameDishes", nameDish);
+                        cmd.Parameters.AddWithValue("@compoundDishes", compound);
+                        cmd.Parameters.AddWithValue("@photo", photoPath);
+                        cmd.Parameters.AddWithValue("@idEvent", idEvent);
+                        cmd.Parameters.AddWithValue("@idCategory", idCategory);
 
-                        // Логируем результат (опционально)
-                        FileInfo fileInfo = new FileInfo(fullPath);
-                        System.Diagnostics.Debug.WriteLine($"Сжато: {fileInfo.Length / 1024} KB");
-                    }
-                    else
-                    {
-                        // Если сжатие не удалось, сохраняем оригинал
-                        using (Bitmap bmp = new Bitmap(image.Width, image.Height))
+                        int rowsAffected = cmd.ExecuteNonQuery();
+
+                        if (rowsAffected > 0)
                         {
-                            using (Graphics g = Graphics.FromImage(bmp))
+                            // Сохраняем артикул новой записи
+                            _lastInsertedDishId = article;
+
+                            MessageBox.Show("Блюдо успешно добавлено", "Успех",
+                                          MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            ClearForm();
+                            FillDataGridView();
+                            ClearAllFields();
+                            Pagination();
+
+                            if (dataGridView1.Rows.Count > 0)
                             {
-                                g.DrawImage(image, 0, 0, image.Width, image.Height);
+                                dataGridView1.Rows[0].Selected = true;
+                                dataGridView1.FirstDisplayedScrollingRowIndex = 0;
                             }
-                            bmp.Save(fullPath, System.Drawing.Imaging.ImageFormat.Jpeg);
                         }
                     }
                 }
-
-                return fileName; // Возвращаем только имя файла
+                catch (MySqlException ex)
+                {
+                    if (ex.Number == 1062)
+                    {
+                        MessageBox.Show("Такое блюдо уже существует в базе данных!", "Ошибка",
+                                      MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                    else
+                    {
+                        MessageBox.Show($"Ошибка базы данных: {ex.Message}", "Ошибка",
+                                      MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ошибка добавления блюда: {ex.Message}", "Ошибка",
+                                  MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
             }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Ошибка сохранения изображения: {ex.Message}", "Ошибка",
-                              MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return "";
-            }
-        }
-
-        // Метод очистки формы
-        private void ClearForm()
-        {
-            textBox1.Clear();
-            textBox2.Clear();
-            textBox3.Clear();
-            textBox4.Clear();
-            textBox5.Clear();
-            pictureBox1.Image = null;
-            comboBox1.SelectedIndex = 0;
-            comboBox2.SelectedIndex = 0;
-
-            // Сбрасываем путь к файлу
-            originalImageFilePath = null;
-            newProductImage = null;
-
-            // Сбрасываем сохраненные данные
-            selectedRowData = null;
-            originalName = "";
-            originalCompound = "";
-            originalWeight = "";
-            originalPrice = "";
-            originalPhoto = "";
-            originalEvent = "";
-            originalCategory = "";
         }
 
         private void button3_Click(object sender, EventArgs e)
@@ -1431,22 +1186,18 @@ namespace Kursovaya
                 return;
             }
 
-            // Получаем ID выбранного блюда и старые данные
             int selectedId = Convert.ToInt32(dataGridView1.CurrentRow.Cells["Article"].Value);
             DataGridViewRow selectedRow = dataGridView1.CurrentRow;
 
-            // Получаем старые значения из выбранной строки
             string oldCategory = selectedRow.Cells["Category"].Value?.ToString() ?? "";
             string oldEvent = selectedRow.Cells["Event"].Value?.ToString() ?? "";
             string oldPhoto = GetCurrentPhotoPath(selectedId);
 
-            // Новые значения из полей ввода
             string name = textBox4.Text.Trim();
             string compound = textBox5.Text.Trim();
             string weightText = textBox2.Text.Trim();
             string priceText = textBox3.Text.Trim();
 
-            // ПРАВИЛЬНОЕ получение ID категории и события
             int idCategory;
             int idEvent;
 
@@ -1468,33 +1219,26 @@ namespace Kursovaya
                 idEvent = GetEventIdFromName(oldEvent);
             }
 
-            // УПРОЩЕННАЯ РАБОТА С ИЗОБРАЖЕНИЕМ
-            string photo = oldPhoto; // По умолчанию используем старое фото
+            string photo = oldPhoto;
 
-            // Если в pictureBox есть новое изображение - сохраняем его
             if (pictureBox1.Image != null)
             {
-                // Всегда сохраняем новое изображение при редактировании, если оно есть
                 string newPhotoPath = SaveImageToFolder(pictureBox1.Image);
                 if (!string.IsNullOrEmpty(newPhotoPath))
                 {
                     photo = newPhotoPath;
-
-                    // Удаляем старое изображение, если оно существует и не используется другими записями
                     if (!string.IsNullOrEmpty(oldPhoto))
                     {
                         DeleteOldImageIfNotUsed(oldPhoto, selectedId);
                     }
                 }
             }
-            // Если pictureBox пустой, но старое фото было - значит фото удалили
             else if (!string.IsNullOrEmpty(oldPhoto))
             {
-                photo = ""; // Очищаем фото
+                photo = "";
                 DeleteOldImageIfNotUsed(oldPhoto, selectedId);
             }
 
-            // ВАЛИДАЦИЯ ДАННЫХ
             if (string.IsNullOrEmpty(name))
             {
                 MessageBox.Show("Введите название блюда", "Ошибка",
@@ -1527,7 +1271,6 @@ namespace Kursovaya
                 return;
             }
 
-            // Проверка на существование (исключая текущее блюдо)
             if (IsAnotherDishExistsForEdit(name, compound, idCategory, idEvent, selectedId))
             {
                 MessageBox.Show("Такое блюдо уже существует", "Ошибка",
@@ -1535,7 +1278,6 @@ namespace Kursovaya
                 return;
             }
 
-            // ОБНОВЛЕНИЕ в базе данных
             string query = @"UPDATE Dishes 
             SET Name = @name, 
                 Compound = @compound, 
@@ -1566,12 +1308,13 @@ namespace Kursovaya
 
                         if (rowsAffected > 0)
                         {
+                            // Сбрасываем ID последнего добавленного блюда при редактировании
+                            _lastInsertedDishId = null;
+
                             MessageBox.Show("Блюдо успешно обновлено", "Успех",
                                           MessageBoxButtons.OK, MessageBoxIcon.Information);
 
-                            // Обновляем сохраненные данные
                             SaveOriginalData();
-
                             ClearForm();
                             FillDataGridView();
                             ClearAllFields();
@@ -1591,12 +1334,72 @@ namespace Kursovaya
             }
         }
 
-        // Метод для удаления старых изображений
+        private void button5_Click(object sender, EventArgs e)
+        {
+            if (dataGridView1.CurrentRow == null)
+            {
+                MessageBox.Show("Выберите блюдо для удаления", "Ошибка",
+                              MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            string selectedIdString = Convert.ToString(dataGridView1.CurrentRow.Cells["Article"].Value);
+            int selectedId = Convert.ToInt32(dataGridView1.CurrentRow.Cells["Article"].Value);
+
+            DialogResult result = MessageBox.Show(
+                $"Вы уверены, что хотите удалить блюдо с артикулом \"{selectedIdString}\"?",
+                "Подтверждение удаления",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+
+            if (result != DialogResult.Yes)
+                return;
+
+            if (IsDishInUse(selectedId))
+            {
+                MessageBox.Show("Невозможно удалить блюдо, так как оно используется в других таблицах",
+                              "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            string query = "DELETE FROM Dishes WHERE Article = @dishId";
+
+            using (MySqlConnection con = new MySqlConnection(conString))
+            {
+                try
+                {
+                    con.Open();
+                    using (MySqlCommand cmd = new MySqlCommand(query, con))
+                    {
+                        cmd.Parameters.AddWithValue("@dishId", selectedId);
+                        int rowsAffected = cmd.ExecuteNonQuery();
+
+                        if (rowsAffected > 0)
+                        {
+                            // Сбрасываем ID последнего добавленного блюда при удалении
+                            _lastInsertedDishId = null;
+
+                            MessageBox.Show("Блюдо успешно удалено", "Успех",
+                                          MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            textBox1.Clear();
+                            FillDataGridView();
+                            ClearAllFields();
+                            Pagination();
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ошибка удаления блюда: {ex.Message}", "Ошибка",
+                                  MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+
         private void DeleteOldImageIfNotUsed(string imageFileName, int currentDishId)
         {
             try
             {
-                // Проверяем, используется ли это изображение другими блюдами
                 string query = "SELECT COUNT(*) FROM Dishes WHERE Photo = @photo AND Article != @currentDishId";
 
                 using (MySqlConnection con = new MySqlConnection(conString))
@@ -1606,10 +1409,8 @@ namespace Kursovaya
                     {
                         cmd.Parameters.AddWithValue("@photo", imageFileName);
                         cmd.Parameters.AddWithValue("@currentDishId", currentDishId);
-
                         int count = Convert.ToInt32(cmd.ExecuteScalar());
 
-                        // Если изображение не используется другими блюдами, удаляем файл
                         if (count == 0)
                         {
                             string resourcesFolder = Path.Combine(Directory.GetCurrentDirectory(), "Resources");
@@ -1625,26 +1426,13 @@ namespace Kursovaya
             }
             catch (Exception ex)
             {
-                // Не блокируем выполнение при ошибке удаления файла
                 Console.WriteLine($"Ошибка при удалении файла: {ex.Message}");
             }
         }
 
-        // Улучшенный метод получения ID события
         private int GetEventIdFromName(string eventName)
         {
-            if (string.IsNullOrEmpty(eventName))
-            {
-                // Если событие не указано, пытаемся получить из выбранной строки
-                if (dataGridView1.CurrentRow != null)
-                {
-                    string oldEvent = dataGridView1.CurrentRow.Cells["Event"].Value?.ToString() ?? "";
-                    eventName = oldEvent;
-                }
-
-                if (string.IsNullOrEmpty(eventName))
-                    return 0;
-            }
+            if (string.IsNullOrEmpty(eventName)) return 0;
 
             string query = "SELECT IDevent FROM Events WHERE Event = @eventName";
 
@@ -1662,28 +1450,14 @@ namespace Kursovaya
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Ошибка получения ID события: {ex.Message}", "Ошибка",
-                                  MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return 0;
                 }
             }
         }
 
-        // Улучшенный метод получения ID категории
         private int GetCategoryIdFromName(string categoryName)
         {
-            if (string.IsNullOrEmpty(categoryName))
-            {
-                // Если категория не указана, пытаемся получить из выбранной строки
-                if (dataGridView1.CurrentRow != null)
-                {
-                    string oldCategory = dataGridView1.CurrentRow.Cells["Category"].Value?.ToString() ?? "";
-                    categoryName = oldCategory;
-                }
-
-                if (string.IsNullOrEmpty(categoryName))
-                    return 0;
-            }
+            if (string.IsNullOrEmpty(categoryName)) return 0;
 
             string query = "SELECT IDcategory FROM Categories WHERE Category = @categoryName";
 
@@ -1701,14 +1475,11 @@ namespace Kursovaya
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Ошибка получения ID категории: {ex.Message}", "Ошибка",
-                                  MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return 0;
                 }
             }
         }
 
-        // Получение текущего пути фото из базы данных
         private string GetCurrentPhotoPath(int dishId)
         {
             string query = "SELECT Photo FROM Dishes WHERE Article = @dishId";
@@ -1727,14 +1498,11 @@ namespace Kursovaya
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Ошибка получения фото: {ex.Message}", "Ошибка",
-                                  MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return "";
                 }
             }
         }
 
-        // Метод для проверки, изменились ли данные
         private bool HasDataChanged()
         {
             if (selectedRowData == null)
@@ -1747,7 +1515,6 @@ namespace Kursovaya
             string currentEvent = comboBox1.SelectedItem?.ToString() ?? "";
             string currentCategory = comboBox2.SelectedItem?.ToString() ?? "";
 
-            // Проверяем текстовые поля
             bool textChanged = currentName != originalName ||
                               currentCompound != originalCompound ||
                               currentWeight != originalWeight ||
@@ -1755,22 +1522,18 @@ namespace Kursovaya
                               currentEvent != originalEvent ||
                               currentCategory != originalCategory;
 
-            // Проверяем изображение
             bool imageChanged = false;
 
             if (pictureBox1.Image == null && !string.IsNullOrEmpty(originalPhoto))
             {
-                // Было фото, стало пусто
                 imageChanged = true;
             }
             else if (pictureBox1.Image != null && string.IsNullOrEmpty(originalPhoto))
             {
-                // Было пусто, стало фото
                 imageChanged = true;
             }
             else if (pictureBox1.Image != null && !string.IsNullOrEmpty(originalPhoto))
             {
-                // Есть новое изображение (из файла или другого источника)
                 if (!string.IsNullOrEmpty(originalImageFilePath) || newProductImage != null)
                 {
                     imageChanged = true;
@@ -1780,7 +1543,6 @@ namespace Kursovaya
             return textChanged || imageChanged;
         }
 
-        // Метод для сохранения исходных данных
         private void SaveOriginalData()
         {
             if (selectedRowData != null)
@@ -1802,21 +1564,16 @@ namespace Kursovaya
             string currentWeight = textBox2.Text.Trim();
             string currentPrice = textBox3.Text.Trim();
 
-            // Проверяем только обязательные поля
             bool hasValidData = !string.IsNullOrWhiteSpace(currentName) &&
                                !string.IsNullOrWhiteSpace(currentCompound) &&
                                !string.IsNullOrWhiteSpace(currentWeight) &&
                                !string.IsNullOrWhiteSpace(currentPrice) &&
-                                  comboBox1.SelectedIndex >= 0 &&
-                                  comboBox2.SelectedIndex >= 0;
+                               comboBox1.SelectedIndex >= 0 &&
+                               comboBox2.SelectedIndex >= 0;
 
-            // Проверяем, изменились ли данные
             bool dataChanged = HasDataChanged();
 
-            // Кнопка редактирования доступна когда выбрана запись, есть валидные данные И данные изменились
             button3.Enabled = (dataGridView1.CurrentRow != null) && hasValidData && dataChanged;
-
-            // Кнопка удаления доступна только когда выбрана запись
             button5.Enabled = (dataGridView1.CurrentRow != null);
         }
 
@@ -1826,28 +1583,21 @@ namespace Kursovaya
             {
                 try
                 {
-                    // Сбрасываем путь к файлу при выборе новой записи
                     originalImageFilePath = null;
                     newProductImage = null;
 
-                    // Заполняем поля данными из выбранной строки
                     DataGridViewRow selectedRow = dataGridView1.CurrentRow;
-
-                    // Сохраняем ссылку на выбранную строку
                     selectedRowData = selectedRow;
 
-                    // Основные данные
                     textBox1.Text = selectedRow.Cells["Article"].Value?.ToString() ?? "";
                     textBox4.Text = selectedRow.Cells["Name"].Value?.ToString() ?? "";
                     textBox5.Text = selectedRow.Cells["Compound"].Value?.ToString() ?? "";
                     textBox2.Text = selectedRow.Cells["Weight"].Value?.ToString() ?? "";
                     textBox3.Text = selectedRow.Cells["Price"].Value?.ToString() ?? "";
 
-                    // Устанавливаем категорию и мероприятие
                     string categoryName = selectedRow.Cells["Category"].Value?.ToString() ?? "";
                     string eventName = selectedRow.Cells["Event"].Value?.ToString() ?? "";
 
-                    // Устанавливаем выбранные значения в комбобоксы
                     if (!string.IsNullOrEmpty(categoryName))
                     {
                         int categoryIndex = comboBox2.FindStringExact(categoryName);
@@ -1865,7 +1615,6 @@ namespace Kursovaya
                     string photoFileName = GetCurrentPhotoPath(Convert.ToInt32(selectedRow.Cells["Article"].Value));
                     LoadImageToPictureBox(photoFileName);
 
-                    // Сохраняем оригинальные данные для сравнения
                     SaveOriginalData();
                 }
                 catch (Exception ex)
@@ -1873,51 +1622,62 @@ namespace Kursovaya
                     MessageBox.Show($"Ошибка при заполнении полей: {ex.Message}");
                 }
 
-                // Обновляем состояние кнопок
                 UpdateButtonsState();
             }
         }
 
-        private void textBox2_TextChanged(object sender, EventArgs e)
+        private void LoadImageToPictureBox(string photoFileName)
         {
-            // Обновляем состояние кнопок
-            UpdateButtonsState();
+            try
+            {
+                if (string.IsNullOrEmpty(photoFileName))
+                {
+                    pictureBox1.Image = null;
+                    return;
+                }
+
+                string resourcesFolder = @".\Resources\";
+                string fullImagePath = Path.Combine(resourcesFolder, photoFileName);
+
+                if (File.Exists(fullImagePath))
+                {
+                    using (var fs = new FileStream(fullImagePath, FileMode.Open, FileAccess.Read))
+                    {
+                        pictureBox1.Image = Image.FromStream(fs);
+                    }
+                }
+                else
+                {
+                    pictureBox1.Image = null;
+                }
+            }
+            catch (Exception ex)
+            {
+                pictureBox1.Image = null;
+            }
         }
 
-        private void textBox3_TextChanged(object sender, EventArgs e)
+        private void ClearForm()
         {
-            // Обновляем состояние кнопок
-            UpdateButtonsState();
-        }
+            textBox1.Clear();
+            textBox2.Clear();
+            textBox3.Clear();
+            textBox4.Clear();
+            textBox5.Clear();
+            pictureBox1.Image = null;
+            if (comboBox1.Items.Count > 0) comboBox1.SelectedIndex = 0;
+            if (comboBox2.Items.Count > 0) comboBox2.SelectedIndex = 0;
 
-        private void textBox4_TextChanged(object sender, EventArgs e)
-        {
-            // Обновляем состояние кнопок
-            UpdateButtonsState();
-        }
-
-        private void textBox5_TextChanged(object sender, EventArgs e)
-        {
-            // Обновляем состояние кнопок
-            UpdateButtonsState();
-        }
-
-        private void textBox1_TextChanged(object sender, EventArgs e)
-        {
-            // Обновляем состояние кнопок
-            UpdateButtonsState();
-        }
-
-        private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            // Обновляем состояние кнопок
-            UpdateButtonsState();
-        }
-
-        private void comboBox2_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            // Обновляем состояние кнопок
-            UpdateButtonsState();
+            originalImageFilePath = null;
+            newProductImage = null;
+            selectedRowData = null;
+            originalName = "";
+            originalCompound = "";
+            originalWeight = "";
+            originalPrice = "";
+            originalPhoto = "";
+            originalEvent = "";
+            originalCategory = "";
         }
 
         private void ClearAllFields()
@@ -1930,14 +1690,13 @@ namespace Kursovaya
             textBox4.Text = "";
             textBox5.Text = "";
             pictureBox1.Image = null;
-            comboBox1.SelectedIndex = -1;
-            comboBox2.SelectedIndex = -1;
+            if (comboBox1.Items.Count > 0) comboBox1.SelectedIndex = -1;
+            if (comboBox2.Items.Count > 0) comboBox2.SelectedIndex = -1;
             UpdateButtonsState();
         }
 
         private void Menu_Load(object sender, EventArgs e)
         {
-            // Очищаем все поля при загрузке формы
             ClearAllFields();
             Pagination();
         }
@@ -1951,87 +1710,26 @@ namespace Kursovaya
                 try
                 {
                     con.Open();
-
                     using (MySqlCommand cmd = new MySqlCommand(checkQueries, con))
                     {
                         cmd.Parameters.AddWithValue("@dishId", dishId);
                         int count = Convert.ToInt32(cmd.ExecuteScalar());
-                        if (count > 0)
-                        {
-                            return true;
-                        }
+                        return count > 0;
                     }
-
-                    return false;
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Ошибка проверки использования блюда: {ex.Message}", "Ошибка",
-                                  MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return true;
                 }
             }
         }
 
-        private void button5_Click(object sender, EventArgs e)
-        {
-            if (dataGridView1.CurrentRow == null)
-            {
-                MessageBox.Show("Выберите блюдо для удаления", "Ошибка",
-                              MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            string selectedIdString = Convert.ToString(dataGridView1.CurrentRow.Cells["Article"].Value);
-            int selectedId = Convert.ToInt32(dataGridView1.CurrentRow.Cells["Article"].Value);
-
-            // Подтверждение удаления
-            DialogResult result = MessageBox.Show(
-                $"Вы уверены, что хотите удалить блюдо с этим артикулом \"{selectedIdString}\"?",
-                "Подтверждение удаления",
-                MessageBoxButtons.YesNo,
-                MessageBoxIcon.Question);
-
-            if (result != DialogResult.Yes)
-                return;
-
-            if (IsDishInUse(selectedId))
-            {
-                MessageBox.Show("Невозможно удалить блюдо, так как оно используется в других таблицах",
-                              "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
-            }
-
-            // Удаление из базы данных
-            string query = "DELETE FROM Dishes WHERE Article = @dishId";
-
-            using (MySqlConnection con = new MySqlConnection(conString))
-            {
-                try
-                {
-                    con.Open();
-                    using (MySqlCommand cmd = new MySqlCommand(query, con))
-                    {
-                        cmd.Parameters.AddWithValue("@dishId", selectedId);
-                        int rowsAffected = cmd.ExecuteNonQuery();
-
-                        if (rowsAffected > 0)
-                        {
-                            MessageBox.Show("Блюдо успешно удалено", "Успех",
-                                          MessageBoxButtons.OK, MessageBoxIcon.Information);
-                            textBox1.Clear();
-                            FillDataGridView();
-                            ClearAllFields();
-                            Pagination();
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Ошибка удаления блюда: {ex.Message}", "Ошибка",
-                                  MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            }
-        }
+        private void textBox2_TextChanged(object sender, EventArgs e) => UpdateButtonsState();
+        private void textBox3_TextChanged(object sender, EventArgs e) => UpdateButtonsState();
+        private void textBox4_TextChanged(object sender, EventArgs e) => UpdateButtonsState();
+        private void textBox5_TextChanged(object sender, EventArgs e) => UpdateButtonsState();
+        private void textBox1_TextChanged(object sender, EventArgs e) => UpdateButtonsState();
+        private void comboBox1_SelectedIndexChanged(object sender, EventArgs e) => UpdateButtonsState();
+        private void comboBox2_SelectedIndexChanged(object sender, EventArgs e) => UpdateButtonsState();
     }
 }

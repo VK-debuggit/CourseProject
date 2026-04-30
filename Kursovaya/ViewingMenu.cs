@@ -490,7 +490,7 @@ namespace Kursovaya
             else
             {
                 // Сортировка по умолчанию (по названию)
-                query.Append(" ORDER BY p.Article DESC");
+                query.Append(" ORDER BY p.`Name` ASC");
             }
 
             return query.ToString();
