@@ -35,6 +35,14 @@ namespace Kursovaya
             textBox3.BackColor = System.Drawing.Color.FromArgb(255, 221, 153);
             pictureBox2.BackColor = System.Drawing.Color.FromArgb(255, 221, 153);
 
+            //Изначальное положение элементов
+            label1.Location = new Point(126, label1.Location.Y);
+            textBox1.Location = new Point(126, textBox1.Location.Y);
+            label2.Location = new Point(126, label2.Location.Y);
+            textBox2.Location = new Point(126, textBox2.Location.Y);
+            auth.Location = new Point(126, auth.Location.Y);
+            close.Location = new Point(126, close.Location.Y);
+
             // Настройка PictureBox для капчи
             pictureBox2.SizeMode = PictureBoxSizeMode.Zoom;
             pictureBox2.Width = 350;
@@ -168,7 +176,14 @@ namespace Kursovaya
                 textBox3.Enabled = true;
                 button1.Enabled = true;
                 auth.Enabled = false;
-                // 5. Генерируем новую капчу (но она не видна)
+                // 5. Возвращаем поля в исходное положение
+                label1.Location = new Point(126, label1.Location.Y);
+                textBox1.Location = new Point(126, textBox1.Location.Y);
+                label2.Location = new Point(126, label2.Location.Y);
+                textBox2.Location = new Point(126, textBox2.Location.Y);
+                auth.Location = new Point(126, auth.Location.Y);
+                close.Location = new Point(126, close.Location.Y);
+                // 6. Генерируем новую капчу (но она не видна)
                 GenerateNewCaptcha();
 
                 MessageBox.Show("Блокировка снята. Вы можете продолжить работу.",
@@ -451,6 +466,14 @@ namespace Kursovaya
 
                     // ПОКАЗЫВАЕМ КАПЧУ
                     panel1.Visible = true;
+
+                    label1.Location = new Point(16, label1.Location.Y);
+                    textBox1.Location = new Point(16, textBox1.Location.Y);
+                    label2.Location = new Point(16, label2.Location.Y);
+                    textBox2.Location = new Point(16, textBox2.Location.Y);
+                    auth.Location = new Point(16, auth.Location.Y);
+                    close.Location = new Point(16, close.Location.Y);
+
                     GenerateNewCaptcha();
                     textBox3.Clear();
                     ResetFormFields();
