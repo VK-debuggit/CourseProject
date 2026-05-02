@@ -383,8 +383,8 @@ namespace Kursovaya
                         {
                             if (reader.Read())
                             {
-                                string hashPasswordInDB = reader["HashPassword"].ToString();
-                                string rights = reader["UserRole"].ToString();
+                                string hashPasswordInDB = reader["Password"].ToString();
+                                string rights = reader["IdRole"].ToString();
                                 Properties.Settings.Default.userName = reader["FullName"].ToString();
 
                                 if (hashPassword.Equals(hashPasswordInDB))

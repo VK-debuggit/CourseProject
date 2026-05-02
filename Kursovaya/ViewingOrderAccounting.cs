@@ -21,9 +21,15 @@ namespace Kursovaya
         private Timer inactivityTimer;
         private int inactivityTimeout;
 
+        // Переменные для пагинации
+        private int currentPage = 1;
+        private int totalPages = 1;
+
         public ViewingOrderAccounting()
         {
             InitializeComponent();
+
+            this.WindowState = FormWindowState.Maximized;
 
             searchTimer = new Timer();
             searchTimer.Interval = 500;
@@ -40,11 +46,13 @@ namespace Kursovaya
             this.MouseWheel += ResetInactivityTimer;
             this.DoubleClick += ResetInactivityTimer;
             this.MouseDoubleClick += ResetInactivityTimer;
+            this.Resize += ViewingOrderAccounting_Resize;
 
             button1.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button2.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button3.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button4.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
+            button5.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             dataGridView1.BackgroundColor = System.Drawing.Color.FromArgb(255, 221, 153);
             dataGridView1.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
             dataGridView1.DefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(217, 152, 22);
@@ -56,11 +64,46 @@ namespace Kursovaya
             FillFilterUsers();
         }
 
-        // Создаем переменные для хранения текущей страницы и общего количества страниц
-        private int currentPage = 1;
-        private int totalPages = 1;
+        // ========== МЕТОДЫ ФОРМАТИРОВАНИЯ ==========
 
-        // создание пагинации        
+        private string FormatFullName(string fullName)
+        {
+            if (string.IsNullOrEmpty(fullName))
+                return "";
+
+            string[] parts = fullName.Trim().Split(' ');
+
+            if (parts.Length >= 3)
+            {
+                string lastName = parts[0];
+                string firstName = parts[1].Length > 0 ? parts[1].Substring(0, 1) : "";
+                string middleName = parts[2].Length > 0 ? parts[2].Substring(0, 1) : "";
+                return $"{lastName} {firstName}.{middleName}.";
+            }
+            else if (parts.Length == 2)
+            {
+                string lastName = parts[0];
+                string firstName = parts[1].Length > 0 ? parts[1].Substring(0, 1) : "";
+                return $"{lastName} {firstName}.";
+            }
+
+            return fullName;
+        }
+
+        private string FormatPhoneNumber(string phoneNumber)
+        {
+            if (string.IsNullOrEmpty(phoneNumber) || phoneNumber.Length < 4)
+                return phoneNumber;
+
+            string firstDigit = phoneNumber.Substring(0, 1);
+            string lastFourDigits = phoneNumber.Substring(phoneNumber.Length - 4);
+            string stars = new string('*', phoneNumber.Length - 4);
+
+            return $"{firstDigit}{stars}{lastFourDigits}";
+        }
+
+        // ========== ПАГИНАЦИЯ ==========
+
         void Pagination()
         {
             // удаляем LinkLabel служащий для пагинации
@@ -84,13 +127,17 @@ namespace Kursovaya
             // Если нет данных, устанавливаем 1 страницу
             if (totalPages == 0) totalPages = 1;
 
+            // Позиционируем пагинацию под DataGridView
+            int yPosition = dataGridView1.Bottom + 10;
+            int leftMargin = 13;
+
             // Создаем кнопку "Назад"
             Button btnPrev = new Button();
             btnPrev.Name = "btnPrev";
             btnPrev.Text = "◀";
             btnPrev.Font = new Font("Microsoft Sans Serif", 8, FontStyle.Bold);
             btnPrev.Size = new Size(30, 25);
-            btnPrev.Location = new Point(13, 395);
+            btnPrev.Location = new Point(leftMargin, yPosition);
             btnPrev.Click += new EventHandler(BtnPrev_Click);
             btnPrev.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             btnPrev.FlatStyle = FlatStyle.Flat;
@@ -98,8 +145,7 @@ namespace Kursovaya
             this.Controls.Add(btnPrev);
 
             // Создаем ссылки на страницы
-            int x = 48; // Начинаем после кнопки "Назад"
-            int y = 395;
+            int x = leftMargin + 35; // Начинаем после кнопки "Назад"
             int step = 20;
 
             LinkLabel[] ll = new LinkLabel[totalPages];
@@ -111,7 +157,7 @@ namespace Kursovaya
                 ll[i].Font = new Font("Microsoft Sans Serif", 14, FontStyle.Regular);
                 ll[i].Name = "page" + pageNumber;
                 ll[i].AutoSize = true;
-                ll[i].Location = new Point(x, y);
+                ll[i].Location = new Point(x, yPosition);
                 ll[i].Click += new EventHandler(LinkLabel_Click);
                 ll[i].BackColor = Color.Transparent;
 
@@ -139,7 +185,7 @@ namespace Kursovaya
             btnNext.Text = "▶";
             btnNext.Font = new Font("Microsoft Sans Serif", 8, FontStyle.Bold);
             btnNext.Size = new Size(30, 25);
-            btnNext.Location = new Point(x, 395);
+            btnNext.Location = new Point(x, yPosition);
             btnNext.Click += new EventHandler(BtnNext_Click);
             btnNext.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             btnNext.FlatStyle = FlatStyle.Flat;
@@ -179,10 +225,7 @@ namespace Kursovaya
                 dataGridView1.FirstDisplayedScrollingRowIndex = start;
             }
 
-            if (dataTable != null)
-            {
-                UpdateRowCount(0, dataTable.Rows.Count);
-            }
+            UpdateRowCount();
         }
 
         // Обработчик для кнопки "Назад"
@@ -243,6 +286,14 @@ namespace Kursovaya
                     System.Drawing.Color.FromArgb(200, 200, 200);
                 btnNext.ForeColor = btnNext.Enabled ? Color.Black : Color.Gray;
             }
+        }
+
+        private void ViewingOrderAccounting_Resize(object sender, EventArgs e)
+        {
+            int savedPage = currentPage;
+            Pagination();
+            currentPage = savedPage;
+            ShowPage(currentPage);
         }
 
         // Также можно добавить обработку клавиатуры для навигации
@@ -431,11 +482,14 @@ namespace Kursovaya
                     using (MySqlCommand cmd = new MySqlCommand(countQuery, con))
                     {
                         int totalCount = Convert.ToInt32(cmd.ExecuteScalar());
-                        UpdateRowCount(dataTable.Rows.Count, totalCount);
+                        UpdateRowCount(totalCount);
                     }
 
                     DisplayDataInDataGridView(dataTable);
                 }
+
+                currentPage = 1;
+                Pagination();
             }
             catch (Exception ex)
             {
@@ -445,8 +499,6 @@ namespace Kursovaya
             {
                 Cursor = Cursors.Default;
             }
-
-            Pagination();
         }
 
         private string BuildQuery()
@@ -547,7 +599,7 @@ namespace Kursovaya
             DataView dv = new DataView(tableToDisplay);
 
             if (!string.IsNullOrEmpty(searchText))
-                dv.RowFilter = $"CONVERT(NumberOrder, 'System.String') LIKE '%{searchText}%'";
+                dv.RowFilter = $"CONVERT(NumberOrder, 'System.String') LIKE '{searchText}%'";
 
             decimal totalSum = 0;
             foreach (DataRowView rowView in dv)
@@ -555,14 +607,14 @@ namespace Kursovaya
                 DataRow row = rowView.Row;
                 int rowIndex = dataGridView1.Rows.Add(
                     row["NumberOrder"],
-                    row["IdClient"],
+                    FormatFullName(row["IdClient"].ToString()),
                     FormatPhoneNumber(row["NumberPhoneClient"].ToString()),
                     FormatDate(row["DateOfConclusion"]),
                     FormatDate(row["DateEvent"]),
                     row["IdSchedule"],
                     row["IdStatus"],
                     row["IdEvent"],
-                    row["IdUser"],
+                    FormatFullName(row["IdUser"].ToString()),
                     row["Price"],
                     row["DiscountAmount"],
                     row["PriceAll"],
@@ -588,7 +640,7 @@ namespace Kursovaya
                         // Желтый фон для всей строки
                         foreach (DataGridViewCell cell in dataGridRow.Cells)
                         {
-                            cell.Style.BackColor = Color.FromArgb(255, 254, 230);
+                            cell.Style.BackColor = Color.FromArgb(255, 255, 102);
                         }
                         // Подсчет выручки
                         totalSum += prepayment;
@@ -597,7 +649,7 @@ namespace Kursovaya
                         // Зеленый фон для всей строки
                         foreach (DataGridViewCell cell in dataGridRow.Cells)
                         {
-                            cell.Style.BackColor = Color.FromArgb(240, 255, 230);
+                            cell.Style.BackColor = Color.FromArgb(170, 255, 170);
                         }
                         // Подсчет выручки
                         totalSum += priceAll;
@@ -606,19 +658,13 @@ namespace Kursovaya
                         // Красный фон для всей строки
                         foreach (DataGridViewCell cell in dataGridRow.Cells)
                         {
-                            cell.Style.BackColor = Color.FromArgb(255, 230, 230);
+                            cell.Style.BackColor = Color.FromArgb(255, 182, 182);
                         }
                         // Отмененные не считаем в выручке
                         break;
                 }
             }
 
-            int displayedCount = dataGridView1.Rows.Count;
-            if (dataGridView1.AllowUserToAddRows && displayedCount > 0)
-            {
-                displayedCount--;
-            }
-            UpdateRowCount(displayedCount, tableToDisplay.Rows.Count);
             label12.Text = totalSum.ToString("C2");
         }
 
@@ -635,23 +681,7 @@ namespace Kursovaya
             return dateValue.ToString();
         }
 
-        private string FormatPhoneNumber(string phoneNumber)
-        {
-            if (string.IsNullOrEmpty(phoneNumber) || phoneNumber.Length < 4)
-                return phoneNumber;
-
-            // Оставляем первую цифру и последние две цифры, остальное заменяем *
-            char firstDigit = phoneNumber[0];
-            string lastTwoDigits = phoneNumber.Substring(phoneNumber.Length - 2);
-
-            // Создаем строку со звездочками
-            int starsCount = phoneNumber.Length - 3; // минус первая цифра и две последние
-            string stars = new string('*', starsCount);
-
-            return $"{firstDigit}{stars}{lastTwoDigits}";
-        }
-
-        private void UpdateRowCount(int displayedCount, int totalCount)
+        private void UpdateRowCount(int totalCount = 0)
         {
             // Считаем только видимые строки
             int visibleCount = 0;
@@ -670,7 +700,11 @@ namespace Kursovaya
         {
             searchTimer.Stop();
             if (dataTable != null)
+            {
                 DisplayDataInDataGridView(dataTable);
+                currentPage = 1;
+                Pagination();
+            }
         }
 
         private void textBox1_TextChanged(object sender, EventArgs e)
@@ -858,6 +892,16 @@ namespace Kursovaya
             LoadData();
         }
 
+        private void button5_Click(object sender, EventArgs e)
+        {
+            this.Visible = false;
+            ViewStatistics viewStatistics = new ViewStatistics();
+            viewStatistics.ShowDialog();
+            this.Close();
+        }
+
+        // Добавьте эти методы в конец класса ViewingOrderAccounting перед последней закрывающей скобкой }
+
         private void ExportToExcel()
         {
             Microsoft.Office.Interop.Excel.Application excelApp = null;
@@ -870,40 +914,263 @@ namespace Kursovaya
 
                 workbook = excelApp.Workbooks.Add();
 
-                // Создаем первый лист для данных
-                Microsoft.Office.Interop.Excel.Worksheet dataWorksheet = workbook.Worksheets[1];
-                dataWorksheet.Name = "Данные по заказам";
+                // Создаем один лист для всего отчета
+                Microsoft.Office.Interop.Excel.Worksheet worksheet = workbook.Worksheets[1];
+                worksheet.Name = "Отчет по заказам";
 
-                // Создаем второй лист для статистики
-                Microsoft.Office.Interop.Excel.Worksheet statsWorksheet = workbook.Worksheets.Add();
-                statsWorksheet.Name = "Статистика";
+                // ========== СТАТИСТИКА И ДИАГРАММА В НАЧАЛЕ ==========
 
-                // ========== ЛИСТ С ДАННЫМИ ==========
+                int currentRow = 1;
 
                 // Заголовок отчета
-                dataWorksheet.Cells[1, 1] = "ОТЧЕТ ПО ЗАКАЗАМ";
-                Microsoft.Office.Interop.Excel.Range titleRange = dataWorksheet.Range[dataWorksheet.Cells[1, 1], dataWorksheet.Cells[1, 3]];
+                worksheet.Cells[currentRow, 1] = "ОТЧЕТ ПО ЗАКАЗАМ";
+                Microsoft.Office.Interop.Excel.Range titleRange = worksheet.Range[worksheet.Cells[currentRow, 1], worksheet.Cells[currentRow, 4]];
                 titleRange.Merge();
                 titleRange.Font.Bold = true;
-                titleRange.Font.Size = 14;
+                titleRange.Font.Size = 16;
                 titleRange.HorizontalAlignment = Microsoft.Office.Interop.Excel.XlHAlign.xlHAlignCenter;
+                currentRow += 2;
 
                 // Информация о периоде отчета
                 string periodInfo = $"Период отчета: с {dateTimePicker1.Value:dd.MM.yyyy} по {dateTimePicker2.Value:dd.MM.yyyy}";
-                dataWorksheet.Cells[2, 1] = periodInfo;
-                Microsoft.Office.Interop.Excel.Range periodRange = dataWorksheet.Range[dataWorksheet.Cells[2, 1], dataWorksheet.Cells[2, 3]];
+                worksheet.Cells[currentRow, 1] = periodInfo;
+                Microsoft.Office.Interop.Excel.Range periodRange = worksheet.Range[worksheet.Cells[currentRow, 1], worksheet.Cells[currentRow, 4]];
                 periodRange.Merge();
                 periodRange.Font.Size = 11;
                 periodRange.Font.Italic = true;
+                currentRow += 2;
 
-                int headerRow = 5; // Строка с заголовками столбцов
+                // Получаем полную статистику из базы данных (без фильтрации по статусам)
+                FullStatistics fullStats = GetFullStatisticsFromDatabase();
+
+                // Рассчитываем статистику по отфильтрованным данным (для отображения в таблице)
+                int filteredAcceptedOrders = 0;
+                int filteredPaidOrders = 0;
+                int filteredCancelledOrders = 0;
+                decimal filteredTotalRevenue = 0;
+                decimal filteredTotalPrepayment = 0;
+                int filteredTotalOrders = 0;
+
+                foreach (DataGridViewRow row in dataGridView1.Rows)
+                {
+                    if (!row.IsNewRow)
+                    {
+                        filteredTotalOrders++;
+
+                        string status = row.Cells["IdStatus"]?.Value?.ToString() ?? "";
+                        decimal priceAll = 0;
+                        decimal prepayment = 0;
+
+                        if (row.Cells["PriceAll"].Value != null && decimal.TryParse(row.Cells["PriceAll"].Value.ToString(), out priceAll))
+                            priceAll = decimal.Parse(row.Cells["PriceAll"].Value.ToString());
+
+                        if (row.Cells["Prepayment"].Value != null && decimal.TryParse(row.Cells["Prepayment"].Value.ToString(), out prepayment))
+                            prepayment = decimal.Parse(row.Cells["Prepayment"].Value.ToString());
+
+                        switch (status)
+                        {
+                            case "Принят":
+                                filteredAcceptedOrders++;
+                                filteredTotalPrepayment += prepayment;
+                                filteredTotalRevenue += prepayment;
+                                break;
+                            case "Оплачен":
+                                filteredPaidOrders++;
+                                filteredTotalRevenue += priceAll;
+                                break;
+                            case "Отменен":
+                                filteredCancelledOrders++;
+                                break;
+                        }
+                    }
+                }
+
+                // ========== БЛОК СТАТИСТИКИ ==========
+
+                // Заголовок статистики
+                worksheet.Cells[currentRow, 1] = "СТАТИСТИКА ПО ЗАКАЗАМ:";
+                worksheet.Cells[currentRow, 1].Font.Bold = true;
+                worksheet.Cells[currentRow, 1].Font.Size = 14;
+                currentRow += 2;
+
+                // Общая статистика (по отфильтрованным данным)
+                worksheet.Cells[currentRow, 1] = "Общая статистика (по выбранным фильтрам):";
+                worksheet.Cells[currentRow, 1].Font.Bold = true;
+                currentRow++;
+
+                worksheet.Cells[currentRow, 1] = "Всего заказов:";
+                worksheet.Cells[currentRow, 1].Font.Bold = true;
+                worksheet.Cells[currentRow, 2] = filteredTotalOrders;
+                currentRow++;
+
+                worksheet.Cells[currentRow, 1] = "Принято заказов:";
+                worksheet.Cells[currentRow, 1].Font.Bold = true;
+                worksheet.Cells[currentRow, 2] = filteredAcceptedOrders;
+                currentRow++;
+
+                worksheet.Cells[currentRow, 1] = "Оплачено заказов:";
+                worksheet.Cells[currentRow, 1].Font.Bold = true;
+                worksheet.Cells[currentRow, 2] = filteredPaidOrders;
+                currentRow++;
+
+                worksheet.Cells[currentRow, 1] = "Отменено заказов:";
+                worksheet.Cells[currentRow, 1].Font.Bold = true;
+                worksheet.Cells[currentRow, 2] = filteredCancelledOrders;
+                currentRow += 2;
+
+                // Финансовая статистика (по отфильтрованным данным)
+                worksheet.Cells[currentRow, 1] = "Финансовая статистика (по выбранным фильтрам):";
+                worksheet.Cells[currentRow, 1].Font.Bold = true;
+                currentRow++;
+
+                worksheet.Cells[currentRow, 1] = "Общая выручка:";
+                worksheet.Cells[currentRow, 1].Font.Bold = true;
+                worksheet.Cells[currentRow, 2] = filteredTotalRevenue.ToString("C2");
+                worksheet.Cells[currentRow, 2].NumberFormat = "#,##0.00 ₽";
+                currentRow++;
+
+                worksheet.Cells[currentRow, 1] = "Сумма предоплат:";
+                worksheet.Cells[currentRow, 1].Font.Bold = true;
+                worksheet.Cells[currentRow, 2] = filteredTotalPrepayment.ToString("C2");
+                worksheet.Cells[currentRow, 2].NumberFormat = "#,##0.00 ₽";
+                currentRow += 3;
+
+                // ========== КРУГОВАЯ ДИАГРАММА (по ПОЛНЫМ данным из БД) ==========
+
+                if (fullStats.TotalOrders > 0)
+                {
+                    // Заголовок диаграммы (письменный)
+                    worksheet.Cells[currentRow, 1] = "РАСПРЕДЕЛЕНИЕ ЗАКАЗОВ ПО СТАТУСАМ (ЗА ВЕСЬ ПЕРИОД):";
+                    worksheet.Cells[currentRow, 1].Font.Bold = true;
+                    worksheet.Cells[currentRow, 1].Font.Size = 12;
+                    currentRow += 2;
+
+                    // Создаем видимую таблицу для диаграммы
+                    int chartDataRow = currentRow;
+
+                    worksheet.Cells[chartDataRow, 1] = "Статус";
+                    worksheet.Cells[chartDataRow, 2] = "Количество";
+                    worksheet.Cells[chartDataRow, 1].Font.Bold = true;
+                    worksheet.Cells[chartDataRow, 2].Font.Bold = true;
+                    chartDataRow++;
+
+                    int dataRowStart = chartDataRow;
+
+                    if (fullStats.AcceptedOrders > 0)
+                    {
+                        worksheet.Cells[chartDataRow, 1] = "Принят";
+                        worksheet.Cells[chartDataRow, 2] = fullStats.AcceptedOrders;
+                        // Закрашиваем ячейку статуса соответствующим цветом
+                        worksheet.Cells[chartDataRow, 1].Interior.Color = System.Drawing.ColorTranslator.ToOle(Color.FromArgb(255, 255, 102));
+                        chartDataRow++;
+                    }
+
+                    if (fullStats.PaidOrders > 0)
+                    {
+                        worksheet.Cells[chartDataRow, 1] = "Оплачен";
+                        worksheet.Cells[chartDataRow, 2] = fullStats.PaidOrders;
+                        // Закрашиваем ячейку статуса соответствующим цветом
+                        worksheet.Cells[chartDataRow, 1].Interior.Color = System.Drawing.ColorTranslator.ToOle(Color.FromArgb(170, 255, 170));
+                        chartDataRow++;
+                    }
+
+                    if (fullStats.CancelledOrders > 0)
+                    {
+                        worksheet.Cells[chartDataRow, 1] = "Отменен";
+                        worksheet.Cells[chartDataRow, 2] = fullStats.CancelledOrders;
+                        // Закрашиваем ячейку статуса соответствующим цветом
+                        worksheet.Cells[chartDataRow, 1].Interior.Color = System.Drawing.ColorTranslator.ToOle(Color.FromArgb(255, 182, 182));
+                        chartDataRow++;
+                    }
+
+                    int dataEndRow = chartDataRow - 1;
+
+                    if (dataEndRow >= dataRowStart)
+                    {
+                        // Создаем круговую диаграмму справа от таблицы
+                        Microsoft.Office.Interop.Excel.ChartObjects chartObjects = (Microsoft.Office.Interop.Excel.ChartObjects)worksheet.ChartObjects();
+                        Microsoft.Office.Interop.Excel.ChartObject chartObject = chartObjects.Add(350, (currentRow - 1) * 15, 450, 300);
+                        Microsoft.Office.Interop.Excel.Chart chart = chartObject.Chart;
+
+                        // Выбираем диапазон данных
+                        Microsoft.Office.Interop.Excel.Range chartRange = worksheet.Range[
+                            worksheet.Cells[dataRowStart, 1],
+                            worksheet.Cells[dataEndRow, 2]];
+
+                        // Устанавливаем тип диаграммы - круговая
+                        chart.ChartType = Microsoft.Office.Interop.Excel.XlChartType.xlPie;
+
+                        // Устанавливаем источник данных
+                        chart.SetSourceData(chartRange);
+
+                        // Настройка легенды
+                        chart.HasLegend = true;
+                        chart.Legend.Position = Microsoft.Office.Interop.Excel.XlLegendPosition.xlLegendPositionRight;
+
+                        // Убираем заголовок диаграммы (так как уже есть письменный)
+                        chart.HasTitle = false;
+
+                        // Подписи данных
+                        Microsoft.Office.Interop.Excel.Series series = chart.SeriesCollection(1);
+                        series.HasDataLabels = true;
+
+                        // Закрашиваем сегменты в соответствии со статусами
+                        try
+                        {
+                            int pointIndex = 1;
+                            if (fullStats.AcceptedOrders > 0)
+                            {
+                                Microsoft.Office.Interop.Excel.Point point = series.Points(pointIndex);
+                                point.Interior.Color = System.Drawing.ColorTranslator.ToOle(Color.FromArgb(255, 255, 102));
+                                pointIndex++;
+                            }
+                            if (fullStats.PaidOrders > 0)
+                            {
+                                Microsoft.Office.Interop.Excel.Point point = series.Points(pointIndex);
+                                point.Interior.Color = System.Drawing.ColorTranslator.ToOle(Color.FromArgb(170, 255, 170));
+                                pointIndex++;
+                            }
+                            if (fullStats.CancelledOrders > 0)
+                            {
+                                Microsoft.Office.Interop.Excel.Point point = series.Points(pointIndex);
+                                point.Interior.Color = System.Drawing.ColorTranslator.ToOle(Color.FromArgb(255, 182, 182));
+                                pointIndex++;
+                            }
+                        }
+                        catch { }
+
+                        // Оформляем таблицу с данными для диаграммы
+                        Microsoft.Office.Interop.Excel.Range dataTableRange = worksheet.Range[
+                            worksheet.Cells[currentRow, 1],
+                            worksheet.Cells[dataEndRow, 2]];
+                        dataTableRange.Borders.LineStyle = Microsoft.Office.Interop.Excel.XlLineStyle.xlContinuous;
+                        dataTableRange.Borders.Weight = Microsoft.Office.Interop.Excel.XlBorderWeight.xlThin;
+
+                        // Выравниваем данные по центру
+                        dataTableRange.HorizontalAlignment = Microsoft.Office.Interop.Excel.XlHAlign.xlHAlignCenter;
+                    }
+
+                    currentRow = dataEndRow + 3;
+                }
+
+                currentRow += 2;
+
+                // ========== ТАБЛИЦА С ДАННЫМИ ==========
+
+                // Заголовок таблицы
+                worksheet.Cells[currentRow, 1] = "ПОДРОБНАЯ ИНФОРМАЦИЯ О ЗАКАЗАХ:";
+                worksheet.Cells[currentRow, 1].Font.Bold = true;
+                worksheet.Cells[currentRow, 1].Font.Size = 14;
+                currentRow += 2;
+
+                int headerRow = currentRow;
 
                 // Заполняем заголовки столбцов
                 for (int i = 0; i < dataGridView1.Columns.Count; i++)
                 {
                     if (dataGridView1.Columns[i].Visible)
                     {
-                        dataWorksheet.Cells[headerRow, i + 1] = dataGridView1.Columns[i].HeaderText;
+                        worksheet.Cells[headerRow, i + 1] = dataGridView1.Columns[i].HeaderText;
                     }
                 }
 
@@ -933,7 +1200,7 @@ namespace Kursovaya
                                     }
                                 }
 
-                                dataWorksheet.Cells[rowIndex, colIndex] = cellValue;
+                                worksheet.Cells[rowIndex, colIndex] = cellValue;
                                 colIndex++;
                             }
                         }
@@ -948,7 +1215,7 @@ namespace Kursovaya
                 {
                     if (dataGridView1.Columns[i].HeaderText == "Статус" && dataGridView1.Columns[i].Visible)
                     {
-                        statusColumnIndex = i + 1; // +1 потому что Excel индексируется с 1
+                        statusColumnIndex = i + 1;
                         break;
                     }
                 }
@@ -958,7 +1225,7 @@ namespace Kursovaya
                 {
                     for (int row = headerRow + 1; row <= rowIndex - 1; row++)
                     {
-                        Microsoft.Office.Interop.Excel.Range statusCell = dataWorksheet.Cells[row, statusColumnIndex];
+                        Microsoft.Office.Interop.Excel.Range statusCell = worksheet.Cells[row, statusColumnIndex];
                         string statusValue = statusCell.Value?.ToString();
 
                         if (!string.IsNullOrEmpty(statusValue))
@@ -984,149 +1251,58 @@ namespace Kursovaya
                 }
 
                 // Форматирование заголовков таблицы
-                Microsoft.Office.Interop.Excel.Range tableHeaders = dataWorksheet.Range[
-                    dataWorksheet.Cells[headerRow, 1],
-                    dataWorksheet.Cells[headerRow, dataGridView1.Columns.Count]];
-                tableHeaders.Font.Bold = true;
-                tableHeaders.Interior.Color = System.Drawing.ColorTranslator.ToOle(Color.FromArgb(240, 240, 240));
-                tableHeaders.HorizontalAlignment = Microsoft.Office.Interop.Excel.XlHAlign.xlHAlignCenter;
+                if (headerRow <= rowIndex - 1)
+                {
+                    Microsoft.Office.Interop.Excel.Range tableHeaders = worksheet.Range[
+                        worksheet.Cells[headerRow, 1],
+                        worksheet.Cells[headerRow, dataGridView1.Columns.Count]];
+                    tableHeaders.Font.Bold = true;
+                    tableHeaders.Interior.Color = System.Drawing.ColorTranslator.ToOle(Color.FromArgb(240, 240, 240));
+                    tableHeaders.HorizontalAlignment = Microsoft.Office.Interop.Excel.XlHAlign.xlHAlignCenter;
+                }
 
                 // Добавляем рамки к таблице
-                Microsoft.Office.Interop.Excel.Range dataRange = dataWorksheet.Range[
-                    dataWorksheet.Cells[headerRow, 1],
-                    dataWorksheet.Cells[rowIndex - 1, dataGridView1.Columns.Count]];
-                dataRange.Borders.LineStyle = Microsoft.Office.Interop.Excel.XlLineStyle.xlContinuous;
-                dataRange.Borders.Weight = Microsoft.Office.Interop.Excel.XlBorderWeight.xlThin;
+                if (rowIndex - 1 >= headerRow)
+                {
+                    Microsoft.Office.Interop.Excel.Range dataRange = worksheet.Range[
+                        worksheet.Cells[headerRow, 1],
+                        worksheet.Cells[rowIndex - 1, dataGridView1.Columns.Count]];
+                    dataRange.Borders.LineStyle = Microsoft.Office.Interop.Excel.XlLineStyle.xlContinuous;
+                    dataRange.Borders.Weight = Microsoft.Office.Interop.Excel.XlBorderWeight.xlThin;
+                }
+
+                // ========== ИНФОРМАЦИЯ ОБ ОТЧЕТЕ В КОНЦЕ ==========
+
+                int infoRow = rowIndex + 3;
+
+                worksheet.Cells[infoRow, 1] = "ИНФОРМАЦИЯ ОБ ОТЧЕТЕ:";
+                worksheet.Cells[infoRow, 1].Font.Bold = true;
+                worksheet.Cells[infoRow, 1].Font.Size = 12;
+                infoRow += 2;
+
+                worksheet.Cells[infoRow, 1] = "Автор отчета:";
+                worksheet.Cells[infoRow, 1].Font.Bold = true;
+                worksheet.Cells[infoRow, 2] = Properties.Settings.Default.userName;
+                infoRow++;
+
+                worksheet.Cells[infoRow, 1] = "Дата создания:";
+                worksheet.Cells[infoRow, 1].Font.Bold = true;
+                worksheet.Cells[infoRow, 2] = DateTime.Now.ToString("dd.MM.yyyy HH:mm");
+                infoRow += 2;
 
                 // Автоподбор ширины столбцов
-                Microsoft.Office.Interop.Excel.Range allDataRange = dataWorksheet.UsedRange;
-                allDataRange.Columns.AutoFit();
+                worksheet.Columns.AutoFit();
 
                 // Ограничиваем максимальную ширину столбцов
+                Microsoft.Office.Interop.Excel.Range allDataRange = worksheet.UsedRange;
                 foreach (Microsoft.Office.Interop.Excel.Range column in allDataRange.Columns)
                 {
-                    if (column.ColumnWidth > 30)
-                        column.ColumnWidth = 30;
+                    if (column.ColumnWidth > 35)
+                        column.ColumnWidth = 35;
                 }
-
-                // ========== ЛИСТ СО СТАТИСТИКОЙ ==========
-
-                // Заголовок листа статистики
-                statsWorksheet.Cells[1, 1] = "СТАТИСТИКА ПО ЗАКАЗАМ";
-                Microsoft.Office.Interop.Excel.Range statsTitleRange = statsWorksheet.Range[statsWorksheet.Cells[1, 1], statsWorksheet.Cells[1, 2]];
-                statsTitleRange.Merge();
-                statsTitleRange.Font.Bold = true;
-                statsTitleRange.Font.Size = 14;
-                statsTitleRange.HorizontalAlignment = Microsoft.Office.Interop.Excel.XlHAlign.xlHAlignCenter;
-
-                // Информация о периоде на листе статистики
-                statsWorksheet.Cells[2, 1] = periodInfo;
-                Microsoft.Office.Interop.Excel.Range statsPeriodRange = statsWorksheet.Range[statsWorksheet.Cells[2, 1], statsWorksheet.Cells[2, 2]];
-                statsPeriodRange.Merge();
-                statsPeriodRange.Font.Size = 11;
-                statsPeriodRange.Font.Italic = true;
-
-                int statsRow = 4; // Начальная строка для статистики
-
-                // Рассчитываем статистику
-                int totalOrders = 0;
-                int acceptedOrders = 0;
-                int paidOrders = 0;
-                int cancelledOrders = 0;
-                decimal totalRevenue = 0;
-                decimal totalPrepayment = 0;
-
-                foreach (DataGridViewRow row in dataGridView1.Rows)
-                {
-                    if (!row.IsNewRow)
-                    {
-                        totalOrders++;
-
-                        string status = row.Cells["IdStatus"]?.Value?.ToString() ?? "";
-                        switch (status)
-                        {
-                            case "Принят":
-                                acceptedOrders++;
-                                if (row.Cells["Prepayment"].Value != null && decimal.TryParse(row.Cells["Prepayment"].Value.ToString(), out decimal prepayment))
-                                    totalPrepayment += prepayment;
-                                break;
-                            case "Оплачен":
-                                paidOrders++;
-                                if (row.Cells["PriceAll"].Value != null && decimal.TryParse(row.Cells["PriceAll"].Value.ToString(), out decimal priceAll))
-                                    totalRevenue += priceAll;
-                                break;
-                            case "Отменен":
-                                cancelledOrders++;
-                                break;
-                        }
-
-                        // Для принятых заказов также считаем предоплату в общую выручку
-                        if (status == "Принят" && row.Cells["Prepayment"].Value != null && decimal.TryParse(row.Cells["Prepayment"].Value.ToString(), out decimal prepayment2))
-                            totalRevenue += prepayment2;
-                    }
-                }
-
-                // Общая статистика
-                statsWorksheet.Cells[statsRow, 1] = "ОБЩАЯ СТАТИСТИКА:";
-                statsWorksheet.Cells[statsRow, 1].Font.Bold = true;
-                statsWorksheet.Cells[statsRow, 1].Font.Size = 12;
-                statsRow += 2;
-
-                statsWorksheet.Cells[statsRow, 1] = "Количество заказов:";
-                statsWorksheet.Cells[statsRow, 1].Font.Bold = true;
-                statsWorksheet.Cells[statsRow, 2] = totalOrders;
-                statsRow++;
-
-                statsWorksheet.Cells[statsRow, 1] = "Принято заказов:";
-                statsWorksheet.Cells[statsRow, 2] = acceptedOrders;
-                statsRow++;
-
-                statsWorksheet.Cells[statsRow, 1] = "Оплачено заказов:";
-                statsWorksheet.Cells[statsRow, 2] = paidOrders;
-                statsRow++;
-
-                statsWorksheet.Cells[statsRow, 1] = "Отменено заказов:";
-                statsWorksheet.Cells[statsRow, 2] = cancelledOrders;
-                statsRow += 2;
-
-                // Финансовая статистика
-                statsWorksheet.Cells[statsRow, 1] = "ФИНАНСОВАЯ СТАТИСТИКА:";
-                statsWorksheet.Cells[statsRow, 1].Font.Bold = true;
-                statsWorksheet.Cells[statsRow, 1].Font.Size = 12;
-                statsRow += 2;
-
-                statsWorksheet.Cells[statsRow, 1] = "Общая выручка:";
-                statsWorksheet.Cells[statsRow, 1].Font.Bold = true;
-                statsWorksheet.Cells[statsRow, 2] = totalRevenue.ToString("C2");
-                statsWorksheet.Cells[statsRow, 2].NumberFormat = "#,##0.00 ₽";
-                statsRow++;
-
-                statsWorksheet.Cells[statsRow, 1] = "Сумма предоплат:";
-                statsWorksheet.Cells[statsRow, 2] = totalPrepayment.ToString("C2");
-                statsWorksheet.Cells[statsRow, 2].NumberFormat = "#,##0.00 ₽";
-                statsRow += 2;
-
-                // Информация об отчете
-                statsWorksheet.Cells[statsRow, 1] = "ИНФОРМАЦИЯ ОБ ОТЧЕТЕ:";
-                statsWorksheet.Cells[statsRow, 1].Font.Bold = true;
-                statsWorksheet.Cells[statsRow, 1].Font.Size = 12;
-                statsRow += 2;
-
-                statsWorksheet.Cells[statsRow, 1] = "Автор отчета:";
-                statsWorksheet.Cells[statsRow, 1].Font.Bold = true;
-                statsWorksheet.Cells[statsRow, 2] = Properties.Settings.Default.userName;
-                statsRow++;
-
-                statsWorksheet.Cells[statsRow, 1] = "Дата создания:";
-                statsWorksheet.Cells[statsRow, 1].Font.Bold = true;
-                statsWorksheet.Cells[statsRow, 2] = DateTime.Now.ToString("dd.MM.yyyy HH:mm");
-                statsRow += 2;
-
-                // Автоподбор ширины столбцов на листе статистики
-                statsWorksheet.Columns.AutoFit();
 
                 // Переходим на первый лист
-                dataWorksheet.Activate();
+                worksheet.Activate();
 
                 MessageBox.Show("Отчет в Excel составлен.",
                                "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -1154,6 +1330,97 @@ namespace Kursovaya
             }
         }
 
+        // Вспомогательный класс для хранения полной статистики
+        private class FullStatistics
+        {
+            public int TotalOrders { get; set; }
+            public int AcceptedOrders { get; set; }
+            public int PaidOrders { get; set; }
+            public int CancelledOrders { get; set; }
+        }
+
+        // Метод для получения полной статистики из базы данных (без фильтрации по статусам)
+        private FullStatistics GetFullStatisticsFromDatabase()
+        {
+            FullStatistics stats = new FullStatistics();
+
+            try
+            {
+                // Формируем запрос с учетом дат и выбранного сотрудника, но БЕЗ фильтрации по статусам
+                StringBuilder query = new StringBuilder();
+                query.Append(@"SELECT 
+                s.Status,
+                COUNT(*) as Count
+            FROM CafeActivities.Orders p 
+            LEFT JOIN CafeActivities.Status s ON p.IdStatus = s.IDstatus
+            LEFT JOIN CafeActivities.Users w ON p.IdUser = w.IDuser");
+
+                List<string> conditions = new List<string>();
+
+                // Фильтр по датам
+                bool dateFilterApplied = (dateTimePicker1.Value != defaultStartDate) || (dateTimePicker2.Value != defaultEndDate);
+
+                if (dateFilterApplied)
+                {
+                    if (dateTimePicker1.Value <= dateTimePicker2.Value)
+                    {
+                        string filterStartDate = dateTimePicker1.Value.ToString("yyyy-MM-dd");
+                        string filterEndDate = dateTimePicker2.Value.ToString("yyyy-MM-dd");
+                        conditions.Add($"(p.DateEvent >= '{filterStartDate}' AND p.DateEvent <= '{filterEndDate}')");
+                    }
+                }
+
+                // Фильтр по сотруднику
+                if (comboBox1.SelectedIndex != 0 && comboBox1.SelectedItem != null)
+                {
+                    conditions.Add($"w.FullName = '{MySqlHelper.EscapeString(comboBox1.SelectedItem.ToString())}'");
+                }
+
+                if (conditions.Count > 0)
+                {
+                    query.Append(" WHERE ");
+                    query.Append(string.Join(" AND ", conditions));
+                }
+
+                query.Append(" GROUP BY s.Status");
+
+                using (MySqlConnection con = new MySqlConnection(conString))
+                {
+                    con.Open();
+                    using (MySqlCommand cmd = new MySqlCommand(query.ToString(), con))
+                    using (MySqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            string status = reader["Status"].ToString();
+                            int count = Convert.ToInt32(reader["Count"]);
+
+                            switch (status)
+                            {
+                                case "Принят":
+                                    stats.AcceptedOrders = count;
+                                    break;
+                                case "Оплачен":
+                                    stats.PaidOrders = count;
+                                    break;
+                                case "Отменен":
+                                    stats.CancelledOrders = count;
+                                    break;
+                            }
+                        }
+                    }
+                }
+
+                stats.TotalOrders = stats.AcceptedOrders + stats.PaidOrders + stats.CancelledOrders;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при получении полной статистики: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+
+            return stats;
+        }
+
         // Новая функция для получения полных данных (с телефоном без маскировки)
         private DataTable GetFullDataForExport()
         {
@@ -1179,11 +1446,6 @@ namespace Kursovaya
                 MessageBox.Show($"Ошибка при получении данных для экспорта: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return null;
             }
-        }
-
-        private void ViewingOrderAccounting_Load_1(object sender, EventArgs e)
-        {
-            LoadData();
         }
     }
 }

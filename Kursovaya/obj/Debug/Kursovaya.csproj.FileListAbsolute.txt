@@ -133,3 +133,4 @@ C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\bin\Debug\cafe_coffee_sh
 C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\bin\Debug\Иконка.ico
 C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\obj\Debug\Kursovaya.csproj.AssemblyReference.cache
 C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\obj\Debug\Kursovaya.SelectFormPrint.resources
+C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\obj\Debug\Kursovaya.ViewStatistics.resources
