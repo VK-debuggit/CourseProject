@@ -134,3 +134,12 @@ C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\bin\Debug\Иконка.i
 C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\obj\Debug\Kursovaya.csproj.AssemblyReference.cache
 C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\obj\Debug\Kursovaya.SelectFormPrint.resources
 C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\obj\Debug\Kursovaya.ViewStatistics.resources
+C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\bin\Debug\ICSharpCode.SharpZipLib.dll
+C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\bin\Debug\PdfSharpCore.dll
+C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\bin\Debug\SixLabors.Fonts.dll
+C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\bin\Debug\SixLabors.ImageSharp.dll
+C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\bin\Debug\ICSharpCode.SharpZipLib.pdb
+C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\bin\Debug\ICSharpCode.SharpZipLib.xml
+C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\bin\Debug\SixLabors.Fonts.xml
+C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\bin\Debug\SixLabors.ImageSharp.xml
+C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\bin\Debug\de\PdfSharpCore.resources.dll

@@ -523,7 +523,7 @@ namespace Kursovaya
         private void button2_Click(object sender, EventArgs e)
         {
             this.Hide();
-            SelectFormPrint selectFormPrint = new SelectFormPrint(cartItems, orderData, discountAmountValue, DocumentType.Preliminary);
+            SelectFormPrint selectFormPrint = new SelectFormPrint(cartItems, orderData, discountAmountValue, DocumentType.Preliminary, this);
             selectFormPrint.ShowDialog();
 
             // После закрытия формы выбора печати показываем текущую форму снова
