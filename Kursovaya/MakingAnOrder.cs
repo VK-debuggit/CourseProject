@@ -41,18 +41,6 @@ namespace Kursovaya
 
             FillDataGridView();
 
-            inactivityTimeout = Properties.Settings.Default.InactivityTimeout * 1000;
-            inactivityTimer = new Timer();
-            inactivityTimer.Interval = inactivityTimeout;
-            inactivityTimer.Tick += InactivityTimer_Tick;
-            inactivityTimer.Start();
-
-            this.MouseMove += ResetInactivityTimer;
-            this.KeyDown += ResetInactivityTimer;
-            this.MouseWheel += ResetInactivityTimer;
-            this.DoubleClick += ResetInactivityTimer;
-            this.MouseDoubleClick += ResetInactivityTimer;
-
             // Подключение обработчиков
             dataGridView1.CellClick += dataGridView1_CellClick;
             dataGridView2.CellClick += dataGridView2_CellClick;
@@ -110,33 +98,10 @@ namespace Kursovaya
             label2.Text = Properties.Settings.Default.userRole;
         }
 
-        private void ResetInactivityTimer(object sender, EventArgs e)
-        {
-            inactivityTimer.Stop();
-            inactivityTimer.Interval = Properties.Settings.Default.InactivityTimeout * 1000;
-            inactivityTimer.Start();
-        }
-
-        private void InactivityTimer_Tick(object sender, EventArgs e)
-        {
-            inactivityTimer.Stop();
-            ShowLoginForm();
-        }
-
-        private void ShowLoginForm()
-        {
-            this.Hide();
-            var loginForm = new Authorization();
-            loginForm.ShowDialog();
-            this.Show();
-            ResetInactivityTimer(null, null);
-        }
-
         private bool allowClose = false;
 
         private void button4_Click(object sender, EventArgs e)
         {
-            inactivityTimer.Stop();
             allowClose = true;
             this.Visible = false;
             MainFormMeneger mainFormMeneger = new MainFormMeneger();
@@ -273,7 +238,6 @@ namespace Kursovaya
             // Создаем копию корзины для передачи
             DataTable cartCopy = dataView2.Copy();
 
-            inactivityTimer.Stop();
             this.Visible = false;
             ViewingAnOrderForMeneger viewingAnOrderForMeneger = new ViewingAnOrderForMeneger(cartCopy, orderData);
             viewingAnOrderForMeneger.ShowDialog();
@@ -394,7 +358,6 @@ namespace Kursovaya
 
         private void button1_Click(object sender, EventArgs e)
         {
-            inactivityTimer.Stop();
             this.Visible = false;
             CreatingAClient creatingAClient = new CreatingAClient();
             creatingAClient.ShowDialog();

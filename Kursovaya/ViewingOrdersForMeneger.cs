@@ -45,19 +45,6 @@ namespace Kursovaya
             searchTimer.Interval = 500;
             searchTimer.Tick += SearchTimer_Tick;
 
-            inactivityTimeout = Properties.Settings.Default.InactivityTimeout * 1000;
-            inactivityTimer = new Timer();
-            inactivityTimer.Interval = inactivityTimeout;
-            inactivityTimer.Tick += InactivityTimer_Tick;
-            inactivityTimer.Start();
-
-            this.MouseMove += ResetInactivityTimer;
-            this.KeyDown += ResetInactivityTimer;
-            this.MouseWheel += ResetInactivityTimer;
-            this.DoubleClick += ResetInactivityTimer;
-            this.MouseDoubleClick += ResetInactivityTimer;
-            this.Resize += ViewingOrdersForMeneger_Resize;
-
             button1.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button2.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button3.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
@@ -391,40 +378,6 @@ namespace Kursovaya
             inactivityTimer.Start();
         }
 
-        private void InactivityTimer_Tick(object sender, EventArgs e)
-        {
-            inactivityTimer.Stop();
-            ShowLoginForm();
-        }
-
-        private void ShowLoginForm()
-        {
-            // Сохраняем состояние
-            SaveFormState();
-
-            this.Hide();
-            var loginForm = new Authorization();
-
-            // Передаем информацию для возврата
-            string expectedUserName = Properties.Settings.Default.userName;
-            string expectedUserRole = Properties.Settings.Default.userRole;
-            loginForm.SetReturnAfterInactivity(this, expectedUserName, expectedUserRole);
-
-            if (loginForm.ShowDialog() == DialogResult.OK)
-            {
-                if (loginForm.IsAuthorizedAsExpected())
-                {
-                    // Тот же пользователь - восстанавливаем форму
-                    UpdateCurrentUserInfo();
-                    RefreshFormData();
-                    RestoreFormState();
-                    this.Show();
-                    ResetInactivityTimer(null, null);
-                }
-                // Если другой пользователь - форма уже закрыта в Authorization
-            }
-        }
-
         private void SearchTimer_Tick(object sender, EventArgs e)
         {
             searchTimer.Stop();
@@ -715,7 +668,6 @@ namespace Kursovaya
 
         private void button1_Click(object sender, EventArgs e)
         {
-            inactivityTimer.Stop();
             allowClose = true;
             this.Visible = false;
             MainFormMeneger mainFormMeneger = new MainFormMeneger();
@@ -742,7 +694,6 @@ namespace Kursovaya
                 return;
             }
 
-            inactivityTimer.Stop();
             allowClose = true;
             this.Visible = false;
             ViewingAnOrder viewingAnOrder = new ViewingAnOrder(orderId);

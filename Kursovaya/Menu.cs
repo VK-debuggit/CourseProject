@@ -16,8 +16,6 @@ namespace Kursovaya
     public partial class Menu : Form
     {
         string conString = $"host={Properties.Settings.Default.host};uid={Properties.Settings.Default.uid};pwd={Properties.Settings.Default.pwd};database={Properties.Settings.Default.database};";
-        private Timer inactivityTimer;
-        private int inactivityTimeout;
         private int rowCount = 0;
         private Image newProductImage;
         private string originalImageFilePath;
@@ -45,19 +43,6 @@ namespace Kursovaya
             FillDataGridView();
             FillFilterCategory();
             FillFilterEvent();
-
-            inactivityTimeout = Properties.Settings.Default.InactivityTimeout * 1000;
-            inactivityTimer = new Timer();
-            inactivityTimer.Interval = inactivityTimeout;
-            inactivityTimer.Tick += InactivityTimer_Tick;
-            inactivityTimer.Start();
-
-            this.MouseMove += ResetInactivityTimer;
-            this.KeyDown += ResetInactivityTimer;
-            this.MouseWheel += ResetInactivityTimer;
-            this.DoubleClick += ResetInactivityTimer;
-            this.MouseDoubleClick += ResetInactivityTimer;
-            this.Resize += Menu_Resize;
 
             button1.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button2.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
@@ -204,7 +189,6 @@ namespace Kursovaya
             {
                 ShowPage(currentPage - 1);
                 Pagination();
-                ResetInactivityTimer(sender, e);
             }
         }
 
@@ -214,7 +198,6 @@ namespace Kursovaya
             {
                 ShowPage(currentPage + 1);
                 Pagination();
-                ResetInactivityTimer(sender, e);
             }
         }
 
@@ -225,7 +208,6 @@ namespace Kursovaya
             {
                 ShowPage(pageNumber);
                 Pagination();
-                ResetInactivityTimer(sender, e);
             }
         }
 
@@ -285,7 +267,6 @@ namespace Kursovaya
                 {
                     ShowPage(1);
                     Pagination();
-                    ResetInactivityTimer(null, null);
                 }
                 return true;
             }
@@ -295,7 +276,6 @@ namespace Kursovaya
                 {
                     ShowPage(totalPages);
                     Pagination();
-                    ResetInactivityTimer(null, null);
                 }
                 return true;
             }
@@ -326,35 +306,10 @@ namespace Kursovaya
             label14.Text = $"{visibleCount} из {totalInDatabase}";
         }
 
-        // ========== ТАЙМЕРЫ ==========
-
-        private void ResetInactivityTimer(object sender, EventArgs e)
-        {
-            inactivityTimer.Stop();
-            inactivityTimer.Interval = Properties.Settings.Default.InactivityTimeout * 1000;
-            inactivityTimer.Start();
-        }
-
-        private void InactivityTimer_Tick(object sender, EventArgs e)
-        {
-            inactivityTimer.Stop();
-            ShowLoginForm();
-        }
-
-        private void ShowLoginForm()
-        {
-            this.Hide();
-            var loginForm = new Authorization();
-            loginForm.ShowDialog();
-            this.Show();
-            ResetInactivityTimer(null, null);
-        }
-
         private bool allowClose = false;
 
         private void button4_Click(object sender, EventArgs e)
         {
-            inactivityTimer.Stop();
             allowClose = true;
             this.Visible = false;
             MainFormMeneger mainFormMeneger = new MainFormMeneger();

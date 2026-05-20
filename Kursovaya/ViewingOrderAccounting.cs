@@ -35,19 +35,6 @@ namespace Kursovaya
             searchTimer.Interval = 500;
             searchTimer.Tick += SearchTimer_Tick;
 
-            inactivityTimeout = Properties.Settings.Default.InactivityTimeout * 1000;
-            inactivityTimer = new Timer();
-            inactivityTimer.Interval = inactivityTimeout;
-            inactivityTimer.Tick += InactivityTimer_Tick;
-            inactivityTimer.Start();
-
-            this.MouseMove += ResetInactivityTimer;
-            this.KeyDown += ResetInactivityTimer;
-            this.MouseWheel += ResetInactivityTimer;
-            this.DoubleClick += ResetInactivityTimer;
-            this.MouseDoubleClick += ResetInactivityTimer;
-            this.Resize += ViewingOrderAccounting_Resize;
-
             button1.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button2.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button3.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
@@ -355,21 +342,6 @@ namespace Kursovaya
             inactivityTimer.Stop();
             inactivityTimer.Interval = Properties.Settings.Default.InactivityTimeout * 1000;
             inactivityTimer.Start();
-        }
-
-        private void InactivityTimer_Tick(object sender, EventArgs e)
-        {
-            inactivityTimer.Stop();
-            ShowLoginForm();
-        }
-
-        private void ShowLoginForm()
-        {
-            this.Hide();
-            var loginForm = new Authorization();
-            loginForm.ShowDialog();
-            this.Show();
-            ResetInactivityTimer(null, null);
         }
 
         private void SetupDateControls()
@@ -816,7 +788,6 @@ namespace Kursovaya
                 return;
             }
 
-            inactivityTimer.Stop();
             allowClose = true;
             this.Visible = false;
             ViewingOrderForDirector viewingOrderForDirector = new ViewingOrderForDirector(orderId);
@@ -826,7 +797,6 @@ namespace Kursovaya
 
         private void button3_Click(object sender, EventArgs e)
         {
-            inactivityTimer.Stop();
             allowClose = true;
             this.Visible = false;
             MainFormDirector mainFormDirector = new MainFormDirector();

@@ -36,19 +36,7 @@ namespace Kursovaya
             FillFilterEvents();
             FillDataGridView();
 
-            inactivityTimeout = Properties.Settings.Default.InactivityTimeout * 1000;
-            inactivityTimer = new Timer();
-            inactivityTimer.Interval = inactivityTimeout;
-            inactivityTimer.Tick += InactivityTimer_Tick;
-            inactivityTimer.Start();
-
-            this.MouseMove += ResetInactivityTimer;
-            this.KeyDown += ResetInactivityTimer;
-            this.MouseWheel += ResetInactivityTimer;
-            this.DoubleClick += ResetInactivityTimer;
-            this.MouseDoubleClick += ResetInactivityTimer;
             this.Resize += ViewingMenu_Resize;
-            dataGridView1.Scroll += ResetInactivityTimer;
 
             button2.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button3.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
@@ -329,21 +317,6 @@ namespace Kursovaya
             inactivityTimer.Start();
         }
 
-        private void InactivityTimer_Tick(object sender, EventArgs e)
-        {
-            inactivityTimer.Stop();
-            ShowLoginForm();
-        }
-
-        private void ShowLoginForm()
-        {
-            this.Hide();
-            var loginForm = new Authorization();
-            loginForm.ShowDialog();
-            this.Show();
-            ResetInactivityTimer(null, null);
-        }
-
         // ========== ДОБАВЛЕННЫЕ МЕТОДЫ ==========
 
         private string BuildCountQuery(string where = "")
@@ -584,7 +557,6 @@ namespace Kursovaya
 
         private void button3_Click(object sender, EventArgs e)
         {
-            inactivityTimer.Stop();
             allowClose = true;
             this.Visible = false;
             MainFormMeneger mainFormMeneger = new MainFormMeneger();

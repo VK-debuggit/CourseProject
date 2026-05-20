@@ -12,24 +12,9 @@ namespace Kursovaya
 {
     public partial class Directories : Form
     {
-        private Timer inactivityTimer;
-        private int inactivityTimeout;
-
         public Directories()
         {
             InitializeComponent();
-
-            inactivityTimeout = Properties.Settings.Default.InactivityTimeout * 1000;
-            inactivityTimer = new Timer();
-            inactivityTimer.Interval = inactivityTimeout;
-            inactivityTimer.Tick += InactivityTimer_Tick;
-            inactivityTimer.Start();
-
-            this.MouseMove += ResetInactivityTimer;
-            this.KeyDown += ResetInactivityTimer;
-            this.MouseWheel += ResetInactivityTimer;
-            this.DoubleClick += ResetInactivityTimer;
-            this.MouseDoubleClick += ResetInactivityTimer;
 
             button1.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button2.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
@@ -52,31 +37,8 @@ namespace Kursovaya
             label4.Text = Properties.Settings.Default.userRole;
         }
 
-        private void ResetInactivityTimer(object sender, EventArgs e)
-        {
-            inactivityTimer.Stop();
-            inactivityTimer.Interval = Properties.Settings.Default.InactivityTimeout * 1000;
-            inactivityTimer.Start();
-        }
-
-        private void InactivityTimer_Tick(object sender, EventArgs e)
-        {
-            inactivityTimer.Stop();
-            ShowLoginForm();
-        }
-
-        private void ShowLoginForm()
-        {
-            this.Hide();
-            var loginForm = new Authorization();
-            loginForm.ShowDialog();
-            this.Show();
-            ResetInactivityTimer(null, null);
-        }
-
         private void button1_Click(object sender, EventArgs e)
         {
-            inactivityTimer.Stop();
             this.Visible = false;
             Roles roles = new Roles();
             roles.ShowDialog();
@@ -109,7 +71,6 @@ namespace Kursovaya
 
         private void button2_Click(object sender, EventArgs e)
         {
-            inactivityTimer.Stop();
             this.Visible = false;
             Statuses statuses = new Statuses();
             statuses.ShowDialog();
@@ -118,7 +79,6 @@ namespace Kursovaya
 
         private void button3_Click(object sender, EventArgs e)
         {
-            inactivityTimer.Stop();
             this.Visible = false;
             Events events = new Events();
             events.ShowDialog();
@@ -127,7 +87,6 @@ namespace Kursovaya
 
         private void button4_Click(object sender, EventArgs e)
         {
-            inactivityTimer.Stop();
             this.Visible = false;
             Categories categories = new Categories();
             categories.ShowDialog();

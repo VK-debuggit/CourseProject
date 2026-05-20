@@ -12,24 +12,9 @@ namespace Kursovaya
 {
     public partial class MainFormMeneger : Form
     {
-        private Timer inactivityTimer;
-        private int inactivityTimeout;
-
         public MainFormMeneger()
         {
             InitializeComponent();
-
-            inactivityTimeout = Properties.Settings.Default.InactivityTimeout * 1000;
-            inactivityTimer = new Timer();
-            inactivityTimer.Interval = inactivityTimeout;
-            inactivityTimer.Tick += InactivityTimer_Tick;
-            inactivityTimer.Start();
-
-            this.MouseMove += ResetInactivityTimer;
-            this.KeyDown += ResetInactivityTimer;
-            this.MouseWheel += ResetInactivityTimer;
-            this.DoubleClick += ResetInactivityTimer;
-            this.MouseDoubleClick += ResetInactivityTimer;
 
             button1.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button2.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
@@ -52,28 +37,6 @@ namespace Kursovaya
             label4.Text = Properties.Settings.Default.userRole;
         }
 
-        private void ResetInactivityTimer(object sender, EventArgs e)
-        {
-            inactivityTimer.Stop();
-            inactivityTimer.Interval = Properties.Settings.Default.InactivityTimeout * 1000;
-            inactivityTimer.Start();
-        }
-
-        private void InactivityTimer_Tick(object sender, EventArgs e)
-        {
-            inactivityTimer.Stop();
-            ShowLoginForm();
-        }
-
-        private void ShowLoginForm()
-        {
-            this.Hide();
-            var loginForm = new Authorization();
-            loginForm.ShowDialog();
-            this.Show();
-            ResetInactivityTimer(null, null);
-        }
-
         private bool allowClose = false;
 
         private void button7_Click(object sender, EventArgs e)
@@ -82,7 +45,6 @@ namespace Kursovaya
 
             if (result == DialogResult.Yes)
             {
-                inactivityTimer.Stop();
                 allowClose = true;
                 this.Visible = false;
                 Authorization authorization = new Authorization();
@@ -106,7 +68,6 @@ namespace Kursovaya
 
         private void button1_Click(object sender, EventArgs e)
         {
-            inactivityTimer.Stop();
             this.Visible = false;
             Menu menu = new Menu();
             menu.ShowDialog();
@@ -115,7 +76,6 @@ namespace Kursovaya
 
         private void button6_Click(object sender, EventArgs e)
         {
-            inactivityTimer.Stop();
             this.Visible = false;
             MakingAnOrder makingAnOrder = new MakingAnOrder();
             makingAnOrder.ShowDialog();
@@ -124,7 +84,6 @@ namespace Kursovaya
 
         private void button4_Click(object sender, EventArgs e)
         {
-            inactivityTimer.Stop();
             this.Visible = false;
             ViewingOrdersForMeneger viewingOrdersForMeneger = new ViewingOrdersForMeneger();
             viewingOrdersForMeneger.ShowDialog();
@@ -133,8 +92,6 @@ namespace Kursovaya
 
         private void button2_Click(object sender, EventArgs e)
         {
-            inactivityTimer.Stop();
-
             this.Visible = false;
             ViewingMenu viewingMenu = new ViewingMenu();
             viewingMenu.ShowDialog();

@@ -23,6 +23,11 @@ namespace Kursovaya
         private bool isSearching = false;
         private int? _lastInsertedClientId = null;
 
+        // Для сохранения состояния
+        private string savedName = "";
+        private string savedPhone = "";
+        private string savedPhone2 = "";
+
         // Хранилище для оригинальных номеров телефонов
         private Dictionary<int, string> originalPhoneNumbers = new Dictionary<int, string>();
 
@@ -148,11 +153,72 @@ namespace Kursovaya
 
         private void ShowLoginForm()
         {
+            // Сохраняем состояние (если нужно)
+            SaveFormState();
+
             this.Hide();
             var loginForm = new Authorization();
-            loginForm.ShowDialog();
-            this.Show();
-            ResetInactivityTimer(null, null);
+
+            // Передаем информацию для возврата
+            string expectedUserName = Properties.Settings.Default.userName;
+            string expectedUserRole = Properties.Settings.Default.userRole;
+            loginForm.SetReturnAfterInactivity(this, expectedUserName, expectedUserRole);
+
+            if (loginForm.ShowDialog() == DialogResult.OK)
+            {
+                if (loginForm.IsAuthorizedAsExpected())
+                {
+                    // Тот же пользователь - восстанавливаем форму
+                    UpdateCurrentUserInfo();
+                    RefreshFormData();
+                    RestoreFormState();
+                    this.Show();
+                    ResetInactivityTimer(null, null);
+                }
+                // Если другой пользователь - форма уже закрыта в HandleReturnAfterInactivity
+            }
+        }
+
+        private void SaveFormState()
+        {
+            // Сохраняем текущее состояние формы
+            savedName = textBox1.Text;
+            savedPhone = maskedTextBox1.Text;
+            savedPhone2 = maskedTextBox2.Text;
+        }
+
+        private void RestoreFormState()
+        {
+            // Восстанавливаем состояние формы
+            textBox1.Text = savedName;
+            maskedTextBox1.Text = savedPhone;
+            maskedTextBox2.Text = savedPhone2;
+
+            // Обновляем DataGridView если нужно
+            FillDataGridView();
+        }
+
+        private void UpdateCurrentUserInfo()
+        {
+            string fullname = Properties.Settings.Default.userName;
+            string formattedname = fullname;
+
+            string[] parts = fullname.Split(' ');
+
+            if (parts.Length == 3)
+            {
+                string lastname = parts[0];
+                string firstname = parts[1].Substring(0, 1);
+                string middle = parts[2].Substring(0, 1);
+                formattedname = $"{lastname} {firstname}.{middle}.";
+            }
+            label1.Text = formattedname;
+            label2.Text = Properties.Settings.Default.userRole;
+        }
+
+        private void RefreshFormData()
+        {
+            FillDataGridView();
         }
 
         private void button5_Click(object sender, EventArgs e)

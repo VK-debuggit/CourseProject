@@ -14,8 +14,6 @@ namespace Kursovaya
     public partial class Roles : Form
     {
         string conString = $"host={Properties.Settings.Default.host};uid={Properties.Settings.Default.uid};pwd={Properties.Settings.Default.pwd};database={Properties.Settings.Default.database};";
-        private Timer inactivityTimer;
-        private int inactivityTimeout;
         private int rowCount = 0;
 
         public Roles()
@@ -24,17 +22,6 @@ namespace Kursovaya
 
             FillDataGridView();
 
-            inactivityTimeout = Properties.Settings.Default.InactivityTimeout * 1000;
-            inactivityTimer = new Timer();
-            inactivityTimer.Interval = inactivityTimeout;
-            inactivityTimer.Tick += InactivityTimer_Tick;
-            inactivityTimer.Start();
-
-            this.MouseMove += ResetInactivityTimer;
-            this.KeyDown += ResetInactivityTimer;
-            this.MouseWheel += ResetInactivityTimer;
-            this.DoubleClick += ResetInactivityTimer;
-            this.MouseDoubleClick += ResetInactivityTimer;
             button4.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             dataGridView1.BackgroundColor = System.Drawing.Color.FromArgb(255, 221, 153);
             dataGridView1.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
@@ -57,28 +44,6 @@ namespace Kursovaya
             label2.Text = Properties.Settings.Default.userRole;
         }
 
-        private void ResetInactivityTimer(object sender, EventArgs e)
-        {
-            inactivityTimer.Stop();
-            inactivityTimer.Interval = Properties.Settings.Default.InactivityTimeout * 1000;
-            inactivityTimer.Start();
-        }
-
-        private void InactivityTimer_Tick(object sender, EventArgs e)
-        {
-            inactivityTimer.Stop();
-            ShowLoginForm();
-        }
-
-        private void ShowLoginForm()
-        {
-            this.Hide();
-            var loginForm = new Authorization();
-            loginForm.ShowDialog();
-            this.Show();
-            ResetInactivityTimer(null, null);
-        }
-
         private bool allowClose = false;
 
         private void Roles_FormClosing(object sender, FormClosingEventArgs e)
@@ -96,7 +61,6 @@ namespace Kursovaya
 
         private void button4_Click(object sender, EventArgs e)
         {
-            inactivityTimer.Stop();
             allowClose = true;
             this.Visible = false;
             Directories directories = new Directories();
