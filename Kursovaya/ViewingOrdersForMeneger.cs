@@ -21,6 +21,16 @@ namespace Kursovaya
         private Timer inactivityTimer;
         private int inactivityTimeout;
 
+        // переменные для сохранения данных формы
+        private int savedPage = 1;
+        private string savedSearchText = "";
+        private DateTime savedStartDate;
+        private DateTime savedEndDate;
+        private int savedSelectedUserIndex = 0;
+        private bool savedStatus1 = false;
+        private bool savedStatus2 = false;
+        private bool savedStatus3 = false;
+
         // Переменные для пагинации
         private int currentPage = 1;
         private int totalPages = 1;
@@ -63,6 +73,56 @@ namespace Kursovaya
             SetupUserInfo();
             FillFilterUsers();
 
+            LoadData();
+        }
+
+        // ========== МЕТОДЫ ДЛЯ СОХРАНЕНИЯ/ВОССТАНОВЛЕНИЯ СОСТОЯНИЯ ==========
+
+        private void SaveFormState()
+        {
+            savedPage = this.currentPage;
+            savedSearchText = this.textBox1.Text;
+            savedStartDate = this.dateTimePicker1.Value;
+            savedEndDate = this.dateTimePicker2.Value;
+            savedSelectedUserIndex = this.comboBox1.SelectedIndex;
+            savedStatus1 = this.checkBox1.Checked;
+            savedStatus2 = this.checkBox2.Checked;
+            savedStatus3 = this.checkBox3.Checked;
+        }
+
+        private void RestoreFormState()
+        {
+            this.currentPage = savedPage;
+            this.textBox1.Text = savedSearchText;
+            this.dateTimePicker1.Value = savedStartDate;
+            this.dateTimePicker2.Value = savedEndDate;
+
+            if (savedSelectedUserIndex >= 0 && savedSelectedUserIndex < comboBox1.Items.Count)
+                this.comboBox1.SelectedIndex = savedSelectedUserIndex;
+
+            this.checkBox1.Checked = savedStatus1;
+            this.checkBox2.Checked = savedStatus2;
+            this.checkBox3.Checked = savedStatus3;
+
+            if (!string.IsNullOrEmpty(textBox1.Text))
+            {
+                LoadData();
+            }
+
+            Pagination();
+            ShowPage(currentPage);
+        }
+
+        private void UpdateCurrentUserInfo()
+        {
+            string fullname = Properties.Settings.Default.userName;
+            string formattedname = FormatFullName(fullname);
+            label1.Text = formattedname;
+            label2.Text = Properties.Settings.Default.userRole;
+        }
+
+        private void RefreshFormData()
+        {
             LoadData();
         }
 
@@ -339,11 +399,30 @@ namespace Kursovaya
 
         private void ShowLoginForm()
         {
+            // Сохраняем состояние
+            SaveFormState();
+
             this.Hide();
             var loginForm = new Authorization();
-            loginForm.ShowDialog();
-            this.Show();
-            ResetInactivityTimer(null, null);
+
+            // Передаем информацию для возврата
+            string expectedUserName = Properties.Settings.Default.userName;
+            string expectedUserRole = Properties.Settings.Default.userRole;
+            loginForm.SetReturnAfterInactivity(this, expectedUserName, expectedUserRole);
+
+            if (loginForm.ShowDialog() == DialogResult.OK)
+            {
+                if (loginForm.IsAuthorizedAsExpected())
+                {
+                    // Тот же пользователь - восстанавливаем форму
+                    UpdateCurrentUserInfo();
+                    RefreshFormData();
+                    RestoreFormState();
+                    this.Show();
+                    ResetInactivityTimer(null, null);
+                }
+                // Если другой пользователь - форма уже закрыта в Authorization
+            }
         }
 
         private void SearchTimer_Tick(object sender, EventArgs e)
@@ -536,7 +615,7 @@ namespace Kursovaya
                 query.Append(string.Join(" AND ", conditions));
             }
 
-            query.Append(" ORDER BY p.NumberOrder DESC");
+            query.Append(" ORDER BY p.NumberOrder ASC");
 
             return query.ToString();
         }

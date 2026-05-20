@@ -446,6 +446,7 @@ namespace Kursovaya
             this.textBox2.Location = new System.Drawing.Point(17, 560);
             this.textBox2.Multiline = true;
             this.textBox2.Name = "textBox2";
+            this.textBox2.ReadOnly = true;
             this.textBox2.Size = new System.Drawing.Size(306, 124);
             this.textBox2.TabIndex = 43;
             // 
@@ -466,6 +467,7 @@ namespace Kursovaya
             this.comboBox5.Name = "comboBox5";
             this.comboBox5.Size = new System.Drawing.Size(316, 36);
             this.comboBox5.TabIndex = 5;
+            this.comboBox5.SelectedIndexChanged += new System.EventHandler(this.comboBox5_SelectedIndexChanged_1);
             // 
             // label5
             // 
@@ -541,7 +543,7 @@ namespace Kursovaya
             this.MinimizeBox = false;
             this.Name = "MakingAnOrder";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "Оформление заказа";
+            this.Text = "Оформление заказов";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.MakingAnOrder_FormClosing);
             this.Load += new System.EventHandler(this.MakingAnOrder_Load);
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).EndInit();

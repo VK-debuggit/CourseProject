@@ -22,6 +22,7 @@ namespace Kursovaya
         private bool isWordGenerated = false; // Флаг, что Word документ был создан
         private Timer inactivityTimer;
         private int inactivityTimeout;
+        private bool isOrderSaved = false; // Флаг, что заказ сохранен в БД
 
         public ViewingAnOrderForMeneger(DataTable cartItems, OrderData orderData)
         {
@@ -29,6 +30,9 @@ namespace Kursovaya
             this.cartItems = cartItems;
             this.orderData = orderData;
             InitializeViewOrderForm();
+
+            isWordGenerated = false;
+            isOrderSaved = false;
 
             inactivityTimeout = Properties.Settings.Default.InactivityTimeout * 1000;
             inactivityTimer = new Timer();
@@ -48,8 +52,6 @@ namespace Kursovaya
             dataGridView1.BackgroundColor = System.Drawing.Color.FromArgb(255, 221, 153);
             dataGridView1.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
             dataGridView1.DefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(217, 152, 22);
-            
-            button1.Enabled = false;
 
             string fullname = Properties.Settings.Default.userName;
             string formattedname = fullname;
@@ -494,7 +496,6 @@ namespace Kursovaya
 
                 if (result != DialogResult.Yes)
                 {
-
                     return;
                 }
             }
@@ -522,17 +523,10 @@ namespace Kursovaya
 
         private void button2_Click(object sender, EventArgs e)
         {
-            this.Hide();
+            this.Visible = false;
             SelectFormPrint selectFormPrint = new SelectFormPrint(cartItems, orderData, discountAmountValue, DocumentType.Preliminary, this);
             selectFormPrint.ShowDialog();
-
-            // После закрытия формы выбора печати показываем текущую форму снова
-            this.Show();
-
-            isWordGenerated = true;
-            button1.Enabled = true;
-            button2.Enabled = false;
-            button3.Enabled = false;
+            this.Close();
         }
 
         private void button1_Click(object sender, EventArgs e)
@@ -544,13 +538,13 @@ namespace Kursovaya
                 return;
             }
 
-            // Проверяем, был ли создан Word документ
-            if (!isWordGenerated)
-            {
-                MessageBox.Show("Сначала создайте Word документ для заказа", "Ошибка",
-                              MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
+            //// Проверяем, был ли создан Word документ
+            //if (!isWordGenerated)
+            //{
+            //    MessageBox.Show("Сначала создайте Word документ для заказа", "Ошибка",
+            //                  MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            //    return;
+            //}
 
             try
             {
@@ -559,17 +553,19 @@ namespace Kursovaya
                     MessageBox.Show("Заказ успешно оформлен!", "Успех",
                                   MessageBoxButtons.OK, MessageBoxIcon.Information);
 
-                    // После сохранения заказа все кнопки становятся неактивными
+                    isOrderSaved = true;
+
+                    // После сохранения заказа
                     button1.Enabled = false;
-                    button2.Enabled = false;
+                    button2.Enabled = true;
                     button3.Enabled = false;
 
-                    this.DialogResult = DialogResult.Yes;
-                    allowClose = true;
-                    this.Visible = false;
-                    MainFormMeneger mainFormMeneger = new MainFormMeneger();
-                    mainFormMeneger.ShowDialog();
-                    this.Close();
+                    //this.DialogResult = DialogResult.Yes;
+                    //allowClose = true;
+                    //this.Visible = false;
+                    //MainFormMeneger mainFormMeneger = new MainFormMeneger();
+                    //mainFormMeneger.ShowDialog();
+                    //this.Close();
                 }
             }
             catch (Exception ex)
@@ -826,16 +822,6 @@ namespace Kursovaya
                     cmd.ExecuteNonQuery();
                 }
             }
-        }
-
-        private void button5_Click(object sender, EventArgs e)
-        {
-            GenerateWordTicket();
-
-            isWordGenerated = true;
-            button1.Enabled = true;
-            button2.Enabled = false;
-            button3.Enabled = false;
         }
     }
 }

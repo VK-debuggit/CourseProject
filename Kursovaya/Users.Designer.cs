@@ -81,6 +81,7 @@ namespace Kursovaya
             // 
             // textBox1
             // 
+            this.textBox1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(221)))), ((int)(((byte)(153)))));
             this.textBox1.Location = new System.Drawing.Point(65, 67);
             this.textBox1.Name = "textBox1";
             this.textBox1.Size = new System.Drawing.Size(291, 35);
@@ -118,6 +119,7 @@ namespace Kursovaya
             // 
             // textBox2
             // 
+            this.textBox2.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(221)))), ((int)(((byte)(153)))));
             this.textBox2.Location = new System.Drawing.Point(469, 67);
             this.textBox2.MaxLength = 32;
             this.textBox2.Name = "textBox2";
@@ -137,6 +139,7 @@ namespace Kursovaya
             // 
             // textBox3
             // 
+            this.textBox3.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(221)))), ((int)(((byte)(153)))));
             this.textBox3.Location = new System.Drawing.Point(469, 116);
             this.textBox3.MaxLength = 64;
             this.textBox3.Name = "textBox3";
@@ -151,6 +154,7 @@ namespace Kursovaya
             this.dataGridView1.AllowUserToDeleteRows = false;
             this.dataGridView1.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
             this.dataGridView1.AutoSizeRowsMode = System.Windows.Forms.DataGridViewAutoSizeRowsMode.AllCells;
+            this.dataGridView1.BackgroundColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(221)))), ((int)(((byte)(153)))));
             this.dataGridView1.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.dataGridView1.Location = new System.Drawing.Point(0, 173);
             this.dataGridView1.Name = "dataGridView1";
@@ -181,46 +185,50 @@ namespace Kursovaya
             // 
             // button1
             // 
+            this.button1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(217)))), ((int)(((byte)(152)))), ((int)(((byte)(22)))));
             this.button1.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.button1.Location = new System.Drawing.Point(12, 395);
             this.button1.Name = "button1";
             this.button1.Size = new System.Drawing.Size(138, 39);
             this.button1.TabIndex = 13;
             this.button1.Text = "Добавить";
-            this.button1.UseVisualStyleBackColor = true;
+            this.button1.UseVisualStyleBackColor = false;
             this.button1.Click += new System.EventHandler(this.button1_Click);
             // 
             // button2
             // 
+            this.button2.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(217)))), ((int)(((byte)(152)))), ((int)(((byte)(22)))));
             this.button2.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.button2.Location = new System.Drawing.Point(156, 395);
             this.button2.Name = "button2";
-            this.button2.Size = new System.Drawing.Size(138, 39);
+            this.button2.Size = new System.Drawing.Size(159, 39);
             this.button2.TabIndex = 14;
             this.button2.Text = "Редактировать";
-            this.button2.UseVisualStyleBackColor = true;
+            this.button2.UseVisualStyleBackColor = false;
             this.button2.Click += new System.EventHandler(this.button2_Click);
             // 
             // button3
             // 
+            this.button3.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(217)))), ((int)(((byte)(152)))), ((int)(((byte)(22)))));
             this.button3.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.button3.Location = new System.Drawing.Point(300, 395);
+            this.button3.Location = new System.Drawing.Point(321, 395);
             this.button3.Name = "button3";
             this.button3.Size = new System.Drawing.Size(138, 39);
             this.button3.TabIndex = 15;
             this.button3.Text = "Удалить";
-            this.button3.UseVisualStyleBackColor = true;
+            this.button3.UseVisualStyleBackColor = false;
             this.button3.Click += new System.EventHandler(this.button3_Click);
             // 
             // button4
             // 
+            this.button4.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(217)))), ((int)(((byte)(152)))), ((int)(((byte)(22)))));
             this.button4.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.button4.Location = new System.Drawing.Point(597, 395);
             this.button4.Name = "button4";
             this.button4.Size = new System.Drawing.Size(138, 39);
             this.button4.TabIndex = 16;
             this.button4.Text = "В меню";
-            this.button4.UseVisualStyleBackColor = true;
+            this.button4.UseVisualStyleBackColor = false;
             this.button4.Click += new System.EventHandler(this.button4_Click);
             // 
             // Users

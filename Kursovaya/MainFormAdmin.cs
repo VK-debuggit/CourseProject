@@ -35,6 +35,7 @@ namespace Kursovaya
             button2.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button3.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button4.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
+            button5.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             string fullname = Properties.Settings.Default.userName;
             string formattedname = fullname;
 
@@ -127,6 +128,14 @@ namespace Kursovaya
             this.Visible = false;
             AccountingForOrdersForAdmin accountingForOrdersForAdmin = new AccountingForOrdersForAdmin();
             accountingForOrdersForAdmin.ShowDialog();
+            this.Close();
+        }
+
+        private void button5_Click(object sender, EventArgs e)
+        {
+            this.Visible = false;
+            Settings settings = new Settings();
+            settings.ShowDialog();
             this.Close();
         }
     }

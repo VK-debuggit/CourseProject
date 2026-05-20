@@ -344,10 +344,20 @@ namespace Kursovaya
                 errorMessage += "• Заполните поле логина\n";
                 hasError = true;
             }
+            else if (loginName.Length < 4)  
+            {
+                errorMessage += "• Логин должен содержать минимум 4 символа\n";
+                hasError = true;
+            }
 
             if (string.IsNullOrEmpty(password))
             {
                 errorMessage += "• Заполните поле пароля\n";
+                hasError = true;
+            }
+            else if (password.Length < 8) 
+            {
+                errorMessage += "• Пароль должен содержать минимум 8 символов\n";
                 hasError = true;
             }
 
@@ -492,38 +502,41 @@ namespace Kursovaya
             string loginText = textBox2.Text.Trim();
             string passwordText = textBox3.Text.Trim();
 
-            // Проверяем, все ли обязательные поля заполнены
-            bool allTextFieldsFilled = (!string.IsNullOrWhiteSpace(FIOText) &&
-                                       !string.IsNullOrWhiteSpace(loginText) &&
-                                       !string.IsNullOrWhiteSpace(passwordText));
+            // Проверка длины логина и пароля (для добавления)
+            bool isLoginValid = !string.IsNullOrWhiteSpace(loginText) && loginText.Length >= 4;
+            bool isPasswordValidForAdd = !string.IsNullOrWhiteSpace(passwordText) && passwordText.Length >= 8;
+            bool isFIOValid = !string.IsNullOrWhiteSpace(FIOText);
 
-            bool isRowSelected = (dataGridView1.CurrentRow != null &&
-                                 dataGridView1.CurrentRow.Index >= 0);
+            bool allTextFieldsFilled = (isFIOValid && isLoginValid && isPasswordValidForAdd);
+            bool isRowSelected = (dataGridView1.CurrentRow != null && dataGridView1.CurrentRow.Index >= 0);
 
-            // Для добавления пользователя - все поля должны быть заполнены и выбрана конкретная роль (не "Все роли")
-            bool canAddUser = allTextFieldsFilled &&
-                             Filter.SelectedIndex > 0;// Конкретная роль выбрана
-
-            // Кнопка "Добавить" активна
-            button1.Enabled = canAddUser;
+            // Для добавления пользователя (все поля обязательны)
+            button1.Enabled = allTextFieldsFilled && Filter.SelectedIndex > 0;
 
             // Для редактирования пользователя
-            if (allTextFieldsFilled && Filter.SelectedIndex > 0 && isRowSelected)
+            if (isRowSelected && Filter.SelectedIndex > 0)
             {
                 string originalLogin = dataGridView1.CurrentRow.Cells["Login"].Value?.ToString() ?? "";
                 string originalFIO = dataGridView1.CurrentRow.Cells["FullName"].Value?.ToString() ?? "";
                 string originalRole = dataGridView1.CurrentRow.Cells["Role"].Value?.ToString() ?? "";
-                string originalHashedPassword = dataGridView1.CurrentRow.Cells["Password"].Value?.ToString() ?? "";
+                string originalPasswordHash = dataGridView1.CurrentRow.Cells["Password"].Value?.ToString() ?? "";
 
-                string hashedPassword = GetHashPass(passwordText);
                 string selectedRole = Filter.SelectedItem?.ToString() ?? "";
 
-                bool hasChanges = (loginText != originalLogin) ||
-                                 (FIOText != originalFIO) ||
-                                 (selectedRole != originalRole) ||
-                                 (hashedPassword != originalHashedPassword);
+                // Проверяем изменения
+                bool fioChanged = FIOText != originalFIO && !string.IsNullOrEmpty(FIOText);
+                bool loginChanged = loginText != originalLogin && !string.IsNullOrEmpty(loginText) && loginText.Length >= 4;
+                bool roleChanged = selectedRole != originalRole && Filter.SelectedIndex > 0;
 
-                button2.Enabled = hasChanges;
+                bool passwordChanged = false;
+                if (!string.IsNullOrEmpty(passwordText) && passwordText.Length >= 8)
+                {
+                    string hashedPassword = GetHashPass(passwordText);
+                    passwordChanged = hashedPassword != originalPasswordHash;
+                }
+
+                // Если есть хотя бы одно изменение - включаем кнопку
+                button2.Enabled = fioChanged || loginChanged || roleChanged || passwordChanged;
             }
             else
             {
@@ -653,29 +666,42 @@ namespace Kursovaya
 
             int selectedId = Convert.ToInt32(dataGridView1.CurrentRow.Cells["IDuser"].Value);
             string oldLogin = dataGridView1.CurrentRow.Cells["Login"].Value?.ToString() ?? "";
+            string oldPasswordHash = dataGridView1.CurrentRow.Cells["Password"].Value?.ToString() ?? "";
+            string oldFullName = dataGridView1.CurrentRow.Cells["FullName"].Value?.ToString() ?? "";
+            string oldRole = dataGridView1.CurrentRow.Cells["Role"].Value?.ToString() ?? "";
 
             string FIO = textBox1.Text.Trim();
             string login = textBox2.Text.Trim();
             string password = textBox3.Text.Trim();
+            string selectedRole = Filter.SelectedItem?.ToString() ?? "";
 
             bool hasError = false;
             string errorMessage = "";
 
+            // Проверка ФИО
             if (string.IsNullOrEmpty(FIO))
             {
                 errorMessage += "• Введите ФИО пользователя\n";
                 hasError = true;
             }
 
+            // Проверка логина
             if (string.IsNullOrEmpty(login))
             {
                 errorMessage += "• Введите логин пользователя\n";
                 hasError = true;
             }
-
-            if (string.IsNullOrEmpty(password))
+            else if (login.Length < 4)
             {
-                errorMessage += "• Введите пароль пользователя\n";
+                errorMessage += "• Логин должен содержать минимум 4 символа\n";
+                hasError = true;
+            }
+
+            // Проверка пароля - НЕ ТРЕБУЕМ обязательный ввод!
+            // Только если пользователь ввел пароль, проверяем его длину
+            if (!string.IsNullOrEmpty(password) && password.Length < 8)
+            {
+                errorMessage += "• Пароль должен содержать минимум 8 символов\n";
                 hasError = true;
             }
 
@@ -693,6 +719,7 @@ namespace Kursovaya
                 return;
             }
 
+            // Проверка уникальности логина (только если логин изменился)
             if (login != oldLogin && IsAnotherUserExists(login, selectedId))
             {
                 MessageBox.Show("Пользователь с таким логином уже существует", "Ошибка",
@@ -700,10 +727,7 @@ namespace Kursovaya
                 return;
             }
 
-            // Получаем ID роли по имени
-            string roleName = Filter.SelectedItem.ToString();
-            int roleId = GetRoleIdByName(roleName);
-
+            int roleId = GetRoleIdByName(selectedRole);
             if (roleId <= 0)
             {
                 MessageBox.Show("Ошибка получения ID роли", "Ошибка",
@@ -711,14 +735,55 @@ namespace Kursovaya
                 return;
             }
 
-            string hashedPassword = GetHashPass(password);
+            // Формируем SQL запрос динамически
+            string query = "UPDATE Users SET ";
+            List<string> setClauses = new List<string>();
+            List<MySqlParameter> parameters = new List<MySqlParameter>();
 
-            string query = @"UPDATE Users 
-                    SET FullName = @fullName, 
-                        Login = @login, 
-                        Password = @password,
-                        IDrole = @idRole
-                    WHERE IDuser = @selectedId";
+            // Проверяем, изменилось ли ФИО
+            if (FIO != oldFullName)
+            {
+                setClauses.Add("FullName = @fullName");
+                parameters.Add(new MySqlParameter("@fullName", FIO));
+            }
+
+            // Проверяем, изменился ли логин
+            if (login != oldLogin)
+            {
+                setClauses.Add("Login = @login");
+                parameters.Add(new MySqlParameter("@login", login));
+            }
+
+            // Проверяем, изменился ли пароль (только если поле не пустое)
+            if (!string.IsNullOrEmpty(password))
+            {
+                string hashedPassword = GetHashPass(password);
+                if (hashedPassword != oldPasswordHash)
+                {
+                    setClauses.Add("Password = @password");
+                    parameters.Add(new MySqlParameter("@password", hashedPassword));
+                }
+            }
+
+            // Проверяем, изменилась ли роль
+            if (selectedRole != oldRole)
+            {
+                setClauses.Add("IDrole = @idRole");
+                parameters.Add(new MySqlParameter("@idRole", roleId));
+            }
+
+            // Если нет изменений - сообщаем об этом
+            if (setClauses.Count == 0)
+            {
+                MessageBox.Show("Нет изменений для сохранения", "Информация",
+                              MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            // Собираем финальный запрос
+            query += string.Join(", ", setClauses);
+            query += " WHERE IDuser = @selectedId";
+            parameters.Add(new MySqlParameter("@selectedId", selectedId));
 
             using (MySqlConnection con = new MySqlConnection(conString))
             {
@@ -727,12 +792,7 @@ namespace Kursovaya
                     con.Open();
                     using (MySqlCommand cmd = new MySqlCommand(query, con))
                     {
-                        cmd.Parameters.AddWithValue("@fullName", FIO);
-                        cmd.Parameters.AddWithValue("@login", login);
-                        cmd.Parameters.AddWithValue("@password", hashedPassword);
-                        cmd.Parameters.AddWithValue("@idRole", roleId);
-                        cmd.Parameters.AddWithValue("@selectedId", selectedId);
-
+                        cmd.Parameters.AddRange(parameters.ToArray());
                         int rowsAffected = cmd.ExecuteNonQuery();
 
                         if (rowsAffected > 0)
@@ -743,19 +803,9 @@ namespace Kursovaya
                             dataGridView1.SelectionChanged -= dataGridView1_SelectionChanged;
                             FillDataGridView();
                             dataGridView1.ClearSelection();
-                            textBox1.Clear();
-                            textBox2.Clear();
-                            textBox3.Clear();
-
-                            // Сбрасываем на "Все роли"
-                            if (Filter.Items.Count > 0)
-                            {
-                                Filter.SelectedIndex = 0;
-                            }
-
+                            ClearAllFields();
                             dataGridView1.SelectionChanged += dataGridView1_SelectionChanged;
                             UpdateButtonsState();
-                            ClearAllFields();
                         }
                         else
                         {

@@ -22,17 +22,20 @@ namespace Kursovaya
         private Timer inactivityTimer;
         private int inactivityTimeout;
         private Timer searchTimer;
-        private DataTable dataTable; // Хранилище всех данных для поиска
+        private DataTable dataTable;
 
-        // Переменные для пагинации
         private int currentPage = 1;
         private int totalPages = 1;
+
+        // Для сохранения состояния
+        private int savedPage = 1;
+        private string savedSearchText = "";
+        private bool allowClose = false;
 
         public AccountingForOrdersForAdmin()
         {
             InitializeComponent();
 
-            // Развернуть форму на весь экран
             this.WindowState = FormWindowState.Maximized;
 
             FillDataGridView();
@@ -84,7 +87,51 @@ namespace Kursovaya
             dataGridView1.BackgroundColor = System.Drawing.Color.FromArgb(255, 221, 153);
         }
 
-        // Метод для форматирования ФИО в формат "Фамилия И.О."
+        private void SaveFormState()
+        {
+            savedPage = this.currentPage;
+            savedSearchText = this.textBox1.Text;
+        }
+
+        private void RestoreFormState()
+        {
+            this.currentPage = savedPage;
+            this.textBox1.Text = savedSearchText;
+
+            if (!string.IsNullOrEmpty(textBox1.Text))
+            {
+                FilterDataGridView();
+            }
+
+            Pagination();
+            ShowPage(currentPage);
+        }
+
+        private void UpdateCurrentUserInfo()
+        {
+            string fullname = Properties.Settings.Default.userName;
+            string formattedname = fullname;
+
+            string[] parts = fullname.Split(' ');
+
+            if (parts.Length == 3)
+            {
+                string lastname = parts[0];
+                string firstname = parts[1].Substring(0, 1);
+                string middle = parts[2].Substring(0, 1);
+                formattedname = $"{lastname} {firstname}.{middle}.";
+            }
+            label1.Text = formattedname;
+            label2.Text = Properties.Settings.Default.userRole;
+        }
+
+        private void RefreshFormData()
+        {
+            FillDataGridView();
+            FillStatusComboBox();
+            ResetStatusChangeControls();
+        }
+
         private string FormatFullName(string fullName)
         {
             if (string.IsNullOrEmpty(fullName))
@@ -109,13 +156,11 @@ namespace Kursovaya
             return fullName;
         }
 
-        // Метод для форматирования номера телефона (оставляем последние 4 цифры)
         private string FormatPhoneNumber(string phoneNumber)
         {
             if (string.IsNullOrEmpty(phoneNumber) || phoneNumber.Length < 4)
                 return phoneNumber;
 
-            // Оставляем первую и последние 4 цифры
             string firstDigit = phoneNumber.Substring(0, 1);
             string lastFourDigits = phoneNumber.Substring(phoneNumber.Length - 4);
             string stars = new string('*', phoneNumber.Length - 4);
@@ -141,7 +186,6 @@ namespace Kursovaya
                 dv.RowFilter = $"CONVERT(NumberOrder, 'System.String') LIKE '{searchText}%'";
             }
 
-            // Отображаем отфильтрованные данные в DataGridView
             dataGridView1.Rows.Clear();
 
             foreach (DataRowView rowView in dv)
@@ -152,15 +196,15 @@ namespace Kursovaya
 
                 dataGridView1.Rows.Add(
                     row["NumberOrder"].ToString(),
-                    FormatFullName(row["IdClient"].ToString()), // Форматируем ФИО клиента
-                    FormatPhoneNumber(row["NumberPhoneClient"].ToString()), // Форматируем телефон
+                    FormatFullName(row["IdClient"].ToString()),
+                    FormatPhoneNumber(row["NumberPhoneClient"].ToString()),
                     Convert.ToDateTime(row["DateOfConclusion"]).ToString("dd.MM.yyyy"),
                     Convert.ToDateTime(row["DateEvent"]).ToString("dd.MM.yyyy"),
                     row["IdSchedule"].ToString(),
                     statusName,
                     statusId,
                     row["IdEvent"].ToString(),
-                    FormatFullName(row["IdUser"].ToString()), // Форматируем ФИО сотрудника
+                    FormatFullName(row["IdUser"].ToString()),
                     row["Price"].ToString(),
                     row["DiscountAmount"].ToString(),
                     row["PriceAll"].ToString(),
@@ -171,7 +215,6 @@ namespace Kursovaya
             rowCount = dataGridView1.Rows.Count;
             label4.Text = rowCount.ToString();
 
-            // Обновляем пагинацию
             currentPage = 1;
             Pagination();
         }
@@ -191,14 +234,31 @@ namespace Kursovaya
 
         private void ShowLoginForm()
         {
+            // Сохраняем состояние
+            SaveFormState();
+
             this.Hide();
             var loginForm = new Authorization();
-            loginForm.ShowDialog();
-            this.Show();
-            ResetInactivityTimer(null, null);
-        }
 
-        private bool allowClose = false;
+            // Передаем информацию для возврата
+            string expectedUserName = Properties.Settings.Default.userName;
+            string expectedUserRole = Properties.Settings.Default.userRole;
+            loginForm.SetReturnAfterInactivity(this, expectedUserName, expectedUserRole);
+
+            if (loginForm.ShowDialog() == DialogResult.OK)
+            {
+                if (loginForm.IsAuthorizedAsExpected())
+                {
+                    // Тот же пользователь - восстанавливаем форму
+                    UpdateCurrentUserInfo();
+                    RefreshFormData();
+                    RestoreFormState();
+                    this.Show();
+                    ResetInactivityTimer(null, null);
+                }
+                // Если другой пользователь - форма уже закрыта в HandleReturnAfterInactivity
+            }
+        }
 
         private void button1_Click(object sender, EventArgs e)
         {
@@ -256,7 +316,6 @@ namespace Kursovaya
                 {
                     con.Open();
 
-                    // Заполняем DataTable для поиска
                     using (MySqlCommand cmd = new MySqlCommand(conStr, con))
                     using (MySqlDataAdapter adapter = new MySqlDataAdapter(cmd))
                     {
@@ -297,15 +356,15 @@ namespace Kursovaya
 
                             dataGridView1.Rows.Add(
                                 rdr["NumberOrder"].ToString(),
-                                FormatFullName(rdr["IdClient"].ToString()), // Форматируем ФИО клиента
-                                FormatPhoneNumber(rdr["NumberPhoneClient"].ToString()), // Форматируем телефон
+                                FormatFullName(rdr["IdClient"].ToString()),
+                                FormatPhoneNumber(rdr["NumberPhoneClient"].ToString()),
                                 Convert.ToDateTime(rdr["DateOfConclusion"]).ToString("dd.MM.yyyy"),
                                 Convert.ToDateTime(rdr["DateEvent"]).ToString("dd.MM.yyyy"),
                                 rdr["IdSchedule"].ToString(),
                                 statusName,
                                 statusId,
                                 rdr["IdEvent"].ToString(),
-                                FormatFullName(rdr["IdUser"].ToString()), // Форматируем ФИО сотрудника
+                                FormatFullName(rdr["IdUser"].ToString()),
                                 rdr["Price"].ToString(),
                                 rdr["DiscountAmount"].ToString(),
                                 rdr["PriceAll"].ToString(),
@@ -336,7 +395,6 @@ namespace Kursovaya
 
         void Pagination()
         {
-            // Удаляем старые элементы пагинации
             for (int j = 0, count = this.Controls.Count; j < count; ++j)
             {
                 if (this.Controls[j].Name.StartsWith("page") ||
@@ -349,16 +407,13 @@ namespace Kursovaya
                 }
             }
 
-            // Вычисляем количество страниц
             totalPages = dataGridView1.Rows.Count / 20;
             if (Convert.ToBoolean(dataGridView1.Rows.Count % 20)) totalPages += 1;
             if (totalPages == 0) totalPages = 1;
 
-            // Позиционируем пагинацию под DataGridView
             int yPosition = dataGridView1.Bottom + 10;
             int leftMargin = 13;
 
-            // Кнопка "Назад"
             Button btnPrev = new Button();
             btnPrev.Name = "btnPrev";
             btnPrev.Text = "◀";
@@ -371,7 +426,6 @@ namespace Kursovaya
             btnPrev.FlatAppearance.BorderSize = 0;
             this.Controls.Add(btnPrev);
 
-            // Ссылки на страницы
             int x = leftMargin + 35;
             int step = 20;
 
@@ -403,7 +457,6 @@ namespace Kursovaya
                 x += step;
             }
 
-            // Кнопка "Вперед"
             Button btnNext = new Button();
             btnNext.Name = "btnNext";
             btnNext.Text = "▶";
@@ -499,7 +552,6 @@ namespace Kursovaya
 
         private void AccountingForOrdersForAdmin_Resize(object sender, EventArgs e)
         {
-            // Обновляем позицию пагинации при изменении размера формы
             int savedPage = currentPage;
             Pagination();
             currentPage = savedPage;
@@ -642,8 +694,6 @@ namespace Kursovaya
                         if (rowsAffected > 0)
                         {
                             UpdateDataGridViewStatus(orderNumber, newStatusName, newStatusId);
-
-                            // Обновляем также DataTable для поиска
                             UpdateDataTableStatus(orderNumber, newStatusName, newStatusId);
 
                             MessageBox.Show(
@@ -776,7 +826,6 @@ namespace Kursovaya
         {
             if (!string.IsNullOrEmpty(textBox1.Text))
             {
-                // Разрешаем ввод только цифр
                 string digitsOnly = new string(textBox1.Text.Where(char.IsDigit).ToArray());
                 if (textBox1.Text != digitsOnly)
                 {
@@ -785,7 +834,6 @@ namespace Kursovaya
                 }
             }
 
-            // Перезапускаем таймер при каждом изменении текста
             searchTimer.Stop();
             searchTimer.Start();
         }

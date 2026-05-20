@@ -37,11 +37,11 @@ namespace Kursovaya
             this.auth = new System.Windows.Forms.Button();
             this.close = new System.Windows.Forms.Button();
             this.panel1 = new System.Windows.Forms.Panel();
+            this.labelTimer = new System.Windows.Forms.Label();
             this.button1 = new System.Windows.Forms.Button();
+            this.progressBar1 = new System.Windows.Forms.ProgressBar();
             this.textBox3 = new System.Windows.Forms.TextBox();
             this.pictureBox2 = new System.Windows.Forms.PictureBox();
-            this.progressBar1 = new System.Windows.Forms.ProgressBar();
-            this.labelTimer = new System.Windows.Forms.Label();
             this.panel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).BeginInit();
             this.SuspendLayout();
@@ -57,6 +57,7 @@ namespace Kursovaya
             // 
             // textBox1
             // 
+            this.textBox1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(221)))), ((int)(((byte)(153)))));
             this.textBox1.Location = new System.Drawing.Point(16, 57);
             this.textBox1.Name = "textBox1";
             this.textBox1.Size = new System.Drawing.Size(255, 35);
@@ -74,6 +75,7 @@ namespace Kursovaya
             // 
             // textBox2
             // 
+            this.textBox2.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(221)))), ((int)(((byte)(153)))));
             this.textBox2.Location = new System.Drawing.Point(16, 148);
             this.textBox2.Name = "textBox2";
             this.textBox2.Size = new System.Drawing.Size(255, 35);
@@ -83,24 +85,27 @@ namespace Kursovaya
             // 
             // auth
             // 
+            this.auth.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(217)))), ((int)(((byte)(152)))), ((int)(((byte)(22)))));
             this.auth.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.auth.ForeColor = System.Drawing.SystemColors.ControlText;
             this.auth.Location = new System.Drawing.Point(16, 204);
             this.auth.Name = "auth";
             this.auth.Size = new System.Drawing.Size(255, 42);
             this.auth.TabIndex = 4;
             this.auth.Text = "Вход";
-            this.auth.UseVisualStyleBackColor = true;
+            this.auth.UseVisualStyleBackColor = false;
             this.auth.Click += new System.EventHandler(this.auth_Click);
             // 
             // close
             // 
+            this.close.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(217)))), ((int)(((byte)(152)))), ((int)(((byte)(22)))));
             this.close.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.close.Location = new System.Drawing.Point(16, 265);
             this.close.Name = "close";
             this.close.Size = new System.Drawing.Size(255, 43);
             this.close.TabIndex = 5;
             this.close.Text = "Выход";
-            this.close.UseVisualStyleBackColor = true;
+            this.close.UseVisualStyleBackColor = false;
             this.close.Click += new System.EventHandler(this.close_Click);
             // 
             // panel1
@@ -115,18 +120,38 @@ namespace Kursovaya
             this.panel1.Size = new System.Drawing.Size(241, 288);
             this.panel1.TabIndex = 6;
             // 
+            // labelTimer
+            // 
+            this.labelTimer.AutoSize = true;
+            this.labelTimer.Location = new System.Drawing.Point(13, 33);
+            this.labelTimer.Name = "labelTimer";
+            this.labelTimer.Size = new System.Drawing.Size(67, 28);
+            this.labelTimer.TabIndex = 9;
+            this.labelTimer.Text = "label3";
+            this.labelTimer.Visible = false;
+            // 
             // button1
             // 
+            this.button1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(217)))), ((int)(((byte)(152)))), ((int)(((byte)(22)))));
             this.button1.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.button1.Location = new System.Drawing.Point(3, 242);
             this.button1.Name = "button1";
             this.button1.Size = new System.Drawing.Size(234, 43);
             this.button1.TabIndex = 8;
             this.button1.Text = "Обновить";
-            this.button1.UseVisualStyleBackColor = true;
+            this.button1.UseVisualStyleBackColor = false;
+            // 
+            // progressBar1
+            // 
+            this.progressBar1.Location = new System.Drawing.Point(4, 5);
+            this.progressBar1.Name = "progressBar1";
+            this.progressBar1.Size = new System.Drawing.Size(234, 23);
+            this.progressBar1.TabIndex = 8;
+            this.progressBar1.Visible = false;
             // 
             // textBox3
             // 
+            this.textBox3.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(221)))), ((int)(((byte)(153)))));
             this.textBox3.Location = new System.Drawing.Point(3, 191);
             this.textBox3.MaxLength = 5;
             this.textBox3.Name = "textBox3";
@@ -142,24 +167,6 @@ namespace Kursovaya
             this.pictureBox2.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.pictureBox2.TabIndex = 0;
             this.pictureBox2.TabStop = false;
-            // 
-            // progressBar1
-            // 
-            this.progressBar1.Location = new System.Drawing.Point(4, 5);
-            this.progressBar1.Name = "progressBar1";
-            this.progressBar1.Size = new System.Drawing.Size(234, 23);
-            this.progressBar1.TabIndex = 8;
-            this.progressBar1.Visible = false;
-            // 
-            // labelTimer
-            // 
-            this.labelTimer.AutoSize = true;
-            this.labelTimer.Location = new System.Drawing.Point(13, 33);
-            this.labelTimer.Name = "labelTimer";
-            this.labelTimer.Size = new System.Drawing.Size(67, 28);
-            this.labelTimer.TabIndex = 9;
-            this.labelTimer.Text = "label3";
-            this.labelTimer.Visible = false;
             // 
             // Authorization
             // 

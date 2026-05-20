@@ -25,6 +25,10 @@ namespace Kursovaya
         private string selectedClientPhone = "";
         private int selectedEventId = -1; // ID выбранного мероприятия
 
+        // Новые поля для правильного выделения
+        private int currentSelectedProductRow = -1;  // Для товаров в каталоге
+        private int currentSelectedCartRow = -1;     // Для товаров в корзине
+
         public MakingAnOrder()
         {
             InitializeComponent();
@@ -160,48 +164,68 @@ namespace Kursovaya
             {
                 label5.Text = selectedClientPhone;
                 label8.Text = selectedClientName;
-
-                // Активируем кнопку "В заказ"
-                button5.Enabled = true;
             }
             else
             {
                 label5.Text = "(не выбрано)";
                 label8.Text = "(не выбрано)";
-                button5.Enabled = false;
             }
+
+            // Обновляем состояние кнопки "В заказ" на основе корзины
+            UpdateButton5State();
+        }
+
+        private void UpdateButton5State()
+        {
+            // Кнопка активна только если есть товары в корзине
+            bool hasItemsInCart = dataView2 != null && dataView2.Rows.Count > 0;
+            button5.Enabled = hasItemsInCart;
         }
 
         private void button5_Click(object sender, EventArgs e)
         {
-            // Проверяем, что выбран клиент
-            if (string.IsNullOrEmpty(selectedClientPhone) || selectedClientPhone == "(не выбрано)" || selectedClientName == "(не выбрано)")
+            List<string> missingFields = new List<string>();
+
+            // Проверка выбора клиента
+            if (string.IsNullOrEmpty(selectedClientPhone) || selectedClientPhone == "(не выбрано)" || string.IsNullOrEmpty(selectedClientName) || selectedClientName == "(не выбрано)")
             {
-                MessageBox.Show("Сначала выберите клиента", "Ошибка",
-                              MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
+                missingFields.Add("• Клиент (выберите или создайте клиента)");
             }
 
-            // Проверяем, что есть товары в корзине
+            // Проверка, что есть товары в корзине
             if (dataView2 == null || dataView2.Rows.Count == 0)
             {
-                MessageBox.Show("Корзина пуста", "Информация",
-                              MessageBoxButtons.OK, MessageBoxIcon.Information);
+                missingFields.Add("• Товары в корзине (добавьте товары)");
+            }
+
+            // Проверка, что выбрано мероприятие (не "Все мероприятия")
+            if (comboBox5.SelectedIndex <= 0 || comboBox5.SelectedItem?.ToString() == "Все мероприятия")
+            {
+                missingFields.Add("• Мероприятие (выберите конкретное мероприятие)");
+            }
+
+            // Проверка наличия свободного времени на выбранную дату
+            if (comboBox4.Items.Count == 0)
+            {
+                MessageBox.Show($"На дату {dateTimePicker2.Value:dd.MM.yyyy} нет свободных временных интервалов.\n\nПожалуйста, выберите другую дату.",
+                              "Нет свободного времени", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
-            // Проверяем, что выбрано время
-            if (comboBox4.SelectedItem == null || comboBox4.Items.Count == 0)
+            // Проверка, что выбрано время
+            if (comboBox4.SelectedItem == null)
             {
-                MessageBox.Show("Выберите время мероприятия или выберите другую дату", "Ошибка",
-                              MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
+                missingFields.Add("• Время проведения (выберите время из списка)");
             }
 
-            // Проверяем, что выбрано мероприятие
-            if (comboBox5.SelectedIndex == 0) // "Все мероприятия" выбрано
+            // Если есть незаполненные поля - показываем сообщение
+            if (missingFields.Count > 0)
             {
-                MessageBox.Show("Выберите конкретное мероприятие для заказа", "Ошибка",
+                string errorMessage = "Для оформления заказа необходимо заполнить следующие поля:\n\n" +
+                                      string.Join("\n", missingFields) +
+                                      "\n\nПожалуйста, заполните их и повторите попытку.";
+
+                MessageBox.Show(errorMessage, "Не заполнены обязательные поля",
                               MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
@@ -238,12 +262,12 @@ namespace Kursovaya
                 Date = dateTimePicker2.Value.ToString("yyyy-MM-dd"),
                 Time = comboBox4.Text,
                 Category = label24.Text,
-                Event = comboBox5.SelectedItem.ToString(), // Используем выбранное мероприятие
+                Event = comboBox5.SelectedItem.ToString(),
                 Weight = label26.Text,
                 Dec = textBox2.Text,
                 Photo = pictureBox1.Image,
                 TotalAmount = totalAmount,
-                Prepayment = prepayment // 10% предоплата
+                Prepayment = prepayment
             };
 
             // Создаем копию корзины для передачи
@@ -701,45 +725,42 @@ namespace Kursovaya
         void FillDataGridView(string where = "")
         {
             string conStr = @"SELECT 
-	                                p.Article, 
-                                    c.Event as Event, 
-                                    d.Category as Category, 
-                                    p.Name, 
-                                    p.Compound, 
-                                    p.Weight, 
-                                    p.Price, 
-                                    p.Photo 
-                                    FROM CafeActivities.Dishes p
-                                    LEFT JOIN Categories d ON p.IdCategory = d.IDcategory
-                                    LEFT JOIN Events c ON p.IdEvent = c.IDevent";
+	                        p.Article, 
+                            c.Event as Event, 
+                            d.Category as Category, 
+                            p.Name, 
+                            p.Compound, 
+                            p.Weight, 
+                            p.Price, 
+                            p.Photo 
+                            FROM CafeActivities.Dishes p
+                            LEFT JOIN Categories d ON p.IdCategory = d.IDcategory
+                            LEFT JOIN Events c ON p.IdEvent = c.IDevent";
 
-            bool hasWhere = false;
+            List<string> conditions = new List<string>();
 
             // Фильтр по категории
-            if (comboBox3.SelectedIndex > 0)
+            if (comboBox3.SelectedIndex > 0 && comboBox3.SelectedItem.ToString() != "Все категории")
             {
-                if (hasWhere)
-                {
-                    conStr += $" AND d.Category = '{comboBox3.SelectedItem.ToString()}'";
-                }
-                else
-                {
-                    conStr += $" WHERE d.Category = '{comboBox3.SelectedItem.ToString()}'";
-                }
-                hasWhere = true;
+                conditions.Add($"d.Category = '{MySqlHelper.EscapeString(comboBox3.SelectedItem.ToString())}'");
+            }
+
+            // Фильтр по мероприятию 
+            if (comboBox5.SelectedIndex > 0 && comboBox5.SelectedItem.ToString() != "Все мероприятия")
+            {
+                conditions.Add($"c.Event = '{MySqlHelper.EscapeString(comboBox5.SelectedItem.ToString())}'");
             }
 
             // Поиск по названию
             if (!string.IsNullOrEmpty(where))
             {
-                if (hasWhere)
-                {
-                    conStr += $" AND p.Name LIKE '%{where}%'";
-                }
-                else
-                {
-                    conStr += $" WHERE p.Name LIKE '%{where}%'";
-                }
+                conditions.Add($"p.Name LIKE '{MySqlHelper.EscapeString(where)}%'");
+            }
+
+            // Добавляем условия в запрос
+            if (conditions.Count > 0)
+            {
+                conStr += " WHERE " + string.Join(" AND ", conditions);
             }
 
             using (MySqlConnection con = new MySqlConnection(conString))
@@ -823,6 +844,10 @@ namespace Kursovaya
                     }
                 }
             }
+
+            // Сбрасываем выделение при обновлении таблицы
+            currentSelectedProductRow = -1;
+            button2.Enabled = false;
         }
 
         private void comboBox3_SelectedIndexChanged(object sender, EventArgs e)
@@ -839,16 +864,19 @@ namespace Kursovaya
         {
             if (e.RowIndex >= 0)
             {
-                foreach (DataGridViewRow row in dataGridView1.Rows)
+                // Снимаем выделение с предыдущего товара
+                if (currentSelectedProductRow >= 0 && currentSelectedProductRow < dataGridView1.Rows.Count)
                 {
-                    row.DefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(255, 221, 153);
+                    dataGridView1.Rows[currentSelectedProductRow].DefaultCellStyle.BackColor = Color.White;
+                    dataGridView1.Rows[currentSelectedProductRow].DefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(255, 221, 153);
                 }
 
-                dataGridView1.Rows[e.RowIndex].DefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
-                selectedProductRowIndex = e.RowIndex;
+                // Выделяем новый товар
+                currentSelectedProductRow = e.RowIndex;
+                dataGridView1.Rows[currentSelectedProductRow].DefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
+                dataGridView1.Rows[currentSelectedProductRow].DefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(217, 152, 22);
 
                 button2.Enabled = true;
-
                 LoadProductDetails(e.RowIndex);
             }
         }
@@ -957,9 +985,9 @@ namespace Kursovaya
 
         private void button2_Click(object sender, EventArgs e)
         {
-            if (selectedProductRowIndex >= 0)
+            if (currentSelectedProductRow >= 0)
             {
-                DataGridViewRow selectedRow = dataGridView1.Rows[selectedProductRowIndex];
+                DataGridViewRow selectedRow = dataGridView1.Rows[currentSelectedProductRow];
 
                 string article = selectedRow.Cells["Article"].Value.ToString();
                 string name = selectedRow.Cells["Name"].Value.ToString();
@@ -993,8 +1021,10 @@ namespace Kursovaya
                     }
                 }
 
-                dataGridView1.Rows[selectedProductRowIndex].DefaultCellStyle.BackColor = Color.White;
-                selectedProductRowIndex = -1;
+                // Снимаем выделение после добавления в корзину
+                dataGridView1.Rows[currentSelectedProductRow].DefaultCellStyle.BackColor = Color.White;
+                dataGridView1.Rows[currentSelectedProductRow].DefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(255, 221, 153);
+                currentSelectedProductRow = -1;
                 button2.Enabled = false;
             }
         }
@@ -1011,12 +1041,28 @@ namespace Kursovaya
             }
 
             label17.Text = totalAmount.ToString("C");
+
+            // Обновляем состояние кнопки "В заказ"
+            UpdateButton5State();
         }
 
         void MakingAnOrder_Load(object sender, EventArgs e)
         {
             InitializeDataGridView2();
             InitializeNumericUpDown();
+
+            // Настройка выделения для dataGridView1
+            dataGridView1.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            dataGridView1.ClearSelection();
+            dataGridView1.DefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(255, 221, 153);
+            dataGridView1.DefaultCellStyle.SelectionForeColor = dataGridView1.DefaultCellStyle.ForeColor;
+
+            // Проверяем, есть ли свободное время на выбранную дату
+            if (comboBox4.Items.Count == 0)
+            {
+                MessageBox.Show($"На дату {dateTimePicker2.Value:dd.MM.yyyy} нет свободных временных интервалов.\n\nПожалуйста, выберите другую дату.",
+                              "Нет свободного времени", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
         }
 
         private void InitializeNumericUpDown()
@@ -1043,20 +1089,31 @@ namespace Kursovaya
             dataGridView2.Columns["Quantity"].HeaderText = "Количество";
             dataGridView2.Columns["Total"].HeaderText = "Сумма";
 
+            // Отключаем автоматическое выделение
+            dataGridView2.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            dataGridView2.ClearSelection();
+
+            // Убираем стандартную подсветку выделения
+            dataGridView2.DefaultCellStyle.SelectionBackColor = Color.White;
+            dataGridView2.DefaultCellStyle.SelectionForeColor = dataGridView2.DefaultCellStyle.ForeColor;
+
             button2.Enabled = false;
+            button3.Enabled = false;
         }
 
         private void dataGridView2_CellClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex >= 0)
             {
-                foreach (DataGridViewRow row in dataGridView2.Rows)
+                // Снимаем выделение с предыдущего товара в корзине
+                if (currentSelectedCartRow >= 0 && currentSelectedCartRow < dataGridView2.Rows.Count)
                 {
-                    row.DefaultCellStyle.BackColor = Color.White;
+                    dataGridView2.Rows[currentSelectedCartRow].DefaultCellStyle.BackColor = Color.White;
                 }
 
-                dataGridView2.Rows[e.RowIndex].DefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
-                selectedProductRowIndex = e.RowIndex;
+                // Выделяем новый товар в корзине
+                currentSelectedCartRow = e.RowIndex;
+                dataGridView2.Rows[currentSelectedCartRow].DefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
 
                 button3.Enabled = true;
 
@@ -1069,9 +1126,9 @@ namespace Kursovaya
 
         private void numericUpDown1_ValueChanged(object sender, EventArgs e)
         {
-            if (selectedProductRowIndex >= 0 && dataGridView2.Rows[selectedProductRowIndex] != null)
+            if (currentSelectedCartRow >= 0 && currentSelectedCartRow < dataGridView2.Rows.Count && dataGridView2.Rows[currentSelectedCartRow] != null)
             {
-                DataGridViewRow selectedRow = dataGridView2.Rows[selectedProductRowIndex];
+                DataGridViewRow selectedRow = dataGridView2.Rows[currentSelectedCartRow];
                 string article = selectedRow.Cells["Article"].Value.ToString();
                 decimal price = Convert.ToDecimal(selectedRow.Cells["Price"].Value);
                 int newQuantity = (int)numericUpDown1.Value;
@@ -1083,14 +1140,12 @@ namespace Kursovaya
                     {
                         rows[0].Delete();
 
-                        selectedProductRowIndex = -1;
+                        // Снимаем выделение
+                        dataGridView2.Rows[currentSelectedCartRow].DefaultCellStyle.BackColor = Color.White;
+                        currentSelectedCartRow = -1;
                         numericUpDown1.Enabled = false;
                         numericUpDown1.Value = 0;
-
-                        foreach (DataGridViewRow row in dataGridView2.Rows)
-                        {
-                            row.DefaultCellStyle.BackColor = Color.White;
-                        }
+                        button3.Enabled = false;
                     }
                     else
                     {
@@ -1108,9 +1163,9 @@ namespace Kursovaya
 
         private void button3_Click(object sender, EventArgs e)
         {
-            if (selectedProductRowIndex >= 0 && dataGridView2.Rows[selectedProductRowIndex] != null)
+            if (currentSelectedCartRow >= 0 && dataGridView2.Rows[currentSelectedCartRow] != null)
             {
-                DataGridViewRow selectedRow = dataGridView2.Rows[selectedProductRowIndex];
+                DataGridViewRow selectedRow = dataGridView2.Rows[currentSelectedCartRow];
                 string article = selectedRow.Cells["Article"].Value.ToString();
 
                 DataRow[] rowsToDelete = dataView2.Select($"Article = '{article}'");
@@ -1120,18 +1175,18 @@ namespace Kursovaya
 
                     UpdateCartSummary();
 
-                    selectedProductRowIndex = -1;
+                    // Снимаем выделение
+                    if (currentSelectedCartRow < dataGridView2.Rows.Count)
+                    {
+                        dataGridView2.Rows[currentSelectedCartRow].DefaultCellStyle.BackColor = Color.White;
+                    }
+                    currentSelectedCartRow = -1;
                     button3.Enabled = false;
 
                     if (numericUpDown1 != null)
                     {
                         numericUpDown1.Enabled = false;
                         numericUpDown1.Value = 0;
-                    }
-
-                    foreach (DataGridViewRow row in dataGridView2.Rows)
-                    {
-                        row.DefaultCellStyle.BackColor = Color.White;
                     }
                 }
             }
@@ -1169,6 +1224,22 @@ namespace Kursovaya
             }
 
             FillDataGridView();
+        }
+
+        private void comboBox5_SelectedIndexChanged_1(object sender, EventArgs e)
+        {
+            // При изменении мероприятия обновляем список товаров
+            if (comboBox5.SelectedIndex > 0 && comboBox5.SelectedItem.ToString() != "Все мероприятия")
+            {
+                selectedEventId = GetEventId(comboBox5.SelectedItem.ToString());
+            }
+            else
+            {
+                selectedEventId = -1;
+            }
+
+            // Обновляем таблицу с учетом выбранного мероприятия
+            FillDataGridView(textBox1.Text);
         }
     }
 }

@@ -39,6 +39,7 @@ namespace Kursovaya
             this.button2 = new System.Windows.Forms.Button();
             this.button3 = new System.Windows.Forms.Button();
             this.button4 = new System.Windows.Forms.Button();
+            this.button5 = new System.Windows.Forms.Button();
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.SuspendLayout();
@@ -124,7 +125,7 @@ namespace Kursovaya
             // button4
             // 
             this.button4.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.button4.Location = new System.Drawing.Point(21, 273);
+            this.button4.Location = new System.Drawing.Point(22, 308);
             this.button4.Name = "button4";
             this.button4.Size = new System.Drawing.Size(261, 70);
             this.button4.TabIndex = 9;
@@ -132,13 +133,24 @@ namespace Kursovaya
             this.button4.UseVisualStyleBackColor = true;
             this.button4.Click += new System.EventHandler(this.button4_Click);
             // 
+            // button5
+            // 
+            this.button5.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.button5.Location = new System.Drawing.Point(21, 255);
+            this.button5.Name = "button5";
+            this.button5.Size = new System.Drawing.Size(261, 40);
+            this.button5.TabIndex = 10;
+            this.button5.Text = "Настройки";
+            this.button5.UseVisualStyleBackColor = true;
+            this.button5.Click += new System.EventHandler(this.button5_Click);
+            // 
             // pictureBox1
             // 
             this.pictureBox1.BackgroundImage = global::Kursovaya.Properties.Resources._3939944;
             this.pictureBox1.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
             this.pictureBox1.Location = new System.Drawing.Point(347, 85);
             this.pictureBox1.Name = "pictureBox1";
-            this.pictureBox1.Size = new System.Drawing.Size(257, 242);
+            this.pictureBox1.Size = new System.Drawing.Size(257, 293);
             this.pictureBox1.TabIndex = 5;
             this.pictureBox1.TabStop = false;
             // 
@@ -147,7 +159,8 @@ namespace Kursovaya
             this.AutoScaleDimensions = new System.Drawing.SizeF(12F, 28F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.FloralWhite;
-            this.ClientSize = new System.Drawing.Size(632, 361);
+            this.ClientSize = new System.Drawing.Size(632, 390);
+            this.Controls.Add(this.button5);
             this.Controls.Add(this.button4);
             this.Controls.Add(this.button3);
             this.Controls.Add(this.button2);
@@ -185,5 +198,6 @@ namespace Kursovaya
         private System.Windows.Forms.Button button2;
         private System.Windows.Forms.Button button3;
         private System.Windows.Forms.Button button4;
+        private System.Windows.Forms.Button button5;
     }
 }

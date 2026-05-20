@@ -23,6 +23,13 @@ namespace Kursovaya
         private System.Windows.Forms.Timer blockTimer;
         private int remainingSeconds;
 
+        // поля для возврата
+        private bool _isReturnFromInactivity = false;
+        private string _expectedUserName = "";
+        private string _expectedUserRole = "";
+        private bool _authorizedAsExpected = false;
+        private Form _returnForm = null;
+
         public Authorization()
         {
             InitializeComponent();
@@ -327,6 +334,7 @@ namespace Kursovaya
 
             if (result == DialogResult.Yes)
             {
+                BackupManager.CreateBackupOnExit();
                 allowClose = true;
                 Application.Exit();
             }
@@ -362,6 +370,15 @@ namespace Kursovaya
             {
                 Properties.Settings.Default.userRole = "Администратор";
                 Properties.Settings.Default.userName = "По умолчанию";
+                Properties.Settings.Default.Save();
+
+                // проверка для возращения на предыдущую форму после разблокировки (админ по умолчанию)
+                if (_isReturnFromInactivity)
+                {
+                    HandleReturnAfterInactivity("По умолчанию", "Администратор");
+                    return;
+                }
+
                 allowClose = true;
                 this.Visible = false;
                 MainFormAdmin mainFormAdmin = new MainFormAdmin();
@@ -391,6 +408,23 @@ namespace Kursovaya
                                 {
                                     loginSuccess = true;
                                     this.Visible = false;
+
+                                    string role = "";
+                                    if (rights == "1") role = "Администратор";
+                                    else if (rights == "2") role = "Менеджер";
+                                    else if (rights == "3") role = "Директор";
+
+                                    Properties.Settings.Default.userRole = role;
+                                    Properties.Settings.Default.userName = reader["FullName"].ToString();
+                                    Properties.Settings.Default.Save();
+
+                                    // проверка для возращения на предыдущую форму после разблокировки (пользователь из бд)
+                                    if (_isReturnFromInactivity)
+                                    {
+                                        HandleReturnAfterInactivity(Properties.Settings.Default.userName, role);
+                                        return;
+                                    }
+
                                     if (rights == "1")
                                     {
                                         Properties.Settings.Default.userRole = "Администратор";
@@ -479,6 +513,81 @@ namespace Kursovaya
                     ResetFormFields();
                     return;
                 }
+            }
+        }
+
+        public void SetReturnAfterInactivity(Form returnForm, string expectedUserName, string expectedUserRole)
+        {
+            _isReturnFromInactivity = true;
+            _returnForm = returnForm;
+            _expectedUserName = expectedUserName;
+            _expectedUserRole = expectedUserRole;
+        }
+
+        public bool IsAuthorizedAsExpected()
+        {
+            return _authorizedAsExpected;
+        }
+
+        // методы для успешной авторизации 
+        private void HandleReturnAfterInactivity(string currentUserName, string currentUserRole)
+        {
+            _authorizedAsExpected = (currentUserName == _expectedUserName &&
+                                    currentUserRole == _expectedUserRole);
+
+            allowClose = true;
+
+            if (_authorizedAsExpected)
+            {
+                // Тот же пользователь - возвращаемся
+                this.DialogResult = DialogResult.OK;
+                this.Close();
+            }
+            else
+            {
+                // Другой пользователь
+                MessageBox.Show(
+                    $"Вы вошли как {currentUserName} ({currentUserRole}).\n" +
+                    "Предыдущая форма будет закрыта.",
+                    "Смена пользователя",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information
+                );
+
+                // Закрываем форму возврата
+                if (_returnForm != null && !_returnForm.IsDisposed)
+                {
+                    _returnForm.Close();
+                }
+                this.DialogResult = DialogResult.OK;
+
+                // Открываем главную форму для нового пользователя
+                OpenMainFormByRole(currentUserRole);
+            }
+        }
+
+        private void OpenMainFormByRole(string role)
+        {
+            if (role == "Администратор")
+            {
+                this.Visible = false;
+                MainFormAdmin mainFormAdmin = new MainFormAdmin();
+                mainFormAdmin.ShowDialog();
+                this.Close();
+            }
+            else if (role == "Менеджер")
+            {
+                this.Visible = false;
+                MainFormMeneger mainFormMeneger = new MainFormMeneger();
+                mainFormMeneger.ShowDialog();
+                this.Close();
+            }
+            else if (role == "Директор")
+            {
+                this.Visible = false;
+                MainFormDirector mainFormDirector = new MainFormDirector();
+                mainFormDirector.ShowDialog();
+                this.Close();
             }
         }
     }

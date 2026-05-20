@@ -287,7 +287,6 @@ namespace Kursovaya
             // 
             // button1
             // 
-            this.button1.Enabled = false;
             this.button1.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.button1.Location = new System.Drawing.Point(302, 692);
             this.button1.Name = "button1";
@@ -299,6 +298,7 @@ namespace Kursovaya
             // 
             // button2
             // 
+            this.button2.Enabled = false;
             this.button2.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.button2.Location = new System.Drawing.Point(12, 692);
             this.button2.Name = "button2";
