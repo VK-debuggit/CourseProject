@@ -328,6 +328,7 @@ namespace Kursovaya
             dataGridView1.ClearSelection();
             dataGridView1.CurrentCell = null;
             textBox1.Text = "";
+            dataGridView1.Focus();
             UpdateButtonsState();
         }
 
@@ -529,6 +530,20 @@ namespace Kursovaya
         private void dataGridView1_DataBindingComplete(object sender, DataGridViewBindingCompleteEventArgs e)
         {
             dataGridView1.ClearSelection();
+        }
+
+        private void textBox1_Enter(object sender, EventArgs e)
+        {
+            // Получаем доступный список языков и устанавливаем нужный
+            foreach (InputLanguage lang in InputLanguage.InstalledInputLanguages)
+            {
+                // Ищем русский язык
+                if (lang.Culture.TwoLetterISOLanguageName == "ru")
+                {
+                    InputLanguage.CurrentInputLanguage = lang;
+                    break;
+                }
+            }
         }
     }
 }

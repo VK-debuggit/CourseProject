@@ -270,7 +270,7 @@ namespace Kursovaya
 
                     gfx.DrawString($"Время: {_orderData.Time}", regularFont, XBrushes.Black,
                         new XRect(50, yPosition, page.Width - 100, 20), XStringFormats.TopCenter);
-                    yPosition += 30;
+                    yPosition += 50;
 
                     // Рисуем таблицу и получаем высоту, которую она заняла
                     float tableBottomY = DrawOrderTable(gfx, _cartItems, page, yPosition);
@@ -416,7 +416,7 @@ namespace Kursovaya
                 XRect rect2 = new XRect(currentX, currentY, columnWidths[1], rowHeight);
                 gfx.DrawRectangle(pen, rect2);
                 string displayName = name.Length > 30 ? name.Substring(0, 27) + "..." : name;
-                gfx.DrawString(displayName, cellFont, XBrushes.Black, rect2, XStringFormats.TopLeft);
+                gfx.DrawString(displayName, cellFont, XBrushes.Black, rect2, XStringFormats.CenterLeft);
                 currentX += columnWidths[1];
 
                 // Цена

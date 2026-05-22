@@ -540,7 +540,15 @@ namespace Kursovaya
             // Фильтр по сотруднику
             if (comboBox1.SelectedIndex != 0 && comboBox1.SelectedItem != null)
             {
-                conditions.Add($"w.FullName LIKE '%{MySqlHelper.EscapeString(comboBox1.SelectedItem.ToString())}%'");
+                string selectedUser = comboBox1.SelectedItem.ToString();
+
+                // Если выбран "Все сотрудники" (индекс 0) - пропускаем
+                if (selectedUser != "Все сотрудники")
+                {
+                    // Нужно найти полное имя сотрудника в базе по отформатированному имени
+                    string fullUserName = GetFullUserNameFromFormatted(selectedUser);
+                    conditions.Add($"w.FullName = '{MySqlHelper.EscapeString(fullUserName)}'");
+                }
             }
 
             // Фильтр по статусам
@@ -571,6 +579,44 @@ namespace Kursovaya
             query.Append(" ORDER BY p.NumberOrder ASC");
 
             return query.ToString();
+        }
+
+        // Вспомогательный метод для получения полного имени сотрудника из отформатированного
+        private string GetFullUserNameFromFormatted(string formattedName)
+        {
+            try
+            {
+                using (MySqlConnection con = new MySqlConnection(conString))
+                {
+                    con.Open();
+
+                    // Ищем сотрудника, у которого FullName начинается с фамилии из formattedName
+                    // formattedName имеет формат "Иванов И.И."
+                    string[] parts = formattedName.Split(' ');
+                    if (parts.Length > 0)
+                    {
+                        string lastName = parts[0];
+                        string query = "SELECT FullName FROM CafeActivities.Users WHERE FullName LIKE @lastNamePattern AND IdRole = 2";
+
+                        using (MySqlCommand cmd = new MySqlCommand(query, con))
+                        {
+                            cmd.Parameters.AddWithValue("@lastNamePattern", lastName + "%");
+
+                            object result = cmd.ExecuteScalar();
+                            if (result != null)
+                            {
+                                return result.ToString();
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка получения полного имени: {ex.Message}");
+            }
+
+            return formattedName; // Если не нашли, возвращаем как есть
         }
 
         private void DisplayDataInDataGridView(DataTable tableToDisplay)

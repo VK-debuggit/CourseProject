@@ -590,5 +590,33 @@ namespace Kursovaya
                 this.Close();
             }
         }
+
+        private void textBox1_Enter(object sender, EventArgs e)
+        {
+            // Получаем доступный список языков и устанавливаем нужный
+            foreach (InputLanguage lang in InputLanguage.InstalledInputLanguages)
+            {
+                // Ищем русский язык
+                if (lang.Culture.TwoLetterISOLanguageName == "en")
+                {
+                    InputLanguage.CurrentInputLanguage = lang;
+                    break;
+                }
+            }
+        }
+
+        private void textBox3_Enter(object sender, EventArgs e)
+        {
+            // Получаем доступный список языков и устанавливаем нужный
+            foreach (InputLanguage lang in InputLanguage.InstalledInputLanguages)
+            {
+                // Ищем русский язык
+                if (lang.Culture.TwoLetterISOLanguageName == "en")
+                {
+                    InputLanguage.CurrentInputLanguage = lang;
+                    break;
+                }
+            }
+        }
     }
 }

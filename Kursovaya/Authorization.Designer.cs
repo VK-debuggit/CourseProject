@@ -62,6 +62,7 @@ namespace Kursovaya
             this.textBox1.Name = "textBox1";
             this.textBox1.Size = new System.Drawing.Size(255, 35);
             this.textBox1.TabIndex = 1;
+            this.textBox1.Enter += new System.EventHandler(this.textBox1_Enter);
             this.textBox1.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.textBox1_KeyPress);
             // 
             // label2
@@ -157,6 +158,7 @@ namespace Kursovaya
             this.textBox3.Name = "textBox3";
             this.textBox3.Size = new System.Drawing.Size(234, 35);
             this.textBox3.TabIndex = 1;
+            this.textBox3.Enter += new System.EventHandler(this.textBox3_Enter);
             // 
             // pictureBox2
             // 

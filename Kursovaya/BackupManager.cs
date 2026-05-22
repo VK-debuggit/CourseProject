@@ -17,13 +17,52 @@ namespace Kursovaya
             return $"host={Properties.Settings.Default.host};uid={Properties.Settings.Default.uid};pwd={Properties.Settings.Default.pwd};database={Properties.Settings.Default.database}";
         }
 
+        // Новый метод для получения пути к папке Backups на уровне Resources
+        private static string GetBackupsBasePath()
+        {
+            try
+            {
+                // Получаем путь к папке с исполняемым файлом (.exe)
+                string exePath = Application.StartupPath;
+
+                // Поднимаемся на уровень выше из папки bin/Debug или bin/Release
+                // Application.StartupPath обычно указывает на: .../Kursovaya/bin/Debug/
+                string projectRoot = Directory.GetParent(exePath).Parent.Parent.FullName;
+
+                // Создаем папку Backups на одном уровне с Resources
+                string backupsPath = Path.Combine(projectRoot, "Backups");
+
+                // Создаем папку если не существует
+                if (!Directory.Exists(backupsPath))
+                {
+                    Directory.CreateDirectory(backupsPath);
+                }
+
+                return backupsPath;
+            }
+            catch (Exception ex)
+            {
+                // Если не удалось получить путь к проекту, используем папку в документах
+                LogBackupOperation($"Ошибка получения пути к проекту: {ex.Message}. Использую папку в документах.");
+                string documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+                string fallbackPath = Path.Combine(documentsPath, "CafeManagement", "Backups");
+
+                if (!Directory.Exists(fallbackPath))
+                {
+                    Directory.CreateDirectory(fallbackPath);
+                }
+
+                return fallbackPath;
+            }
+        }
+
         public static void CreateBackupOnExit()
         {
             try
             {
-                string programDirectory = Application.StartupPath;
+                string backupBasePath = GetBackupsBasePath();
                 string folderName = "Exit_Backup_" + DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
-                string backupPath = Path.Combine(programDirectory, "Backups", folderName);
+                string backupPath = Path.Combine(backupBasePath, folderName);
 
                 Directory.CreateDirectory(backupPath);
 
@@ -53,6 +92,10 @@ namespace Kursovaya
                 {
                     LogBackupOperation($"Резервная копия при выходе создана частично (таймаут): {backupPath}");
                 }
+
+                // Автоматическая очистка старых бэкапов (оставляются последние 10)
+                // TODO: Раскомментировать если понадобится автоматическая очистка
+                // CleanupOldBackups(backupBasePath, 10);
             }
             catch (Exception ex)
             {
@@ -76,6 +119,34 @@ namespace Kursovaya
             }
             catch (Exception ex)
             {
+                LogBackupOperation($"Ошибка при создании ручной резервной копии: {ex.Message}");
+                return false;
+            }
+        }
+
+        // Новый метод для ручного бэкапа в папку Backups (на уровне Resources)
+        public static bool CreateManualBackupToProjectFolder()
+        {
+            try
+            {
+                string backupBasePath = GetBackupsBasePath();
+                string timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
+                string backupFolder = Path.Combine(backupBasePath, $"Manual_Backup_{timestamp}");
+                Directory.CreateDirectory(backupFolder);
+
+                SaveDatabaseToCsv(backupFolder);
+                SaveDatabaseToSql(backupFolder);
+
+                MessageBox.Show($"Резервная копия успешно создана в папке:\n{backupFolder}",
+                              "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                LogBackupOperation($"Ручная резервная копия создана: {backupFolder}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при создании резервной копии: {ex.Message}",
+                              "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 LogBackupOperation($"Ошибка при создании ручной резервной копии: {ex.Message}");
                 return false;
             }
@@ -237,11 +308,47 @@ namespace Kursovaya
             return value;
         }
 
+        // Метод очистки старых бэкапов (закомментирован, но оставлен на будущее)
+        /*
+        private static void CleanupOldBackups(string backupPath, int keepCount)
+        {
+            try
+            {
+                if (!Directory.Exists(backupPath))
+                    return;
+                    
+                var directories = Directory.GetDirectories(backupPath)
+                    .Select(d => new DirectoryInfo(d))
+                    .OrderByDescending(d => d.CreationTime)
+                    .Skip(keepCount);
+                    
+                foreach (var dir in directories)
+                {
+                    try
+                    {
+                        Directory.Delete(dir.FullName, true);
+                        LogBackupOperation($"Удален старый бэкап: {dir.FullName}");
+                    }
+                    catch (Exception ex)
+                    {
+                        LogBackupOperation($"Ошибка удаления старого бэкапа {dir.FullName}: {ex.Message}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogBackupOperation($"Ошибка при очистке старых бэкапов: {ex.Message}");
+            }
+        }
+        */
+
         private static void LogBackupOperation(string message)
         {
             try
             {
-                string logPath = Path.Combine(Application.StartupPath, "backup_log.txt");
+                // Лог тоже сохраняем в папку Backups на уровне проекта
+                string backupBasePath = GetBackupsBasePath();
+                string logPath = Path.Combine(backupBasePath, "backup_log.txt");
                 string logEntry = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - {message}\n";
                 File.AppendAllText(logPath, logEntry, Encoding.UTF8);
             }

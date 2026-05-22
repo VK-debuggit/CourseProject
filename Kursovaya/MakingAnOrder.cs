@@ -1204,5 +1204,10 @@ namespace Kursovaya
             // Обновляем таблицу с учетом выбранного мероприятия
             FillDataGridView(textBox1.Text);
         }
+
+        private void textBox1_Enter(object sender, EventArgs e)
+        {
+
+        }
     }
 }

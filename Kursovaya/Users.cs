@@ -149,41 +149,53 @@ namespace Kursovaya
             if (char.IsControl(e.KeyChar))
                 return;
 
-            if (!string.IsNullOrEmpty(tb.Text))
+            // Запрещаем пробел в начале
+            if (e.KeyChar == ' ' && tb.Text.Length == 0)
             {
-                int cursorPos = tb.SelectionStart;
-
-                string newText = System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(tb.Text.ToLower());
-
-                if (tb.Text != newText)
-                {
-                    tb.Text = newText;
-                    tb.SelectionStart = cursorPos;
-                }
+                e.Handled = true;
+                return;
             }
 
-            if (e.KeyChar == ' ')
+            // Запрещаем дефис в начале
+            if (e.KeyChar == '-' && tb.Text.Length == 0)
             {
-                if (tb.Text.Length == 0 || tb.Text[tb.Text.Length - 1] == ' ' || tb.Text[tb.Text.Length - 1] == '-')
+                e.Handled = true;
+                return;
+            }
+
+            // Запрещаем двойные пробелы
+            if (e.KeyChar == ' ' && tb.Text.Length > 0 && tb.Text[tb.Text.Length - 1] == ' ')
+            {
+                e.Handled = true;
+                return;
+            }
+
+            // Запрещаем двойные дефисы
+            if (e.KeyChar == '-' && tb.Text.Length > 0 && tb.Text[tb.Text.Length - 1] == '-')
+            {
+                e.Handled = true;
+                return;
+            }
+
+            // Запрещаем пробел после дефиса и дефис после пробела
+            if (tb.Text.Length > 0)
+            {
+                char lastChar = tb.Text[tb.Text.Length - 1];
+                if ((lastChar == ' ' && e.KeyChar == '-') || (lastChar == '-' && e.KeyChar == ' '))
                 {
                     e.Handled = true;
                     return;
                 }
-                e.Handled = false;
-                return;
             }
 
-            if (e.KeyChar == '-')
+            // Разрешаем: русские буквы, пробел, дефис
+            if (e.KeyChar == ' ' || e.KeyChar == '-')
             {
-                if (tb.Text.Length == 0 || tb.Text[tb.Text.Length - 1] == ' ' || tb.Text[tb.Text.Length - 1] == '-')
-                {
-                    e.Handled = true;
-                    return;
-                }
                 e.Handled = false;
                 return;
             }
 
+            // Разрешаем русские буквы (верхний и нижний регистр)
             if ((e.KeyChar >= 'А' && e.KeyChar <= 'Я') ||
                 (e.KeyChar >= 'а' && e.KeyChar <= 'я') ||
                 e.KeyChar == 'Ё' || e.KeyChar == 'ё')
@@ -192,6 +204,7 @@ namespace Kursovaya
                 return;
             }
 
+            // Все остальные символы запрещены
             e.Handled = true;
         }
 
@@ -221,44 +234,60 @@ namespace Kursovaya
 
         private void textBox2_KeyPress(object sender, KeyPressEventArgs e)
         {
+            TextBox tb = (TextBox)sender;
+
             if (char.IsControl(e.KeyChar))
                 return;
 
+            // Проверка максимальной длины (32 символа)
+            if (tb.Text.Length >= 32 && !char.IsControl(e.KeyChar))
+            {
+                e.Handled = true;
+                return;
+            }
+
+            // Латинские буквы (верхний и нижний регистр)
             if ((e.KeyChar >= 'a' && e.KeyChar <= 'z') || (e.KeyChar >= 'A' && e.KeyChar <= 'Z'))
+            {
+                e.Handled = false;
                 return;
+            }
 
+            // Цифры
             if (char.IsDigit(e.KeyChar))
+            {
+                e.Handled = false;
                 return;
+            }
 
+            // Разрешенные специальные символы
             char[] allowedSpecialChars = { '!', '@', '#', '$', '%', '^', '&', '*', '(', ')',
                                   '-', '_', '=', '+', '[', ']', '{', '}', ';', ':',
                                   ',', '.', '<', '>', '/', '?', '|', '\\', '~', '`' };
 
             if (allowedSpecialChars.Contains(e.KeyChar))
+            {
+                e.Handled = false;
                 return;
+            }
 
+            // Все остальные символы запрещены
             e.Handled = true;
         }
 
         private void textBox3_KeyPress(object sender, KeyPressEventArgs e)
         {
-            if (char.IsControl(e.KeyChar))
+            TextBox tb = (TextBox)sender;
+
+            // Проверка максимальной длины (64 символа)
+            if (tb.Text.Length >= 64 && !char.IsControl(e.KeyChar))
+            {
+                e.Handled = true;
                 return;
+            }
 
-            if ((e.KeyChar >= 'a' && e.KeyChar <= 'z') || (e.KeyChar >= 'A' && e.KeyChar <= 'Z'))
-                return;
-
-            if (char.IsDigit(e.KeyChar))
-                return;
-
-            char[] allowedSpecialChars = { '!', '@', '#', '$', '%', '^', '&', '*', '(', ')',
-                                  '-', '_', '=', '+', '[', ']', '{', '}', ';', ':',
-                                  ',', '.', '<', '>', '/', '?', '|', '\\', '~', '`' };
-
-            if (allowedSpecialChars.Contains(e.KeyChar))
-                return;
-
-            e.Handled = true;
+            // Разрешаем любые символы (никаких ограничений)
+            e.Handled = false;
         }
 
         private bool IsUserExists(string loginName)
@@ -465,10 +494,18 @@ namespace Kursovaya
             string loginText = textBox2.Text.Trim();
             string passwordText = textBox3.Text.Trim();
 
-            // Проверка длины логина и пароля (для добавления)
-            bool isLoginValid = !string.IsNullOrWhiteSpace(loginText) && loginText.Length >= 4;
-            bool isPasswordValidForAdd = !string.IsNullOrWhiteSpace(passwordText) && passwordText.Length >= 8;
+            // Проверка ФИО (не пустое)
             bool isFIOValid = !string.IsNullOrWhiteSpace(FIOText);
+
+            // Проверка длины логина (4-32 символа)
+            bool isLoginValid = !string.IsNullOrWhiteSpace(loginText) &&
+                                loginText.Length >= 4 &&
+                                loginText.Length <= 32;
+
+            // Проверка длины пароля (8-64 символа)
+            bool isPasswordValidForAdd = !string.IsNullOrWhiteSpace(passwordText) &&
+                                          passwordText.Length >= 8 &&
+                                          passwordText.Length <= 64;
 
             bool allTextFieldsFilled = (isFIOValid && isLoginValid && isPasswordValidForAdd);
             bool isRowSelected = (dataGridView1.CurrentRow != null && dataGridView1.CurrentRow.Index >= 0);
@@ -488,11 +525,16 @@ namespace Kursovaya
 
                 // Проверяем изменения
                 bool fioChanged = FIOText != originalFIO && !string.IsNullOrEmpty(FIOText);
-                bool loginChanged = loginText != originalLogin && !string.IsNullOrEmpty(loginText) && loginText.Length >= 4;
+                bool loginChanged = loginText != originalLogin &&
+                                   !string.IsNullOrEmpty(loginText) &&
+                                   loginText.Length >= 4 &&
+                                   loginText.Length <= 32;
                 bool roleChanged = selectedRole != originalRole && Filter.SelectedIndex > 0;
 
                 bool passwordChanged = false;
-                if (!string.IsNullOrEmpty(passwordText) && passwordText.Length >= 8)
+                if (!string.IsNullOrEmpty(passwordText) &&
+                    passwordText.Length >= 8 &&
+                    passwordText.Length <= 64)
                 {
                     string hashedPassword = GetHashPass(passwordText);
                     passwordChanged = hashedPassword != originalPasswordHash;
@@ -511,16 +553,80 @@ namespace Kursovaya
 
         private void textBox1_TextChanged(object sender, EventArgs e)
         {
+            // Отключаем событие, чтобы избежать рекурсии
+            textBox1.TextChanged -= textBox1_TextChanged;
+
+            string text = textBox1.Text;
+            if (!string.IsNullOrEmpty(text))
+            {
+                // Разбиваем на слова по пробелам и дефисам, сохраняя разделители
+                string[] words = text.Split(new char[] { ' ', '-' }, StringSplitOptions.None);
+                string result = "";
+
+                for (int i = 0; i < words.Length; i++)
+                {
+                    if (!string.IsNullOrEmpty(words[i]))
+                    {
+                        // Делаем первую букву заглавной, остальные строчными
+                        char firstChar = char.ToUpper(words[i][0]);
+                        string rest = words[i].Length > 1 ? words[i].Substring(1).ToLower() : "";
+                        result += firstChar + rest;
+                    }
+
+                    // Добавляем разделитель (если не последний элемент)
+                    if (i < words.Length - 1)
+                    {
+                        // Определяем, какой разделитель был между словами
+                        int separatorIndex = text.IndexOf(words[i], StringComparison.Ordinal) + words[i].Length;
+                        if (separatorIndex < text.Length && separatorIndex >= 0)
+                        {
+                            char separator = text[separatorIndex];
+                            if (separator == ' ' || separator == '-')
+                            {
+                                result += separator;
+                            }
+                        }
+                    }
+                }
+
+                if (result != text)
+                {
+                    textBox1.Text = result;
+                    textBox1.SelectionStart = textBox1.Text.Length;
+                }
+            }
+
+            // Включаем событие обратно
+            textBox1.TextChanged += textBox1_TextChanged;
+
             UpdateButtonsState();
         }
 
         private void textBox2_TextChanged(object sender, EventArgs e)
         {
+            // Проверка максимальной длины (32 символа)
+            if (textBox2.Text.Length > 32)
+            {
+                textBox2.TextChanged -= textBox2_TextChanged;
+                textBox2.Text = textBox2.Text.Substring(0, 32);
+                textBox2.SelectionStart = textBox2.Text.Length;
+                textBox2.TextChanged += textBox2_TextChanged;
+            }
+
             UpdateButtonsState();
         }
 
         private void textBox3_TextChanged(object sender, EventArgs e)
         {
+            // Проверка максимальной длины (64 символа)
+            if (textBox3.Text.Length > 64)
+            {
+                textBox3.TextChanged -= textBox3_TextChanged;
+                textBox3.Text = textBox3.Text.Substring(0, 64);
+                textBox3.SelectionStart = textBox3.Text.Length;
+                textBox3.TextChanged += textBox3_TextChanged;
+            }
+
             UpdateButtonsState();
         }
 
@@ -923,6 +1029,34 @@ namespace Kursovaya
                     MessageBox.Show($"Ошибка проверки использования пользователей: {ex.Message}", "Ошибка",
                                   MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return true;
+                }
+            }
+        }
+
+        private void textBox1_Enter(object sender, EventArgs e)
+        {
+            // Получаем доступный список языков и устанавливаем нужный
+            foreach (InputLanguage lang in InputLanguage.InstalledInputLanguages)
+            {
+                // Ищем русский язык
+                if (lang.Culture.TwoLetterISOLanguageName == "ru")
+                {
+                    InputLanguage.CurrentInputLanguage = lang;
+                    break;
+                }
+            }
+        }
+
+        private void textBox2_Enter(object sender, EventArgs e)
+        {
+            // Получаем доступный список языков и устанавливаем нужный
+            foreach (InputLanguage lang in InputLanguage.InstalledInputLanguages)
+            {
+                // Ищем русский язык
+                if (lang.Culture.TwoLetterISOLanguageName == "en")
+                {
+                    InputLanguage.CurrentInputLanguage = lang;
+                    break;
                 }
             }
         }

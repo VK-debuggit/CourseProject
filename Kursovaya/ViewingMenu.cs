@@ -667,15 +667,27 @@ namespace Kursovaya
         {
             TextBox tb = (TextBox)sender;
 
-            // Разрешаем управляющие символы
+            // Разрешаем управляющие символы (Backspace, Enter и т.д.)
             if (char.IsControl(e.KeyChar))
                 return;
 
-            // Если вводится пробел
+            // Разрешаем пробел
             if (e.KeyChar == ' ')
             {
-                // Запрещаем пробел в начале или после пробела/дефиса
-                if (tb.Text.Length == 0 || tb.Text[tb.Text.Length - 1] == ' ' || tb.Text[tb.Text.Length - 1] == '-')
+                // Запрещаем пробел в начале строки
+                if (tb.Text.Length == 0)
+                {
+                    e.Handled = true;
+                    return;
+                }
+                // Запрещаем двойные пробелы
+                if (tb.Text.Length > 0 && tb.Text[tb.Text.Length - 1] == ' ')
+                {
+                    e.Handled = true;
+                    return;
+                }
+                // Запрещаем пробел после дефиса
+                if (tb.Text.Length > 0 && tb.Text[tb.Text.Length - 1] == '-')
                 {
                     e.Handled = true;
                     return;
@@ -684,6 +696,32 @@ namespace Kursovaya
                 return;
             }
 
+            // Разрешаем дефис
+            if (e.KeyChar == '-')
+            {
+                // Запрещаем дефис в начале строки
+                if (tb.Text.Length == 0)
+                {
+                    e.Handled = true;
+                    return;
+                }
+                // Запрещаем двойные дефисы
+                if (tb.Text.Length > 0 && tb.Text[tb.Text.Length - 1] == '-')
+                {
+                    e.Handled = true;
+                    return;
+                }
+                // Запрещаем дефис после пробела
+                if (tb.Text.Length > 0 && tb.Text[tb.Text.Length - 1] == ' ')
+                {
+                    e.Handled = true;
+                    return;
+                }
+                e.Handled = false;
+                return;
+            }
+
+            // Разрешаем русские буквы (верхний и нижний регистр)
             if ((e.KeyChar >= 'А' && e.KeyChar <= 'Я') ||
                 (e.KeyChar >= 'а' && e.KeyChar <= 'я') ||
                 e.KeyChar == 'Ё' || e.KeyChar == 'ё')
@@ -692,19 +730,7 @@ namespace Kursovaya
                 return;
             }
 
-            // Цифры
-            if (char.IsDigit(e.KeyChar))
-                return;
-
-            // Специальные символы
-            char[] allowedSpecialChars = { '!', '@', '#', '$', '%', '^', '&', '*', '(', ')',
-                                  '-', '_', '=', '+', '[', ']', '{', '}', ';', ':',
-                                  ',', '.', '<', '>', '/', '?', '|', '\\', '~', '`' };
-
-            if (allowedSpecialChars.Contains(e.KeyChar))
-                return;
-
-            // Запрещаем все остальные символы
+            // Все остальные символы запрещены
             e.Handled = true;
         }
 
@@ -739,6 +765,20 @@ namespace Kursovaya
                 catch (Exception ex)
                 {
                     MessageBox.Show($"Ошибка при заполнении поля: {ex.Message}");
+                }
+            }
+        }
+
+        private void textBox1_Enter(object sender, EventArgs e)
+        {
+            // Получаем доступный список языков и устанавливаем нужный
+            foreach (InputLanguage lang in InputLanguage.InstalledInputLanguages)
+            {
+                // Ищем русский язык
+                if (lang.Culture.TwoLetterISOLanguageName == "ru")
+                {
+                    InputLanguage.CurrentInputLanguage = lang;
+                    break;
                 }
             }
         }

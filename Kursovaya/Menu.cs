@@ -735,7 +735,11 @@ namespace Kursovaya
         {
             using (OpenFileDialog openFileDialog = new OpenFileDialog())
             {
-                openFileDialog.Filter = "JPEG Images|*.jpg;*.jpeg|PNG Images|*.png";
+                openFileDialog.Filter = "Изображения|*.jpg;*.jpeg;*.png;*.bmp;*.tiff;*.tif|" +
+                       "JPEG Images|*.jpg;*.jpeg|" +
+                       "PNG Images|*.png|" +
+                       "BMP Images|*.bmp|" +
+                       "TIFF Images|*.tiff;*.tif";
                 openFileDialog.Title = "Выберите изображение товара";
 
                 if (openFileDialog.ShowDialog() == DialogResult.OK)
@@ -787,7 +791,11 @@ namespace Kursovaya
 
         private bool IsFileTypeValid(string filePath)
         {
-            string[] allowedExtensions = { ".jpg", ".jpeg", ".png" };
+            string[] allowedExtensions = {
+                ".jpg", ".jpeg", ".png",
+                ".bmp",
+                ".tiff", ".tif"
+            };
             string fileExtension = Path.GetExtension(filePath).ToLower();
             return allowedExtensions.Contains(fileExtension);
         }
@@ -796,21 +804,10 @@ namespace Kursovaya
         {
             try
             {
-                FileInfo fileInfo = new FileInfo(filePath);
-                long maxSize = 10 * 1024 * 1024;
-                if (fileInfo.Length > maxSize)
-                {
-                    MessageBox.Show($"Размер файла {fileInfo.Length / (1024 * 1024)} МБ превышает 10 МБ.",
-                                  "Превышен размер файла",
-                                  MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return false;
-                }
-                return true;
+                return File.Exists(filePath);
             }
-            catch (Exception ex)
+            catch
             {
-                MessageBox.Show($"Ошибка проверки размера файла: {ex.Message}", "Ошибка",
-                              MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return false;
             }
         }
@@ -826,6 +823,8 @@ namespace Kursovaya
             {
                 do
                 {
+                    ms.SetLength(0);
+                    ms.Position = 0;
                     SaveJpegWithQuality(sourceImage, ms, quality);
 
                     if (ms.Length <= targetSizeBytes || quality <= 10)
@@ -835,8 +834,6 @@ namespace Kursovaya
                     }
 
                     quality -= 10;
-                    ms.SetLength(0);
-                    ms.Position = 0;
 
                 } while (quality > 0);
             }
@@ -1686,5 +1683,33 @@ namespace Kursovaya
         private void textBox1_TextChanged(object sender, EventArgs e) => UpdateButtonsState();
         private void comboBox1_SelectedIndexChanged(object sender, EventArgs e) => UpdateButtonsState();
         private void comboBox2_SelectedIndexChanged(object sender, EventArgs e) => UpdateButtonsState();
+
+        private void textBox4_Enter(object sender, EventArgs e)
+        {
+            // Получаем доступный список языков и устанавливаем нужный
+            foreach (InputLanguage lang in InputLanguage.InstalledInputLanguages)
+            {
+                // Ищем русский язык
+                if (lang.Culture.TwoLetterISOLanguageName == "ru")
+                {
+                    InputLanguage.CurrentInputLanguage = lang;
+                    break;
+                }
+            }
+        }
+
+        private void textBox5_Enter(object sender, EventArgs e)
+        {
+            // Получаем доступный список языков и устанавливаем нужный
+            foreach (InputLanguage lang in InputLanguage.InstalledInputLanguages)
+            {
+                // Ищем русский язык
+                if (lang.Culture.TwoLetterISOLanguageName == "ru")
+                {
+                    InputLanguage.CurrentInputLanguage = lang;
+                    break;
+                }
+            }
+        }
     }
 }

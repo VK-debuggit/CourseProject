@@ -245,6 +245,7 @@ namespace Kursovaya
             this.textBox4.Size = new System.Drawing.Size(408, 35);
             this.textBox4.TabIndex = 19;
             this.textBox4.TextChanged += new System.EventHandler(this.textBox2_TextChanged);
+            this.textBox4.Enter += new System.EventHandler(this.textBox4_Enter);
             this.textBox4.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.textBox4_KeyPress);
             // 
             // dataGridView1
@@ -356,6 +357,7 @@ namespace Kursovaya
             this.textBox5.Size = new System.Drawing.Size(308, 229);
             this.textBox5.TabIndex = 27;
             this.textBox5.TextChanged += new System.EventHandler(this.textBox5_TextChanged);
+            this.textBox5.Enter += new System.EventHandler(this.textBox5_Enter);
             this.textBox5.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.textBox5_KeyPress);
             // 
             // Menu
