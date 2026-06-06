@@ -315,6 +315,9 @@ namespace Kursovaya
             if ((e.KeyChar >= 'a' && e.KeyChar <= 'z') || (e.KeyChar >= 'A' && e.KeyChar <= 'Z'))
                 return;
 
+            if ((e.KeyChar >= 'а' && e.KeyChar <= 'я') || (e.KeyChar >= 'А' && e.KeyChar <= 'Я'))
+                return;
+
             if (char.IsDigit(e.KeyChar))
                 return;
 

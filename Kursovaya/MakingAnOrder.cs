@@ -23,11 +23,10 @@ namespace Kursovaya
         private int selectedIndex = -1;
         private string selectedClientName = "";
         private string selectedClientPhone = "";
-        private int selectedEventId = -1; // ID выбранного мероприятия
+        private int selectedEventId = -1;
 
-        // Новые поля для правильного выделения
-        private int currentSelectedProductRow = -1;  // Для товаров в каталоге
-        private int currentSelectedCartRow = -1;     // Для товаров в корзине
+        private int currentSelectedProductRow = -1;
+        private int currentSelectedCartRow = -1;
 
         public MakingAnOrder()
         {
@@ -36,22 +35,21 @@ namespace Kursovaya
             FillFilterEvent();
             FillFilterCategory();
 
-            dateTimePicker2.ValueChanged += dateTimePicker2_ValueChanged;
+            // Подключаем обновленную версию события
+            dateTimePicker2.ValueChanged += dateTimePicker2_ValueChanged_AntiClick;
             FillFilterShedule();
 
             FillDataGridView();
 
-            // Подключение обработчиков
             dataGridView1.CellClick += dataGridView1_CellClick;
             dataGridView2.CellClick += dataGridView2_CellClick;
             button2.Click += button2_Click;
             numericUpDown1.ValueChanged += numericUpDown1_ValueChanged;
             comboBox5.SelectedIndexChanged += comboBox5_SelectedIndexChanged;
 
-            // Изначально кнопки неактивны
             button2.Enabled = false;
             button3.Enabled = false;
-            button5.Enabled = false; // Кнопка "В заказ" неактивна пока не выбран клиент
+            button5.Enabled = false;
 
             dateTimePicker2.Value = DateTime.Now.AddDays(14);
 
@@ -96,6 +94,239 @@ namespace Kursovaya
             }
             label1.Text = formattedname;
             label2.Text = Properties.Settings.Default.userRole;
+
+            // Заполняем label28 свободными датами на текущий месяц выбранной даты
+            UpdateAvailableDatesLabel(dateTimePicker2.Value);
+        }
+
+        // НОВЫЙ МЕТОД: Обновляет label28 со свободными датами на указанный месяц
+        private void UpdateAvailableDatesLabel(DateTime date)
+        {
+            // Определяем первый и последний день выбранного месяца
+            DateTime firstDayOfMonth = new DateTime(date.Year, date.Month, 1);
+            DateTime lastDayOfMonth = firstDayOfMonth.AddMonths(1).AddDays(-1);
+
+            // Ограничиваем максимальной датой из dateTimePicker2
+            if (lastDayOfMonth > dateTimePicker2.MaxDate)
+                lastDayOfMonth = dateTimePicker2.MaxDate;
+
+            List<int> availableDays = new List<int>();
+
+            // Проверяем каждую дату месяца
+            for (DateTime currentDate = firstDayOfMonth; currentDate <= lastDayOfMonth; currentDate = currentDate.AddDays(1))
+            {
+                if (currentDate >= dateTimePicker2.MinDate && IsDateAvailable(currentDate))
+                {
+                    availableDays.Add(currentDate.Day);
+                }
+            }
+
+            // Обновляем label28
+            if (availableDays.Count == 0)
+            {
+                label28.Text = $"❌ В {GetMonthName(date.Month)} нет свободных дат для записи";
+                label28.ForeColor = System.Drawing.Color.Black;
+                return;
+            }
+
+            string datesText = FormatDaysForDisplay(availableDays);
+
+            label28.Text = $"📅 Свободные даты в {GetMonthName(date.Month)}: {datesText}";
+            label28.ForeColor = System.Drawing.Color.Black;
+        }
+
+        // Форматирует список дней для отображения
+        private string FormatDaysForDisplay(List<int> days)
+        {
+            if (days.Count == 0) return "нет";
+            if (days.Count <= 10)
+            {
+                return string.Join(", ", days);
+            }
+
+            // Если много дат, показываем начало и конец
+            return $"{days.First()}, {days.First() + 1}, {days.First() + 2}...{days.Last() - 2}, {days.Last() - 1}, {days.Last()}";
+        }
+
+        // Возвращает название месяца в родительном падеже
+        private string GetMonthName(int month)
+        {
+            string[] monthNames = { "", "январе", "феврале", "марте", "апреле", "мае", "июне",
+                                    "июле", "августе", "сентябре", "октябре", "ноябре", "декабре" };
+            return monthNames[month];
+        }
+
+        // НОВАЯ ВЕРСИЯ: Событие ValueChanged с логикой "анти-тык"
+        private void dateTimePicker2_ValueChanged_AntiClick(object sender, EventArgs e)
+        {
+            DateTime selectedDate = dateTimePicker2.Value.Date;
+
+            // Проверяем, свободна ли выбранная пользователем дата
+            if (!IsDateAvailable(selectedDate))
+            {
+                // Вычисляем ближайший день, где есть свободные окошки
+                DateTime validDate = GetNearestAvailableDate(selectedDate);
+
+                // Временно отключаем событие, чтобы избежать рекурсии
+                dateTimePicker2.ValueChanged -= dateTimePicker2_ValueChanged_AntiClick;
+                dateTimePicker2.Value = validDate;
+                dateTimePicker2.ValueChanged += dateTimePicker2_ValueChanged_AntiClick;
+
+                // Обновляем выбранную дату для дальнейшего использования
+                selectedDate = validDate;
+            }
+
+            // Обновляем label28 для месяца выбранной даты
+            UpdateAvailableDatesLabel(selectedDate);
+
+            // Сюда управление дойдет ТОЛЬКО если дата имеет доступные окошки
+            // Спокойно заполняем comboBox4 (пользователь увидит только доступное время)
+            FillFilterShedule();
+        }
+
+        // Проверка: есть ли хотя бы один свободный временной слот на дату
+        private bool IsDateAvailable(DateTime date)
+        {
+            // Проверяем, есть ли хотя бы один свободный временной слот на эту дату
+            List<string> allTimeSlots = GetAllTimeSlots();
+            if (allTimeSlots.Count == 0) return false;
+
+            Dictionary<string, TimeSpan> startTimes = new Dictionary<string, TimeSpan>();
+            Dictionary<string, TimeSpan> endTimes = new Dictionary<string, TimeSpan>();
+
+            foreach (var slot in allTimeSlots)
+            {
+                string[] parts = slot.Split(new[] { " - " }, StringSplitOptions.None);
+                if (parts.Length >= 2)
+                {
+                    startTimes[slot] = ParseTimeSpan(parts[0]);
+                    endTimes[slot] = ParseTimeSpan(parts[1]);
+                }
+            }
+
+            List<string> availableSlots = GetAvailableTimeSlotsForDate(date, allTimeSlots, startTimes, endTimes);
+            return availableSlots.Count > 0;
+        }
+
+        // Поиск ближайшей доступной даты (вперед)
+        private DateTime GetNearestAvailableDate(DateTime startDate)
+        {
+            // Если сама выбранная дата доступна, возвращаем её
+            if (IsDateAvailable(startDate)) return startDate;
+
+            // Если занята, проверяем следующие 60 дней
+            for (int i = 1; i <= 60; i++)
+            {
+                DateTime nextDate = startDate.AddDays(i);
+                if (nextDate > dateTimePicker2.MaxDate) break;
+
+                if (IsDateAvailable(nextDate)) return nextDate;
+            }
+
+            // Если не нашли вперед, пробуем искать назад (на случай если выбрали слишком далеко)
+            for (int i = 1; i <= 14; i++)
+            {
+                DateTime prevDate = startDate.AddDays(-i);
+                if (prevDate < dateTimePicker2.MinDate) break;
+
+                if (IsDateAvailable(prevDate)) return prevDate;
+            }
+
+            // Если вообще всё занято, возвращаем текущую дату
+            return startDate;
+        }
+
+        // Получаем все временные слоты из БД (без проверки занятости)
+        private List<string> GetAllTimeSlots()
+        {
+            List<string> allTimeSlots = new List<string>();
+
+            using (MySqlConnection con = new MySqlConnection(conString))
+            {
+                con.Open();
+                MySqlCommand cmd = new MySqlCommand(@"SELECT StartTime, EndTime FROM CafeActivities.Schedule ORDER BY StartTime;", con);
+                MySqlDataReader rdr = cmd.ExecuteReader();
+
+                while (rdr.Read())
+                {
+                    TimeSpan startTime = (TimeSpan)rdr["StartTime"];
+                    TimeSpan endTime = (TimeSpan)rdr["EndTime"];
+                    string formattedTime = $"{startTime:hh\\:mm} - {endTime:hh\\:mm}";
+                    allTimeSlots.Add(formattedTime);
+                }
+                rdr.Close();
+            }
+
+            return allTimeSlots;
+        }
+
+        private List<string> GetAvailableTimeSlotsForDate(DateTime date, List<string> allTimeSlots,
+                                                          Dictionary<string, TimeSpan> startTimes,
+                                                          Dictionary<string, TimeSpan> endTimes)
+        {
+            List<string> availableTimeSlots = new List<string>(allTimeSlots);
+            string selectedDate = date.ToString("yyyy-MM-dd");
+
+            using (MySqlConnection con = new MySqlConnection(conString))
+            {
+                con.Open();
+
+                string query = @"SELECT 
+                                    s.StartTime, 
+                                    s.EndTime 
+                                 FROM CafeActivities.Orders o
+                                 LEFT JOIN CafeActivities.Schedule s ON o.IdSchedule = s.IDschedule
+                                 WHERE o.DateEvent = @selectedDate 
+                                 AND o.IdStatus != 4";
+
+                using (MySqlCommand cmd = new MySqlCommand(query, con))
+                {
+                    cmd.Parameters.AddWithValue("@selectedDate", selectedDate);
+
+                    using (MySqlDataReader rdr = cmd.ExecuteReader())
+                    {
+                        List<string> occupiedTimeSlots = new List<string>();
+                        while (rdr.Read())
+                        {
+                            if (!rdr.IsDBNull(0) && !rdr.IsDBNull(1))
+                            {
+                                TimeSpan startTime = (TimeSpan)rdr[0];
+                                TimeSpan endTime = (TimeSpan)rdr[1];
+                                string timeSlot = $"{startTime:hh\\:mm} - {endTime:hh\\:mm}";
+                                occupiedTimeSlots.Add(timeSlot);
+                            }
+                        }
+
+                        foreach (var occupiedSlot in occupiedTimeSlots)
+                        {
+                            string[] occupiedParts = occupiedSlot.Split(new[] { " - " }, StringSplitOptions.None);
+                            if (occupiedParts.Length >= 2)
+                            {
+                                TimeSpan occupiedStart = ParseTimeSpan(occupiedParts[0]);
+                                TimeSpan occupiedEnd = ParseTimeSpan(occupiedParts[1]);
+
+                                for (int i = availableTimeSlots.Count - 1; i >= 0; i--)
+                                {
+                                    string currentSlot = availableTimeSlots[i];
+                                    string[] currentParts = currentSlot.Split(new[] { " - " }, StringSplitOptions.None);
+                                    if (currentParts.Length >= 2)
+                                    {
+                                        TimeSpan slotStart = ParseTimeSpan(currentParts[0]);
+                                        TimeSpan slotEnd = ParseTimeSpan(currentParts[1]);
+
+                                        if (DoTimeSlotsOverlap(slotStart, slotEnd, occupiedStart, occupiedEnd))
+                                        {
+                                            availableTimeSlots.RemoveAt(i);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return availableTimeSlots;
         }
 
         private bool allowClose = false;
@@ -124,7 +355,6 @@ namespace Kursovaya
 
         private void UpdateClientInfo()
         {
-            // Показываем информацию о клиенте в label5 (телефон) и label8 (имя)
             if (!string.IsNullOrEmpty(selectedClientPhone) && !string.IsNullOrEmpty(selectedClientName))
             {
                 label5.Text = selectedClientPhone;
@@ -136,13 +366,11 @@ namespace Kursovaya
                 label8.Text = "(не выбрано)";
             }
 
-            // Обновляем состояние кнопки "В заказ" на основе корзины
             UpdateButton5State();
         }
 
         private void UpdateButton5State()
         {
-            // Кнопка активна только если есть товары в корзине
             bool hasItemsInCart = dataView2 != null && dataView2.Rows.Count > 0;
             button5.Enabled = hasItemsInCart;
         }
@@ -151,39 +379,31 @@ namespace Kursovaya
         {
             List<string> missingFields = new List<string>();
 
-            // Проверка выбора клиента
             if (string.IsNullOrEmpty(selectedClientPhone) || selectedClientPhone == "(не выбрано)" || string.IsNullOrEmpty(selectedClientName) || selectedClientName == "(не выбрано)")
             {
                 missingFields.Add("• Клиент (выберите или создайте клиента)");
             }
 
-            // Проверка, что есть товары в корзине
             if (dataView2 == null || dataView2.Rows.Count == 0)
             {
                 missingFields.Add("• Товары в корзине (добавьте товары)");
             }
 
-            // Проверка, что выбрано мероприятие (не "Все мероприятия")
             if (comboBox5.SelectedIndex <= 0 || comboBox5.SelectedItem?.ToString() == "Все мероприятия")
             {
                 missingFields.Add("• Мероприятие (выберите конкретное мероприятие)");
             }
 
-            // Проверка наличия свободного времени на выбранную дату
             if (comboBox4.Items.Count == 0)
             {
-                MessageBox.Show($"На дату {dateTimePicker2.Value:dd.MM.yyyy} нет свободных временных интервалов.\n\nПожалуйста, выберите другую дату.",
-                              "Нет свободного времени", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
+                missingFields.Add("• Время проведения (на выбранную дату нет свободного времени)");
             }
 
-            // Проверка, что выбрано время
-            if (comboBox4.SelectedItem == null)
+            if (comboBox4.SelectedItem == null && comboBox4.Items.Count > 0)
             {
                 missingFields.Add("• Время проведения (выберите время из списка)");
             }
 
-            // Если есть незаполненные поля - показываем сообщение
             if (missingFields.Count > 0)
             {
                 string errorMessage = "Для оформления заказа необходимо заполнить следующие поля:\n\n" +
@@ -195,20 +415,15 @@ namespace Kursovaya
                 return;
             }
 
-            // Дополнительная проверка: убедимся, что выбранное время все еще доступно
-            if (!IsTimeSlotAvailable(comboBox4.Text))
+            if (comboBox4.Items.Count > 0 && !IsTimeSlotAvailable(comboBox4.Text))
             {
-                MessageBox.Show("Выбранное время стало недоступно. Пожалуйста, выберите другое время.",
-                              "Время занято", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                FillFilterShedule(); // Обновляем список доступного времени
+                FillFilterShedule();
                 return;
             }
 
-            // Рассчитываем общую сумму и предоплату
             decimal totalAmount = CalculateTotalAmount();
             decimal prepayment = CalculatePrepayment(totalAmount);
 
-            // Получаем IdSchedule для выбранного времени
             int scheduleId = GetScheduleId(comboBox4.Text);
             if (scheduleId == -1)
             {
@@ -217,7 +432,6 @@ namespace Kursovaya
                 return;
             }
 
-            // Собираем данные для передачи
             OrderData orderData = new OrderData
             {
                 NumberOrder = label4.Text,
@@ -235,7 +449,6 @@ namespace Kursovaya
                 Prepayment = prepayment
             };
 
-            // Создаем копию корзины для передачи
             DataTable cartCopy = dataView2.Copy();
 
             this.Visible = false;
@@ -244,7 +457,6 @@ namespace Kursovaya
             this.Close();
         }
 
-        // Метод для получения Id мероприятия по названию
         private int GetEventId(string eventName)
         {
             using (MySqlConnection con = new MySqlConnection(conString))
@@ -268,7 +480,6 @@ namespace Kursovaya
             return -1;
         }
 
-        // Метод для получения Id расписания по времени
         private int GetScheduleId(string timeSlot)
         {
             string[] timeParts = timeSlot.Split(new[] { " - " }, StringSplitOptions.None);
@@ -300,7 +511,6 @@ namespace Kursovaya
             return -1;
         }
 
-        // Метод для расчета предоплаты (10% от общей суммы)
         private decimal CalculatePrepayment(decimal totalAmount)
         {
             return Math.Round(totalAmount * 0.10m, 2);
@@ -314,7 +524,6 @@ namespace Kursovaya
             {
                 con.Open();
 
-                // Получаем ID расписания для выбранного времени
                 string[] timeParts = timeSlot.Split(new[] { " - " }, StringSplitOptions.None);
                 if (timeParts.Length < 2) return true;
 
@@ -339,11 +548,10 @@ namespace Kursovaya
 
                 if (scheduleId == -1) return true;
 
-                // Проверяем, занято ли это время на выбранную дату
                 string query = @"SELECT COUNT(*) FROM CafeActivities.Orders 
                                 WHERE DateEvent = @selectedDate 
                                 AND IdSchedule = @scheduleId
-                                AND IdStatus != 4"; // 4 - Id для статуса "Отменен"
+                                AND IdStatus != 4";
 
                 using (MySqlCommand cmd = new MySqlCommand(query, con))
                 {
@@ -362,23 +570,17 @@ namespace Kursovaya
             CreatingAClient creatingAClient = new CreatingAClient();
             creatingAClient.ShowDialog();
 
-            // Проверяем, был ли выбран клиент в форме CreatingAClient
             if (CreatingAClient.ClientWasSelected && !string.IsNullOrEmpty(CreatingAClient.SelectedClientPhone))
             {
                 selectedClientName = CreatingAClient.SelectedClientName;
                 selectedClientPhone = CreatingAClient.SelectedClientPhone;
-
-                // Обновляем информацию о клиенте
                 UpdateClientInfo();
-
-                // Сбрасываем флаг
                 CreatingAClient.ClientWasSelected = false;
                 CreatingAClient.SelectedClientName = "";
                 CreatingAClient.SelectedClientPhone = "";
             }
             else
             {
-                // Если клиент не выбран, оставляем значения по умолчанию
                 label5.Text = "(не выбрано)";
                 label8.Text = "(не выбрано)";
                 button5.Enabled = false;
@@ -431,141 +633,50 @@ namespace Kursovaya
 
         void FillFilterShedule()
         {
-            MySqlConnection con = new MySqlConnection(conString);
-            con.Open();
-
-            // Получаем все доступные временные интервалы
-            MySqlCommand cmd = new MySqlCommand(@"SELECT * FROM CafeActivities.Schedule ORDER BY StartTime;", con);
-            MySqlDataReader rdr = cmd.ExecuteReader();
-
-            // Сохраняем все доступные интервалы для дальнейшего использования
-            List<string> allTimeSlots = new List<string>();
-            Dictionary<string, TimeSpan> startTimes = new Dictionary<string, TimeSpan>();
-            Dictionary<string, TimeSpan> endTimes = new Dictionary<string, TimeSpan>();
-
-            while (rdr.Read())
-            {
-                TimeSpan startTime = (TimeSpan)rdr["StartTime"];
-                TimeSpan endTime = (TimeSpan)rdr["EndTime"];
-                string formattedTime = $"{startTime:hh\\:mm} - {endTime:hh\\:mm}";
-                allTimeSlots.Add(formattedTime);
-                startTimes[formattedTime] = startTime;
-                endTimes[formattedTime] = endTime;
-            }
-
-            con.Close();
-
-            // Проверяем занятость для выбранной даты
-            List<string> availableTimeSlots = GetAvailableTimeSlots(allTimeSlots, startTimes, endTimes);
-
-            // Обновляем comboBox4
-            comboBox4.Items.Clear();
-            foreach (var timeSlot in availableTimeSlots)
-            {
-                comboBox4.Items.Add(timeSlot);
-            }
-
-            if (comboBox4.Items.Count > 0)
-                comboBox4.SelectedIndex = 0;
-            else if (comboBox4.Items.Count == 0)
-            {
-                MessageBox.Show("На выбранную дату нет свободных временных интервалов. Пожалуйста, выберите другую дату.",
-                              "Внимание", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            }
-        }
-
-        private List<string> GetAvailableTimeSlots(List<string> allTimeSlots,
-                                                  Dictionary<string, TimeSpan> startTimes,
-                                                  Dictionary<string, TimeSpan> endTimes)
-        {
-            List<string> availableTimeSlots = new List<string>(allTimeSlots);
-
-            if (dateTimePicker2.Value == null)
-                return availableTimeSlots;
-
-            string selectedDate = dateTimePicker2.Value.ToString("yyyy-MM-dd");
-
             using (MySqlConnection con = new MySqlConnection(conString))
             {
                 con.Open();
 
-                // Получаем все занятые временные интервалы на выбранную дату
-                string query = @"SELECT 
-                                    s.StartTime, 
-                                    s.EndTime 
-                                 FROM CafeActivities.Orders o
-                                 LEFT JOIN CafeActivities.Schedule s ON o.IdSchedule = s.IDschedule
-                                 WHERE o.DateEvent = @selectedDate 
-                                 AND o.IdStatus != 4"; // 4 - Id для статуса "Отменен"
+                MySqlCommand cmd = new MySqlCommand(@"SELECT * FROM CafeActivities.Schedule ORDER BY StartTime;", con);
+                MySqlDataReader rdr = cmd.ExecuteReader();
 
-                using (MySqlCommand cmd = new MySqlCommand(query, con))
+                List<string> allTimeSlots = new List<string>();
+                Dictionary<string, TimeSpan> startTimes = new Dictionary<string, TimeSpan>();
+                Dictionary<string, TimeSpan> endTimes = new Dictionary<string, TimeSpan>();
+
+                while (rdr.Read())
                 {
-                    cmd.Parameters.AddWithValue("@selectedDate", selectedDate);
-
-                    using (MySqlDataReader rdr = cmd.ExecuteReader())
-                    {
-                        List<string> occupiedTimeSlots = new List<string>();
-                        while (rdr.Read())
-                        {
-                            if (!rdr.IsDBNull(0) && !rdr.IsDBNull(1))
-                            {
-                                TimeSpan startTime = (TimeSpan)rdr[0];
-                                TimeSpan endTime = (TimeSpan)rdr[1];
-                                string timeSlot = $"{startTime:hh\\:mm} - {endTime:hh\\:mm}";
-                                occupiedTimeSlots.Add(timeSlot);
-                            }
-                        }
-
-                        // Удаляем занятые интервалы и пересекающиеся с ними
-                        foreach (var occupiedSlot in occupiedTimeSlots)
-                        {
-                            // Парсим занятый временной интервал
-                            string[] occupiedParts = occupiedSlot.Split(new[] { " - " }, StringSplitOptions.None);
-                            if (occupiedParts.Length >= 2)
-                            {
-                                TimeSpan occupiedStart = ParseTimeSpan(occupiedParts[0]);
-                                TimeSpan occupiedEnd = ParseTimeSpan(occupiedParts[1]);
-
-                                // Удаляем интервалы, которые полностью или частично пересекаются с занятым
-                                for (int i = availableTimeSlots.Count - 1; i >= 0; i--)
-                                {
-                                    string currentSlot = availableTimeSlots[i];
-
-                                    // Парсим текущий интервал
-                                    string[] currentParts = currentSlot.Split(new[] { " - " }, StringSplitOptions.None);
-                                    if (currentParts.Length >= 2)
-                                    {
-                                        TimeSpan slotStart = ParseTimeSpan(currentParts[0]);
-                                        TimeSpan slotEnd = ParseTimeSpan(currentParts[1]);
-
-                                        // Проверяем пересечение интервалов
-                                        if (DoTimeSlotsOverlap(slotStart, slotEnd, occupiedStart, occupiedEnd))
-                                        {
-                                            availableTimeSlots.RemoveAt(i);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    TimeSpan startTime = (TimeSpan)rdr["StartTime"];
+                    TimeSpan endTime = (TimeSpan)rdr["EndTime"];
+                    string formattedTime = $"{startTime:hh\\:mm} - {endTime:hh\\:mm}";
+                    allTimeSlots.Add(formattedTime);
+                    startTimes[formattedTime] = startTime;
+                    endTimes[formattedTime] = endTime;
                 }
-            }
+                rdr.Close();
 
-            return availableTimeSlots;
+                List<string> availableTimeSlots = GetAvailableTimeSlotsForDate(dateTimePicker2.Value, allTimeSlots, startTimes, endTimes);
+
+                comboBox4.Items.Clear();
+                foreach (var timeSlot in availableTimeSlots)
+                {
+                    comboBox4.Items.Add(timeSlot);
+                }
+
+                if (comboBox4.Items.Count > 0)
+                    comboBox4.SelectedIndex = 0;
+            }
         }
 
         private TimeSpan ParseTimeSpan(string timeString)
         {
-            // Удаляем возможные пробелы
             timeString = timeString.Trim();
 
-            // Пытаемся распарсить время
             if (TimeSpan.TryParse(timeString, out TimeSpan result))
             {
                 return result;
             }
 
-            // Если не получилось, пробуем добавить ":00" для минут
             if (!timeString.Contains(":"))
             {
                 timeString += ":00";
@@ -575,46 +686,12 @@ namespace Kursovaya
                 }
             }
 
-            // Если все еще не получается, возвращаем TimeSpan.Zero
-            return TimeSpan.Zero;
-        }
-
-        private TimeSpan GetStartTimeFromSlot(string timeSlot)
-        {
-            // Пример формата: "12:00 - 14:00"
-            string[] parts = timeSlot.Split(new[] { " - " }, StringSplitOptions.None);
-            if (parts.Length >= 1)
-            {
-                return ParseTimeSpan(parts[0]);
-            }
-            return TimeSpan.Zero;
-        }
-
-        private TimeSpan GetEndTimeFromSlot(string timeSlot)
-        {
-            // Пример формата: "12:00 - 14:00"
-            string[] parts = timeSlot.Split(new[] { " - " }, StringSplitOptions.None);
-            if (parts.Length >= 2)
-            {
-                return ParseTimeSpan(parts[1]);
-            }
             return TimeSpan.Zero;
         }
 
         private bool DoTimeSlotsOverlap(TimeSpan start1, TimeSpan end1, TimeSpan start2, TimeSpan end2)
         {
-            // Проверяем пересечение временных интервалов
-            // Интервалы пересекаются, если:
-            // 1. Начало первого внутри второго интервала
-            // 2. Конец первого внутри второго интервала
-            // 3. Первый интервал полностью содержит второй
             return (start1 < end2 && end1 > start2);
-        }
-
-        private void dateTimePicker2_ValueChanged(object sender, EventArgs e)
-        {
-            // При изменении даты обновляем доступное время
-            FillFilterShedule();
         }
 
         private void textBox1_KeyPress(object sender, KeyPressEventArgs e)
@@ -702,25 +779,21 @@ namespace Kursovaya
 
             List<string> conditions = new List<string>();
 
-            // Фильтр по категории
             if (comboBox3.SelectedIndex > 0 && comboBox3.SelectedItem.ToString() != "Все категории")
             {
                 conditions.Add($"d.Category = '{MySqlHelper.EscapeString(comboBox3.SelectedItem.ToString())}'");
             }
 
-            // Фильтр по мероприятию 
             if (comboBox5.SelectedIndex > 0 && comboBox5.SelectedItem.ToString() != "Все мероприятия")
             {
                 conditions.Add($"c.Event = '{MySqlHelper.EscapeString(comboBox5.SelectedItem.ToString())}'");
             }
 
-            // Поиск по названию
             if (!string.IsNullOrEmpty(where))
             {
                 conditions.Add($"p.Name LIKE '{MySqlHelper.EscapeString(where)}%'");
             }
 
-            // Добавляем условия в запрос
             if (conditions.Count > 0)
             {
                 conStr += " WHERE " + string.Join(" AND ", conditions);
@@ -808,7 +881,6 @@ namespace Kursovaya
                 }
             }
 
-            // Сбрасываем выделение при обновлении таблицы
             currentSelectedProductRow = -1;
             button2.Enabled = false;
         }
@@ -827,14 +899,12 @@ namespace Kursovaya
         {
             if (e.RowIndex >= 0)
             {
-                // Снимаем выделение с предыдущего товара
                 if (currentSelectedProductRow >= 0 && currentSelectedProductRow < dataGridView1.Rows.Count)
                 {
                     dataGridView1.Rows[currentSelectedProductRow].DefaultCellStyle.BackColor = Color.White;
                     dataGridView1.Rows[currentSelectedProductRow].DefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(255, 221, 153);
                 }
 
-                // Выделяем новый товар
                 currentSelectedProductRow = e.RowIndex;
                 dataGridView1.Rows[currentSelectedProductRow].DefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
                 dataGridView1.Rows[currentSelectedProductRow].DefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(217, 152, 22);
@@ -984,7 +1054,6 @@ namespace Kursovaya
                     }
                 }
 
-                // Снимаем выделение после добавления в корзину
                 dataGridView1.Rows[currentSelectedProductRow].DefaultCellStyle.BackColor = Color.White;
                 dataGridView1.Rows[currentSelectedProductRow].DefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(255, 221, 153);
                 currentSelectedProductRow = -1;
@@ -1004,8 +1073,6 @@ namespace Kursovaya
             }
 
             label17.Text = totalAmount.ToString("C");
-
-            // Обновляем состояние кнопки "В заказ"
             UpdateButton5State();
         }
 
@@ -1014,18 +1081,10 @@ namespace Kursovaya
             InitializeDataGridView2();
             InitializeNumericUpDown();
 
-            // Настройка выделения для dataGridView1
             dataGridView1.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             dataGridView1.ClearSelection();
             dataGridView1.DefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(255, 221, 153);
             dataGridView1.DefaultCellStyle.SelectionForeColor = dataGridView1.DefaultCellStyle.ForeColor;
-
-            // Проверяем, есть ли свободное время на выбранную дату
-            if (comboBox4.Items.Count == 0)
-            {
-                MessageBox.Show($"На дату {dateTimePicker2.Value:dd.MM.yyyy} нет свободных временных интервалов.\n\nПожалуйста, выберите другую дату.",
-                              "Нет свободного времени", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            }
         }
 
         private void InitializeNumericUpDown()
@@ -1052,11 +1111,9 @@ namespace Kursovaya
             dataGridView2.Columns["Quantity"].HeaderText = "Количество";
             dataGridView2.Columns["Total"].HeaderText = "Сумма";
 
-            // Отключаем автоматическое выделение
             dataGridView2.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             dataGridView2.ClearSelection();
 
-            // Убираем стандартную подсветку выделения
             dataGridView2.DefaultCellStyle.SelectionBackColor = Color.White;
             dataGridView2.DefaultCellStyle.SelectionForeColor = dataGridView2.DefaultCellStyle.ForeColor;
 
@@ -1068,13 +1125,11 @@ namespace Kursovaya
         {
             if (e.RowIndex >= 0)
             {
-                // Снимаем выделение с предыдущего товара в корзине
                 if (currentSelectedCartRow >= 0 && currentSelectedCartRow < dataGridView2.Rows.Count)
                 {
                     dataGridView2.Rows[currentSelectedCartRow].DefaultCellStyle.BackColor = Color.White;
                 }
 
-                // Выделяем новый товар в корзине
                 currentSelectedCartRow = e.RowIndex;
                 dataGridView2.Rows[currentSelectedCartRow].DefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
 
@@ -1103,7 +1158,6 @@ namespace Kursovaya
                     {
                         rows[0].Delete();
 
-                        // Снимаем выделение
                         dataGridView2.Rows[currentSelectedCartRow].DefaultCellStyle.BackColor = Color.White;
                         currentSelectedCartRow = -1;
                         numericUpDown1.Enabled = false;
@@ -1138,7 +1192,6 @@ namespace Kursovaya
 
                     UpdateCartSummary();
 
-                    // Снимаем выделение
                     if (currentSelectedCartRow < dataGridView2.Rows.Count)
                     {
                         dataGridView2.Rows[currentSelectedCartRow].DefaultCellStyle.BackColor = Color.White;
@@ -1175,10 +1228,8 @@ namespace Kursovaya
 
         private void comboBox5_SelectedIndexChanged(object sender, EventArgs e)
         {
-            // При изменении мероприятия обновляем список товаров
             if (comboBox5.SelectedIndex > 0)
             {
-                // Получаем ID выбранного мероприятия
                 selectedEventId = GetEventId(comboBox5.SelectedItem.ToString());
             }
             else
@@ -1186,22 +1237,6 @@ namespace Kursovaya
                 selectedEventId = -1;
             }
 
-            FillDataGridView();
-        }
-
-        private void comboBox5_SelectedIndexChanged_1(object sender, EventArgs e)
-        {
-            // При изменении мероприятия обновляем список товаров
-            if (comboBox5.SelectedIndex > 0 && comboBox5.SelectedItem.ToString() != "Все мероприятия")
-            {
-                selectedEventId = GetEventId(comboBox5.SelectedItem.ToString());
-            }
-            else
-            {
-                selectedEventId = -1;
-            }
-
-            // Обновляем таблицу с учетом выбранного мероприятия
             FillDataGridView(textBox1.Text);
         }
 

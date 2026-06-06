@@ -312,7 +312,7 @@ namespace Kursovaya
             // textBox1
             // 
             this.textBox1.Location = new System.Drawing.Point(515, 505);
-            this.textBox1.MaxLength = 11;
+            this.textBox1.MaxLength = 7;
             this.textBox1.Name = "textBox1";
             this.textBox1.Size = new System.Drawing.Size(171, 35);
             this.textBox1.TabIndex = 26;

@@ -83,6 +83,7 @@ namespace Kursovaya
             // 
             this.textBox1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(221)))), ((int)(((byte)(153)))));
             this.textBox1.Location = new System.Drawing.Point(65, 67);
+            this.textBox1.MaxLength = 100;
             this.textBox1.Name = "textBox1";
             this.textBox1.Size = new System.Drawing.Size(291, 35);
             this.textBox1.TabIndex = 3;
@@ -148,6 +149,7 @@ namespace Kursovaya
             this.textBox3.Size = new System.Drawing.Size(266, 35);
             this.textBox3.TabIndex = 9;
             this.textBox3.TextChanged += new System.EventHandler(this.textBox3_TextChanged);
+            this.textBox3.Enter += new System.EventHandler(this.textBox3_Enter);
             this.textBox3.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.textBox3_KeyPress);
             // 
             // dataGridView1

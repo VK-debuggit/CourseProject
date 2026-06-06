@@ -92,5 +92,15 @@ namespace Kursovaya
             categories.ShowDialog();
             this.Close();
         }
+
+        private void Directories_Load(object sender, EventArgs e)
+        {
+            if (label2.Text == "По умолчанию")
+            {
+                button2.Hide();
+                button3.Hide();
+                button4.Hide();
+            }
+        }
     }
 }

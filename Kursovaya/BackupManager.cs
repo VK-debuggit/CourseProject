@@ -17,6 +17,29 @@ namespace Kursovaya
             return $"host={Properties.Settings.Default.host};uid={Properties.Settings.Default.uid};pwd={Properties.Settings.Default.pwd};database={Properties.Settings.Default.database}";
         }
 
+        // Метод для получения русских названий таблиц
+        private static string GetRussianTableName(string englishTableName)
+        {
+            Dictionary<string, string> tableNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                { "Roles", "Роли" },
+                { "Users", "Пользователи" },
+                { "Categories", "Категории" },
+                { "Events", "Мероприятия" },
+                { "Schedule", "Расписание" },
+                { "Status", "Статусы" },
+                { "Clients", "Клиенты" },
+                { "Dishes", "Блюда" },
+                { "Orders", "Заказы" },
+                { "OrderComposition", "Состав_заказа" }
+            };
+
+            if (tableNames.ContainsKey(englishTableName))
+                return tableNames[englishTableName];
+
+            return englishTableName;
+        }
+
         // Новый метод для получения пути к папке Backups на уровне Resources
         private static string GetBackupsBasePath()
         {
@@ -160,7 +183,9 @@ namespace Kursovaya
 
                 foreach (var table in dataTables)
                 {
-                    string filePath = Path.Combine(directoryPath, $"{table.TableName}.csv");
+                    // Получаем русское название для файла
+                    string russianName = GetRussianTableName(table.TableName);
+                    string filePath = Path.Combine(directoryPath, $"{russianName}.csv");
 
                     using (StreamWriter writer = new StreamWriter(filePath, false, new UTF8Encoding(true)))
                     {
@@ -242,6 +267,15 @@ namespace Kursovaya
                                     else
                                     {
                                         string value = reader.GetValue(i).ToString();
+
+                                        // ПРОВЕРЯЕМ ТИП ДАННЫХ - если это decimal, заменяем запятую на точку
+                                        Type valueType = reader.GetValue(i).GetType();
+                                        if (valueType == typeof(decimal) || valueType == typeof(float) || valueType == typeof(double))
+                                        {
+                                            // Заменяем запятую на точку для десятичных чисел
+                                            value = value.Replace(',', '.');
+                                        }
+
                                         value = MySqlHelper.EscapeString(value);
                                         columnValues.Add($"'{value}'");
                                     }

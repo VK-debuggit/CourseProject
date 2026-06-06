@@ -554,53 +554,26 @@ namespace Kursovaya
         {
             TextBox tb = (TextBox)sender;
 
+            // Разрешаем управляющие клавиши
             if (char.IsControl(e.KeyChar))
                 return;
 
-            if (char.IsDigit(e.KeyChar))
-            {
-                string textBefore = tb.Text.Substring(0, tb.SelectionStart) + tb.Text.Substring(tb.SelectionStart + tb.SelectionLength);
-                if (textBefore.Replace(".", "").Length + 1 > 12)
-                {
-                    e.Handled = true;
-                    return;
-                }
-
-                int dotIndex = tb.Text.IndexOf('.');
-                if (dotIndex != -1)
-                {
-                    int cursorPosition = tb.SelectionStart;
-                    int digitsAfterDot = tb.Text.Length - dotIndex - 1;
-
-                    if (cursorPosition > dotIndex && digitsAfterDot >= 2)
-                    {
-                        if (tb.SelectionLength == 0)
-                        {
-                            e.Handled = true;
-                            return;
-                        }
-                    }
-                }
-
-                e.Handled = false;
-                return;
-            }
-
+            // Запрещаем точку
             if (e.KeyChar == '.')
             {
-                if (tb.Text.Contains('.'))
-                {
-                    e.Handled = true;
-                    return;
-                }
+                e.Handled = true;
+                return;
+            }
 
-                if (tb.Text.Length == 0)
-                {
-                    e.Handled = true;
-                    return;
-                }
+            // Разрешаем только цифры
+            if (char.IsDigit(e.KeyChar))
+            {
+                // Проверяем длину целого числа (максимум 7 цифр)
+                string currentText = tb.Text.Substring(0, tb.SelectionStart) +
+                                     tb.Text.Substring(tb.SelectionStart + tb.SelectionLength);
 
-                if (tb.Text.Length > 10)
+                // Если вставляем цифру и общая длина превысит 7 - запрещаем
+                if (currentText.Length + 1 > 7)
                 {
                     e.Handled = true;
                     return;
@@ -610,6 +583,7 @@ namespace Kursovaya
                 return;
             }
 
+            // Запрещаем все остальные символы
             e.Handled = true;
         }
 
@@ -617,53 +591,26 @@ namespace Kursovaya
         {
             TextBox tb = (TextBox)sender;
 
+            // Разрешаем управляющие клавиши (Backspace, Delete, Enter и т.д.)
             if (char.IsControl(e.KeyChar))
                 return;
 
-            if (char.IsDigit(e.KeyChar))
-            {
-                string textBefore = tb.Text.Substring(0, tb.SelectionStart) + tb.Text.Substring(tb.SelectionStart + tb.SelectionLength);
-                if (textBefore.Replace(".", "").Length + 1 > 9)
-                {
-                    e.Handled = true;
-                    return;
-                }
-
-                int dotIndex = tb.Text.IndexOf('.');
-                if (dotIndex != -1)
-                {
-                    int cursorPosition = tb.SelectionStart;
-                    int digitsAfterDot = tb.Text.Length - dotIndex - 1;
-
-                    if (cursorPosition > dotIndex && digitsAfterDot >= 2)
-                    {
-                        if (tb.SelectionLength == 0)
-                        {
-                            e.Handled = true;
-                            return;
-                        }
-                    }
-                }
-
-                e.Handled = false;
-                return;
-            }
-
+            // Запрещаем точку
             if (e.KeyChar == '.')
             {
-                if (tb.Text.Contains('.'))
-                {
-                    e.Handled = true;
-                    return;
-                }
+                e.Handled = true;
+                return;
+            }
 
-                if (tb.Text.Length == 0)
-                {
-                    e.Handled = true;
-                    return;
-                }
+            // Разрешаем только цифры
+            if (char.IsDigit(e.KeyChar))
+            {
+                // Проверяем длину целого числа (максимум 4 цифры)
+                string currentText = tb.Text.Substring(0, tb.SelectionStart) +
+                                     tb.Text.Substring(tb.SelectionStart + tb.SelectionLength);
 
-                if (tb.Text.Length > 7)
+                // Если вставляем цифру и общая длина превысит 4 - запрещаем
+                if (currentText.Length + 1 > 4)
                 {
                     e.Handled = true;
                     return;
@@ -673,6 +620,7 @@ namespace Kursovaya
                 return;
             }
 
+            // Запрещаем все остальные символы
             e.Handled = true;
         }
 

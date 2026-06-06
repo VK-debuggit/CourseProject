@@ -20,12 +20,12 @@ namespace Kursovaya
         public string Weight { get; set; }
         public string Dec { get; set; }
         public Image Photo { get; set; }
-        public decimal TotalAmount { get; set; }
-        public decimal Prepayment { get; set; }
+        public int TotalAmount { get; set; }
+        public int Prepayment { get; set; }
 
         // Добавленные свойства для работы с заказами
-        public decimal DiscountAmount { get; set; }
-        public decimal FinalAmount { get; set; }
+        public int DiscountAmount { get; set; }
+        public int FinalAmount { get; set; }
         public string Status { get; set; }
         public string NameUser { get; set; }
     }

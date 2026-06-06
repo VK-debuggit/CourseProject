@@ -59,6 +59,7 @@ namespace Kursovaya
             // 
             this.textBox1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(221)))), ((int)(((byte)(153)))));
             this.textBox1.Location = new System.Drawing.Point(16, 57);
+            this.textBox1.MaxLength = 32;
             this.textBox1.Name = "textBox1";
             this.textBox1.Size = new System.Drawing.Size(255, 35);
             this.textBox1.TabIndex = 1;
@@ -78,6 +79,7 @@ namespace Kursovaya
             // 
             this.textBox2.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(221)))), ((int)(((byte)(153)))));
             this.textBox2.Location = new System.Drawing.Point(16, 148);
+            this.textBox2.MaxLength = 64;
             this.textBox2.Name = "textBox2";
             this.textBox2.Size = new System.Drawing.Size(255, 35);
             this.textBox2.TabIndex = 3;

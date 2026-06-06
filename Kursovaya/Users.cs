@@ -17,6 +17,7 @@ namespace Kursovaya
 
         string conString = $"host={Properties.Settings.Default.host};uid={Properties.Settings.Default.uid};pwd={Properties.Settings.Default.pwd};database={Properties.Settings.Default.database};";
         private int rowCount = 0;
+        private int? _lastInsertedUserId = null; // Хранит ID последнего добавленного/измененного пользователя
 
         public Users()
         {
@@ -91,14 +92,14 @@ namespace Kursovaya
         void FillDataGridView()
         {
             string SelectQuery = @"SELECT 
-                                    p.IDuser, 
-                                    p.FullName, 
-                                    p.Login, 
-                                    p.Password, 
-                                    c.`Role` as `Role`
-                                FROM CafeActivities.Users p 
-                                LEFT JOIN Roles c ON p.IDrole = c.IDrole
-                                ORDER BY p.FullName ASC;";
+                            p.IDuser, 
+                            p.FullName, 
+                            p.Login, 
+                            p.Password, 
+                            c.`Role` as `Role`
+                        FROM CafeActivities.Users p 
+                        LEFT JOIN Roles c ON p.IDrole = c.IDrole
+                        ORDER BY p.FullName ASC;";
 
             using (MySqlConnection con = new MySqlConnection(conString))
             {
@@ -118,18 +119,36 @@ namespace Kursovaya
                     dataGridView1.Columns["Password"].Visible = false;
                     dataGridView1.Columns.Add("Role", "Роль");
 
+                    // Временный список для хранения всех записей
+                    var users = new List<(int Id, string FullName, string Login, string Password, string Role)>();
                     rowCount = 0;
+
                     while (rdr.Read())
                     {
-                        int rowIndex = dataGridView1.Rows.Add(
-                            rdr[0].ToString(),
-                            rdr[1].ToString(),
-                            rdr[2].ToString(),
-                            rdr[3].ToString(),
-                            rdr[4].ToString()
-                        );
-
+                        int userId = Convert.ToInt32(rdr[0]);
+                        string fullName = rdr[1].ToString();
+                        string login = rdr[2].ToString();
+                        string password = rdr[3].ToString();
+                        string role = rdr[4].ToString();
+                        users.Add((userId, fullName, login, password, role));
                         rowCount++;
+                    }
+
+                    // Если есть новая/измененная запись, перемещаем её в начало
+                    if (_lastInsertedUserId.HasValue)
+                    {
+                        var lastUser = users.FirstOrDefault(u => u.Id == _lastInsertedUserId.Value);
+                        if (lastUser.Id != 0)
+                        {
+                            users.Remove(lastUser);
+                            users.Insert(0, lastUser);
+                        }
+                    }
+
+                    // Добавляем в DataGridView
+                    foreach (var user in users)
+                    {
+                        dataGridView1.Rows.Add(user.Id, user.FullName, user.Login, user.Password, user.Role);
                     }
 
                     label8.Text = rowCount.ToString();
@@ -138,6 +157,9 @@ namespace Kursovaya
                     {
                         MessageBox.Show("Данные не найдены", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
+
+                    // Сбрасываем ID после отображения
+                    _lastInsertedUserId = null;
                 }
             }
         }
@@ -389,7 +411,8 @@ namespace Kursovaya
             }
 
             string query = @"INSERT INTO Users (FullName, Login, Password, IDRole) 
-                     VALUES (@fullName, @login, @password, @idrole)";
+                             VALUES (@fullName, @login, @password, @idrole);
+                             SELECT LAST_INSERT_ID();"; // Добавлено получение ID
 
             using (MySqlConnection con = new MySqlConnection(conString))
             {
@@ -403,33 +426,34 @@ namespace Kursovaya
                         cmd.Parameters.AddWithValue("@password", hashPassword);
                         cmd.Parameters.AddWithValue("@idrole", roleId);
 
-                        int rowsAffected = cmd.ExecuteNonQuery();
+                        // Получаем ID только что добавленного пользователя
+                        int newId = Convert.ToInt32(cmd.ExecuteScalar());
 
-                        if (rowsAffected > 0)
+                        // Сохраняем ID новой записи
+                        _lastInsertedUserId = newId;
+
+                        MessageBox.Show("Пользователь успешно добавлен", "Успех",
+                                      MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                        dataGridView1.SelectionChanged -= dataGridView1_SelectionChanged;
+
+                        FillDataGridView();
+
+                        dataGridView1.ClearSelection();
+
+                        textBox1.Clear();
+                        textBox2.Clear();
+                        textBox3.Clear();
+
+                        // Сбрасываем на "Все роли"
+                        if (Filter.Items.Count > 0)
                         {
-                            MessageBox.Show("Пользователь успешно добавлен", "Успех",
-                                          MessageBoxButtons.OK, MessageBoxIcon.Information);
-
-                            dataGridView1.SelectionChanged -= dataGridView1_SelectionChanged;
-
-                            FillDataGridView();
-
-                            dataGridView1.ClearSelection();
-
-                            textBox1.Clear();
-                            textBox2.Clear();
-                            textBox3.Clear();
-
-                            // Сбрасываем на "Все роли"
-                            if (Filter.Items.Count > 0)
-                            {
-                                Filter.SelectedIndex = 0;
-                            }
-
-                            dataGridView1.SelectionChanged += dataGridView1_SelectionChanged;
-                            UpdateButtonsState();
-                            ClearAllFields();
+                            Filter.SelectedIndex = 0;
                         }
+
+                        dataGridView1.SelectionChanged += dataGridView1_SelectionChanged;
+                        UpdateButtonsState();
+                        ClearAllFields();
                     }
                 }
                 catch (Exception ex)
@@ -866,6 +890,9 @@ namespace Kursovaya
 
                         if (rowsAffected > 0)
                         {
+                            // Сохраняем ID отредактированной записи
+                            _lastInsertedUserId = selectedId;
+
                             MessageBox.Show("Пользователь успешно обновлен", "Успех",
                                           MessageBoxButtons.OK, MessageBoxIcon.Information);
 
@@ -905,12 +932,14 @@ namespace Kursovaya
                 Filter.SelectedIndex = 0;
             }
             UpdateButtonsState();
+            _lastInsertedUserId = null; // Сброс ID при очистке полей
         }
 
         private void Users_Load(object sender, EventArgs e)
         {
             // Очищаем все поля при загрузке формы
             ClearAllFields();
+            _lastInsertedUserId = null; // Сброс ID при загрузке
 
             // Для всех колонок, кроме последней
             for (int i = 0; i < dataGridView1.Columns.Count - 1; i++)
@@ -1048,6 +1077,20 @@ namespace Kursovaya
         }
 
         private void textBox2_Enter(object sender, EventArgs e)
+        {
+            // Получаем доступный список языков и устанавливаем нужный
+            foreach (InputLanguage lang in InputLanguage.InstalledInputLanguages)
+            {
+                // Ищем русский язык
+                if (lang.Culture.TwoLetterISOLanguageName == "en")
+                {
+                    InputLanguage.CurrentInputLanguage = lang;
+                    break;
+                }
+            }
+        }
+
+        private void textBox3_Enter(object sender, EventArgs e)
         {
             // Получаем доступный список языков и устанавливаем нужный
             foreach (InputLanguage lang in InputLanguage.InstalledInputLanguages)

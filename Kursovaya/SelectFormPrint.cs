@@ -32,7 +32,7 @@ namespace Kursovaya
         private decimal _additionalExpenses;
         private Form _previousForm;
 
-        private bool allowClose = false;
+        private bool _isClosingProgrammatically = false; // Флаг программного закрытия
 
         // Конструктор для предварительного документа (из ViewingAnOrderForMeneger)
         public SelectFormPrint(System.Data.DataTable cartItems, OrderData orderData, decimal discountAmountValue, DocumentType type, Form previousForm = null)
@@ -68,74 +68,67 @@ namespace Kursovaya
 
         private void button3_Click(object sender, EventArgs e)
         {
-            allowClose = true;
+            _isClosingProgrammatically = true;
+
+            if (_previousForm != null && !_previousForm.IsDisposed)
+            {
+                _previousForm.Show();
+            }
+
             this.Close();
         }
 
         private void SelectFormPrint_FormClosing(object sender, FormClosingEventArgs e)
         {
-            if (e.CloseReason == CloseReason.ApplicationExitCall)
+            if (_isClosingProgrammatically)
                 return;
 
-            if (!allowClose)
-            {
-                e.Cancel = true;
-                this.Hide();
-
-                if (_previousForm != null && !_previousForm.IsDisposed)
-                {
-                    _previousForm.Show();
-                }
-            }
+            e.Cancel = true;
         }
 
         private void button2_Click(object sender, EventArgs e)
         {
+            _isClosingProgrammatically = true;
+
             if (_documentType == DocumentType.Preliminary)
             {
                 GeneratePreliminaryWordTicket();
-                this.DialogResult = DialogResult.OK;
-                allowClose = true;
-                this.Visible = false;
-                MakingAnOrder makingAnOrder1 = new MakingAnOrder();
-                makingAnOrder1.ShowDialog();
-                this.Close();
             }
             else
             {
                 GenerateFinalWordTicket();
-                this.DialogResult = DialogResult.OK;
-                allowClose = true;
-                this.Close();
             }
 
-            this.DialogResult = DialogResult.OK;
-            allowClose = true;
-            this.Visible = false;
-            MakingAnOrder makingAnOrder = new MakingAnOrder();
-            makingAnOrder.ShowDialog();
-            this.Close();
+            GoToMakingAnOrder();
         }
 
         private void button1_Click(object sender, EventArgs e)
         {
+            _isClosingProgrammatically = true;
+
             if (_documentType == DocumentType.Preliminary)
             {
                 GeneratePreliminaryPDFTicket();
-                this.DialogResult = DialogResult.OK;
-                allowClose = true;
-                this.Visible = false;
-                MakingAnOrder makingAnOrder = new MakingAnOrder();
-                makingAnOrder.ShowDialog();
-                this.Close();
             }
             else
             {
                 GenerateFinalPDFTicket();
-                this.DialogResult = DialogResult.OK;
-                allowClose = true;
-                this.Close();
             }
+
+            GoToMakingAnOrder();
+        }
+
+        private void GoToMakingAnOrder()
+        {
+            this.Close();
+
+            if (_previousForm != null && !_previousForm.IsDisposed)
+            {
+                _previousForm.Close();
+            }
+
+            MakingAnOrder makingAnOrder = new MakingAnOrder();
+            makingAnOrder.Show();
         }
 
         // ========== ГЕНЕРАЦИЯ PDF С АВТОСОХРАНЕНИЕМ ==========
@@ -232,54 +225,107 @@ namespace Kursovaya
                 using (XGraphics gfx = XGraphics.FromPdfPage(page))
                 {
                     XFont titleFont = new XFont("Arial", 18, XFontStyle.Bold);
+                    XFont subtitleFont = new XFont("Arial", 14, XFontStyle.Bold);
                     XFont regularFont = new XFont("Arial", 10, XFontStyle.Regular);
                     XFont boldFont = new XFont("Arial", 10, XFontStyle.Bold);
                     XFont infoFont = new XFont("Arial", 8, XFontStyle.Italic);
+                    XFont labelFont = new XFont("Arial", 10, XFontStyle.Bold);
 
                     float yPosition = 50;
+                    float pageWidth = (float)page.Width;
+                    float leftColumnX = 50;
+                    float rightColumnX = pageWidth - 200;
+                    float rowHeight = 22;
 
                     // Заголовок
                     gfx.DrawString("БЛАНК ЗАКАЗА", titleFont, XBrushes.Black,
-                        new XRect(0, yPosition, page.Width, 30), XStringFormats.TopCenter);
+                        new XRect(0, yPosition, pageWidth, 30), XStringFormats.TopCenter);
                     yPosition += 40;
 
-                    // Информация о заказе
-                    gfx.DrawString($"Номер заказа: {_orderData.NumberOrder}", regularFont, XBrushes.Black,
-                        new XRect(50, yPosition, page.Width - 100, 20), XStringFormats.TopCenter);
-                    yPosition += 20;
+                    // ========== ДВУХКОЛОНОЧНАЯ ШАПКА ==========
 
-                    gfx.DrawString($"Дата создания: {_orderData.DateOrder}", regularFont, XBrushes.Black,
-                        new XRect(50, yPosition, page.Width - 100, 20), XStringFormats.TopCenter);
-                    yPosition += 20;
+                    // Строка 1: Номер заказа | Клиент
+                    gfx.DrawString("Номер заказа:", labelFont, XBrushes.Black,
+                        new XRect(leftColumnX, yPosition, 100, rowHeight), XStringFormats.TopLeft);
+                    gfx.DrawString(_orderData.NumberOrder.ToString(), regularFont, XBrushes.Black,
+                        new XRect(leftColumnX + 100, yPosition, 80, rowHeight), XStringFormats.TopLeft);
 
-                    gfx.DrawString($"Клиент: {_orderData.NameClient}", regularFont, XBrushes.Black,
-                        new XRect(50, yPosition, page.Width - 100, 20), XStringFormats.TopCenter);
-                    yPosition += 20;
+                    gfx.DrawString("Клиент:", labelFont, XBrushes.Black,
+                        new XRect(rightColumnX, yPosition, 55, rowHeight), XStringFormats.TopLeft);
+                    gfx.DrawString(_orderData.NameClient, regularFont, XBrushes.Black,
+                        new XRect(rightColumnX + 55, yPosition, 140, rowHeight), XStringFormats.TopLeft);
+                    yPosition += rowHeight;
 
-                    gfx.DrawString($"Телефон: {_orderData.NumberPhone}", regularFont, XBrushes.Black,
-                        new XRect(50, yPosition, page.Width - 100, 20), XStringFormats.TopCenter);
-                    yPosition += 20;
+                    // Строка 2: Дата создания | Телефон
+                    gfx.DrawString("Дата создания:", labelFont, XBrushes.Black,
+                        new XRect(leftColumnX, yPosition, 100, rowHeight), XStringFormats.TopLeft);
+                    gfx.DrawString(_orderData.DateOrder, regularFont, XBrushes.Black,
+                        new XRect(leftColumnX + 100, yPosition, 80, rowHeight), XStringFormats.TopLeft);
 
-                    gfx.DrawString($"Мероприятие: {_orderData.Event}", regularFont, XBrushes.Black,
-                        new XRect(50, yPosition, page.Width - 100, 20), XStringFormats.TopCenter);
-                    yPosition += 20;
+                    gfx.DrawString("Телефон:", labelFont, XBrushes.Black,
+                        new XRect(rightColumnX, yPosition, 60, rowHeight), XStringFormats.TopLeft);
+                    gfx.DrawString(_orderData.NumberPhone, regularFont, XBrushes.Black,
+                        new XRect(rightColumnX + 60, yPosition, 140, rowHeight), XStringFormats.TopLeft);
+                    yPosition += rowHeight;
 
-                    gfx.DrawString($"Дата проведения: {_orderData.Date}", regularFont, XBrushes.Black,
-                        new XRect(50, yPosition, page.Width - 100, 20), XStringFormats.TopCenter);
-                    yPosition += 20;
+                    // Строка 3: Мероприятие | Дата проведения
+                    gfx.DrawString("Мероприятие:", labelFont, XBrushes.Black,
+                        new XRect(leftColumnX, yPosition, 100, rowHeight), XStringFormats.TopLeft);
 
-                    gfx.DrawString($"Время: {_orderData.Time}", regularFont, XBrushes.Black,
-                        new XRect(50, yPosition, page.Width - 100, 20), XStringFormats.TopCenter);
-                    yPosition += 50;
+                    string eventName = _orderData.Event;
+                    float eventMaxWidth = 180;
+                    if (gfx.MeasureString(eventName, regularFont).Width > eventMaxWidth)
+                    {
+                        string[] words = eventName.Split(' ');
+                        string line1 = "", line2 = "";
+                        foreach (string word in words)
+                        {
+                            if (gfx.MeasureString((line1 == "" ? "" : line1 + " ") + word, regularFont).Width <= eventMaxWidth)
+                                line1 += (line1 == "" ? "" : " ") + word;
+                            else
+                                line2 += (line2 == "" ? "" : " ") + word;
+                        }
+                        gfx.DrawString(line1, regularFont, XBrushes.Black,
+                            new XRect(leftColumnX + 100, yPosition, eventMaxWidth, rowHeight), XStringFormats.TopLeft);
+                        if (!string.IsNullOrEmpty(line2))
+                        {
+                            gfx.DrawString(line2, regularFont, XBrushes.Black,
+                                new XRect(leftColumnX + 100, yPosition + 15, eventMaxWidth, rowHeight), XStringFormats.TopLeft);
+                            yPosition += 15;
+                        }
+                    }
+                    else
+                    {
+                        gfx.DrawString(eventName, regularFont, XBrushes.Black,
+                            new XRect(leftColumnX + 100, yPosition, eventMaxWidth, rowHeight), XStringFormats.TopLeft);
+                    }
 
-                    // Рисуем таблицу и получаем высоту, которую она заняла
+                    gfx.DrawString("Дата проведения:", labelFont, XBrushes.Black,
+                        new XRect(rightColumnX, yPosition, 115, rowHeight), XStringFormats.TopLeft);
+                    gfx.DrawString(_orderData.Date, regularFont, XBrushes.Black,
+                        new XRect(rightColumnX + 115, yPosition, 85, rowHeight), XStringFormats.TopLeft);
+                    yPosition += rowHeight;
+
+                    // Строка 4: (пусто) | Время
+                    gfx.DrawString("Время:", labelFont, XBrushes.Black,
+                        new XRect(rightColumnX, yPosition, 55, rowHeight), XStringFormats.TopLeft);
+                    gfx.DrawString(_orderData.Time, regularFont, XBrushes.Black,
+                        new XRect(rightColumnX + 55, yPosition, 140, rowHeight), XStringFormats.TopLeft);
+                    yPosition += rowHeight + 20; // Отступ перед "Состав заказа"
+
+                    // Заголовок "СОСТАВ ЗАКАЗА"
+                    XSize headerSize = gfx.MeasureString("СОСТАВ ЗАКАЗА", subtitleFont);
+                    float headerX = (float)((pageWidth - headerSize.Width) / 2);
+                    gfx.DrawString("СОСТАВ ЗАКАЗА", subtitleFont, XBrushes.Black,
+                        new XRect(headerX, yPosition, headerSize.Width, 25), XStringFormats.TopLeft);
+
+                    yPosition += 35;
+
+                    // Рисуем таблицу
                     float tableBottomY = DrawOrderTable(gfx, _cartItems, page, yPosition);
-
-                    // Устанавливаем позицию после таблицы
                     yPosition = tableBottomY + 20;
 
                     // Финансовая информация
-                    float pageWidth = (float)page.Width;
                     float rightEdge = pageWidth - 50;
 
                     gfx.DrawString("СУММА ЗАКАЗА", regularFont, XBrushes.Black,
@@ -315,13 +361,30 @@ namespace Kursovaya
                         yPosition += 20;
                     }
 
-                    yPosition += 30;
+                    yPosition += 20;
+
+                    // ========== РАЗДЕЛИТЕЛЬНАЯ ЛИНИЯ ПЕРЕД СЛУЖЕБНОЙ ИНФОРМАЦИЕЙ ==========
+                    XPen linePen = new XPen(XColors.LightGray, 0.5);
+                    gfx.DrawLine(linePen, 50, yPosition, pageWidth - 50, yPosition);
+                    yPosition += 15;
+
+                    // Предупреждение о невозврате предоплаты (только для предварительного документа)
+                    if (isPreliminary)
+                    {
+                        XFont warningFont = new XFont("Arial", 10, XFontStyle.Bold | XFontStyle.Italic);
+                        string warningText = "ВНИМАНИЕ: Предоплата в случае отмены заказа НЕ ВОЗВРАЩАЕТСЯ!";
+                        XSize warningSize = gfx.MeasureString(warningText, warningFont);
+                        float warningX = (float)((pageWidth - warningSize.Width) / 2);
+
+                        gfx.DrawString(warningText, warningFont, XBrushes.DarkGray,
+                            new XRect(warningX, yPosition, warningSize.Width, 15), XStringFormats.TopLeft);
+                        yPosition += 20;
+                    }
 
                     // Служебная информация (по центру)
                     string fullname = Properties.Settings.Default.userName;
                     string formattedname = FormatFullName(fullname);
 
-                    // Центрируем текст
                     XSize line1Size = gfx.MeasureString($"Документ сгенерирован: {DateTime.Now:dd.MM.yyyy HH:mm:ss}", infoFont);
                     float line1X = (float)((pageWidth - line1Size.Width) / 2);
                     gfx.DrawString($"Документ сгенерирован: {DateTime.Now:dd.MM.yyyy HH:mm:ss}", infoFont, XBrushes.Gray,
@@ -365,12 +428,6 @@ namespace Kursovaya
             XFont headerFont = new XFont("Arial", 9, XFontStyle.Bold);
             XFont cellFont = new XFont("Arial", 8, XFontStyle.Regular);
             XPen pen = new XPen(XColors.Black, 0.5);
-
-            // Заголовок таблицы (по центру)
-            XSize headerSize = gfx.MeasureString("СОСТАВ ЗАКАЗА:", headerFont);
-            float headerX = (float)((page.Width - headerSize.Width) / 2);
-            gfx.DrawString("СОСТАВ ЗАКАЗА:", headerFont, XBrushes.Black,
-                new XRect(headerX, startY - 25, headerSize.Width, 20), XStringFormats.TopLeft);
 
             // Заголовки столбцов
             string[] headers = { "№", "Наименование", "Цена", "Кол-во", "Сумма" };
@@ -774,9 +831,50 @@ namespace Kursovaya
             return null;
         }
 
-        // ========== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ==========
+        // ========== РАБОТА С WORD ==========
 
-        // Генерация предварительного документа Word
+        /// <summary>
+        /// Заменяет все вхождения плейсхолдера в документе без изменения форматирования.
+        /// </summary>
+        private void ReplaceTextInDocument(Microsoft.Office.Interop.Word.Document doc, string placeholder, string value)
+        {
+            try
+            {
+                Microsoft.Office.Interop.Word.Range range = doc.Content;
+                range.Find.ClearFormatting();
+                range.Find.Replacement.ClearFormatting();
+                range.Find.Text = placeholder;
+                range.Find.Replacement.Text = value;
+                range.Find.Execute(Replace: Microsoft.Office.Interop.Word.WdReplace.wdReplaceAll);
+                System.Diagnostics.Debug.WriteLine($"✓ Заменен плейсхолдер '{placeholder}' на '{value}'");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Ошибка замены '{placeholder}': {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Делает заданный текст жирным (первое вхождение). Используется для итоговой суммы.
+        /// </summary>
+        private void MakeBold(Microsoft.Office.Interop.Word.Document doc, string textToBold)
+        {
+            try
+            {
+                Microsoft.Office.Interop.Word.Range range = doc.Content;
+                range.Find.ClearFormatting();
+                range.Find.Text = textToBold;
+                if (range.Find.Execute())
+                {
+                    range.Font.Bold = 1;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Ошибка при утолщении шрифта: {ex.Message}");
+            }
+        }
+
         private void GeneratePreliminaryWordTicket()
         {
             Microsoft.Office.Interop.Word.Application wordApp = null;
@@ -802,24 +900,43 @@ namespace Kursovaya
                 (decimal discountAmount, decimal discountPercent, decimal prepayment) = CalculateDiscountValues(totalAmount);
                 decimal finalAmount = totalAmount - discountAmount;
 
-                FillBookmark(doc, "NumberOrder", _orderData.NumberOrder);
-                FillBookmark(doc, "DateOrder", _orderData.DateOrder);
-                FillBookmark(doc, "NameClient", _orderData.NameClient);
-                FillBookmark(doc, "NumberPhone", _orderData.NumberPhone);
-                FillBookmark(doc, "Event", _orderData.Event);
-                FillBookmark(doc, "DateCreate", _orderData.Date);
-                FillBookmark(doc, "Time", _orderData.Time);
-                FillBookmark(doc, "CountOrder", totalAmount.ToString("C"));
-                FillBookmark(doc, "DiscountAmoust", discountAmount.ToString("C"));
-                FillBookmark(doc, "CountOrderAmoust", finalAmount.ToString("C"));
-                FillBookmark(doc, "Prepaymant", prepayment.ToString("C"));
-                FillBookmark(doc, "Discount", discountPercent.ToString());
+                // 1. Глобальная замена
+                ReplaceTextInDocument(doc, "{NumberOrder}", _orderData.NumberOrder.ToString());
+                ReplaceTextInDocument(doc, "{DateOrder}", _orderData.DateOrder);
+                ReplaceTextInDocument(doc, "{NameClient}", _orderData.NameClient);
+                ReplaceTextInDocument(doc, "{NumberPhone}", _orderData.NumberPhone);
+                ReplaceTextInDocument(doc, "{Event}", _orderData.Event);
+                ReplaceTextInDocument(doc, "{DateCreate}", _orderData.Date);
+                ReplaceTextInDocument(doc, "{Time}", _orderData.Time);
+                ReplaceTextInDocument(doc, "{CountOrder}", totalAmount.ToString("C2"));
+                ReplaceTextInDocument(doc, "{DiscountAmount}", discountAmount.ToString("C2"));
+                ReplaceTextInDocument(doc, "{CountOrderAmount}", finalAmount.ToString("C2"));
+                ReplaceTextInDocument(doc, "{Prepayment}", prepayment.ToString("C2"));
+                ReplaceTextInDocument(doc, "{Discount}", discountPercent.ToString("F0"));
 
-                ReplaceExampleTableWithActualData(doc, wordApp, _cartItems);
+                // 2. Заменяем таблицу 2 (состав заказа)
+                ReplaceTable2WithOrderItems(doc, wordApp, _cartItems);
+
+                // 3. НАХОДИМ ТАБЛИЦУ С ИТОГАМИ и заменяем плейсхолдеры
+                Microsoft.Office.Interop.Word.Table totalsTable = FindTableByText(doc, "ИТОГ");
+                if (totalsTable != null)
+                {
+                    Microsoft.Office.Interop.Word.Range tableRange = totalsTable.Range;
+                    // Исправлены имена плейсхолдеров
+                    ReplaceTextInRange(tableRange, "{CountOrder}", totalAmount.ToString("C2"));
+                    ReplaceTextInRange(tableRange, "{DiscountAmoust}", discountAmount.ToString("C2"));
+                    ReplaceTextInRange(tableRange, "{CountOrderAmoust}", finalAmount.ToString("C2"));
+                    ReplaceTextInRange(tableRange, "{Prepayment}", prepayment.ToString("C2"));
+                    ReplaceTextInRange(tableRange, "{Discount}", discountPercent.ToString("F0")); 
+
+                    // Делаем итоговую сумму жирной
+                    MakeBoldInTable(totalsTable, finalAmount.ToString("C2"));
+                }
+
+                // 4. Добавляем служебную информацию
                 AddServiceInfoToPreliminaryWord(doc);
 
                 doc.Save();
-
                 MessageBox.Show("Предварительный документ заказа создан.", "Успех",
                               MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
@@ -832,16 +949,13 @@ namespace Kursovaya
             {
                 try
                 {
-                    if (doc != null)
-                        System.Runtime.InteropServices.Marshal.ReleaseComObject(doc);
-                    if (wordApp != null)
-                        System.Runtime.InteropServices.Marshal.ReleaseComObject(wordApp);
+                    if (doc != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(doc);
+                    if (wordApp != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(wordApp);
                 }
                 catch { }
             }
         }
 
-        // Генерация окончательного документа Word
         private void GenerateFinalWordTicket()
         {
             Microsoft.Office.Interop.Word.Application wordApp = null;
@@ -869,25 +983,43 @@ namespace Kursovaya
                 decimal prepayment = _orderData.Prepayment;
                 decimal discountPercent = totalAmount > 0 ? (discountAmount / totalAmount) * 100 : 0;
 
-                FillBookmark(doc, "NumberOrder", _orderData.NumberOrder);
-                FillBookmark(doc, "DateOrder", _orderData.DateOrder);
-                FillBookmark(doc, "NameClient", _orderData.NameClient);
-                FillBookmark(doc, "NumberPhone", _orderData.NumberPhone);
-                FillBookmark(doc, "Event", _orderData.Event);
-                FillBookmark(doc, "DateCreate", _orderData.Date);
-                FillBookmark(doc, "Time", _orderData.Time);
-                FillBookmark(doc, "CountOrder", totalAmount.ToString("C"));
-                FillBookmark(doc, "DiscountAmoust", discountAmount.ToString("C"));
-                FillBookmark(doc, "CountOrderAmoust", finalAmount.ToString("C"));
-                FillBookmark(doc, "Prepaymant", prepayment.ToString("C"));
-                FillBookmark(doc, "Discount", Math.Round(discountPercent).ToString());
-                FillBookmark(doc, "AddExpenses", _additionalExpenses.ToString("C"));
+                // 1. Глобальная замена
+                ReplaceTextInDocument(doc, "{NumberOrder}", _orderData.NumberOrder.ToString());
+                ReplaceTextInDocument(doc, "{DateOrder}", _orderData.DateOrder);
+                ReplaceTextInDocument(doc, "{NameClient}", _orderData.NameClient);
+                ReplaceTextInDocument(doc, "{NumberPhone}", _orderData.NumberPhone);
+                ReplaceTextInDocument(doc, "{Event}", _orderData.Event);
+                ReplaceTextInDocument(doc, "{DateCreate}", _orderData.Date);
+                ReplaceTextInDocument(doc, "{Time}", _orderData.Time);
+                ReplaceTextInDocument(doc, "{CountOrder}", totalAmount.ToString("C2"));
+                ReplaceTextInDocument(doc, "{DiscountAmount}", discountAmount.ToString("C2"));
+                ReplaceTextInDocument(doc, "{CountOrderAmount}", finalAmount.ToString("C2"));
+                ReplaceTextInDocument(doc, "{Prepayment}", prepayment.ToString("C2"));
+                ReplaceTextInDocument(doc, "{AddExpenses}", _additionalExpenses.ToString("C2"));
+                ReplaceTextInDocument(doc, "{Discount}", discountPercent.ToString("F0")); 
 
-                ReplaceExampleTableWithActualData(doc, wordApp, _cartItems);
+                // 2. Заменяем таблицу 2
+                ReplaceTable2WithOrderItems(doc, wordApp, _cartItems);
+
+                // 3. НАХОДИМ ТАБЛИЦУ С ИТОГАМИ и заменяем
+                Microsoft.Office.Interop.Word.Table totalsTable = FindTableByText(doc, "ИТОГ");
+                if (totalsTable != null)
+                {
+                    Microsoft.Office.Interop.Word.Range tableRange = totalsTable.Range;
+                    ReplaceTextInRange(tableRange, "{CountOrder}", totalAmount.ToString("C2"));
+                    ReplaceTextInRange(tableRange, "{DiscountAmoust}", discountAmount.ToString("C2"));
+                    ReplaceTextInRange(tableRange, "{CountOrderAmoust}", finalAmount.ToString("C2"));
+                    ReplaceTextInRange(tableRange, "{Prepayment}", prepayment.ToString("C2"));
+                    ReplaceTextInRange(tableRange, "{AddExpenses}", _additionalExpenses.ToString("C2"));
+                    ReplaceTextInRange(tableRange, "{Discount}", discountPercent.ToString("F0"));
+
+                    MakeBoldInTable(totalsTable, finalAmount.ToString("C2"));
+                }
+
+                // 4. Служебная информация
                 AddServiceInfoToFinalWord(doc, _orderData.NameUser ?? "Не указан");
 
                 doc.Save();
-
                 MessageBox.Show("Окончательный документ заказа создан.", "Успех",
                               MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
@@ -900,12 +1032,223 @@ namespace Kursovaya
             {
                 try
                 {
-                    if (doc != null)
-                        System.Runtime.InteropServices.Marshal.ReleaseComObject(doc);
-                    if (wordApp != null)
-                        System.Runtime.InteropServices.Marshal.ReleaseComObject(wordApp);
+                    if (doc != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(doc);
+                    if (wordApp != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(wordApp);
                 }
                 catch { }
+            }
+        }
+
+        /// <summary>
+        /// Заменяет плейсхолдер в заданном диапазоне (например, в таблице).
+        /// </summary>
+        private void ReplaceTextInRange(Microsoft.Office.Interop.Word.Range range, string placeholder, string value)
+        {
+            try
+            {
+                range.Find.ClearFormatting();
+                range.Find.Replacement.ClearFormatting();
+                range.Find.Text = placeholder;
+                range.Find.Replacement.Text = value;
+                range.Find.Execute(Replace: Microsoft.Office.Interop.Word.WdReplace.wdReplaceAll);
+                System.Diagnostics.Debug.WriteLine($"✓ Заменен '{placeholder}' на '{value}' в диапазоне");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Ошибка замены '{placeholder}' в диапазоне: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Находит первую таблицу, содержащую указанный текст в любой ячейке.
+        /// </summary>
+        private Microsoft.Office.Interop.Word.Table FindTableByText(Microsoft.Office.Interop.Word.Document doc, string searchText)
+        {
+            try
+            {
+                foreach (Microsoft.Office.Interop.Word.Table table in doc.Tables)
+                {
+                    Microsoft.Office.Interop.Word.Range tableRange = table.Range;
+                    // Ищем текст в таблице
+                    tableRange.Find.ClearFormatting();
+                    tableRange.Find.Text = searchText;
+                    if (tableRange.Find.Execute())
+                    {
+                        return table;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Ошибка поиска таблицы: {ex.Message}");
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Находит в таблице ячейку с точным текстом и делает её жирной.
+        /// </summary>
+        private void MakeBoldInTable(Microsoft.Office.Interop.Word.Table table, string textToBold)
+        {
+            try
+            {
+                foreach (Microsoft.Office.Interop.Word.Row row in table.Rows)
+                {
+                    foreach (Microsoft.Office.Interop.Word.Cell cell in row.Cells)
+                    {
+                        string cellText = cell.Range.Text.Trim();
+                        // Убираем служебные символы
+                        cellText = cellText.Replace("\r", "").Replace("\a", "").Replace("\x0007", "");
+                        if (cellText.Equals(textToBold, StringComparison.OrdinalIgnoreCase))
+                        {
+                            cell.Range.Font.Bold = 1;
+                            return;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Ошибка при утолщении шрифта в таблице: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Удаляет старую таблицу 2 (состав заказа) и вставляет новую с актуальными данными,
+        /// сохраняя форматирование: серый заголовок, ширины колонок, границы.
+        /// </summary>
+        private void ReplaceTable2WithOrderItems(Microsoft.Office.Interop.Word.Document doc, Microsoft.Office.Interop.Word.Application wordApp, System.Data.DataTable items)
+        {
+            try
+            {
+                if (doc.Tables.Count < 2)
+                {
+                    // Нет таблицы 2 — возможно, шаблон повреждён. Вставляем новую в конец.
+                    InsertOrderTableAtEnd(doc, wordApp, items);
+                    return;
+                }
+
+                Microsoft.Office.Interop.Word.Table oldTable = doc.Tables[2];
+                Microsoft.Office.Interop.Word.Range position = oldTable.Range;
+                position.Collapse(Microsoft.Office.Interop.Word.WdCollapseDirection.wdCollapseStart);
+                oldTable.Delete();
+
+                // Если нет товаров, выводим сообщение
+                if (items == null || items.Rows.Count == 0)
+                {
+                    position.Text = "Заказ не содержит товаров";
+                    position.InsertParagraphAfter();
+                    return;
+                }
+
+                // Создаём новую таблицу на месте старой
+                Microsoft.Office.Interop.Word.Table table = doc.Tables.Add(position, items.Rows.Count + 1, 5);
+                FormatOrderTable(table, wordApp, items);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Ошибка замены таблицы 2: {ex.Message}");
+                // Запасной вариант — вставить таблицу в конец
+                InsertOrderTableAtEnd(doc, wordApp, items);
+            }
+        }
+
+        /// <summary>
+        /// Вставляет таблицу с товарами в конец документа (если нет таблицы 2).
+        /// </summary>
+        private void InsertOrderTableAtEnd(Microsoft.Office.Interop.Word.Document doc, Microsoft.Office.Interop.Word.Application wordApp, System.Data.DataTable items)
+        {
+            if (items == null || items.Rows.Count == 0) return;
+
+            Microsoft.Office.Interop.Word.Range endRange = doc.Range(doc.Content.End - 1, doc.Content.End - 1);
+            Microsoft.Office.Interop.Word.Table table = doc.Tables.Add(endRange, items.Rows.Count + 1, 5);
+            FormatOrderTable(table, wordApp, items);
+        }
+
+        /// <summary>
+        /// Применяет форматирование к таблице: ширина, заголовок, границы, шрифты.
+        /// </summary>
+        private void FormatOrderTable(Microsoft.Office.Interop.Word.Table table, Microsoft.Office.Interop.Word.Application wordApp, System.Data.DataTable items)
+        {
+            // Настройка ширины таблицы и колонок
+            table.PreferredWidth = wordApp.CentimetersToPoints(16);
+            table.AllowAutoFit = true;
+
+            table.Columns[1].PreferredWidth = wordApp.CentimetersToPoints(1);   // №
+            table.Columns[2].PreferredWidth = wordApp.CentimetersToPoints(8);   // Наименование
+            table.Columns[3].PreferredWidth = wordApp.CentimetersToPoints(2.5f); // Цена
+            table.Columns[4].PreferredWidth = wordApp.CentimetersToPoints(2);   // Кол-во
+            table.Columns[5].PreferredWidth = wordApp.CentimetersToPoints(2.5f); // Сумма
+
+            // Заголовки столбцов
+            table.Cell(1, 1).Range.Text = "№";
+            table.Cell(1, 2).Range.Text = "Наименование";
+            table.Cell(1, 3).Range.Text = "Цена";
+            table.Cell(1, 4).Range.Text = "Кол-во";
+            table.Cell(1, 5).Range.Text = "Сумма";
+
+            // Стиль строки заголовка
+            table.Rows[1].Range.Font.Bold = 1;
+            table.Rows[1].Range.Font.Size = 10;
+            table.Rows[1].Range.Font.Name = "Arial";
+            table.Rows[1].Shading.BackgroundPatternColor = Microsoft.Office.Interop.Word.WdColor.wdColorGray15;
+
+            for (int col = 1; col <= 5; col++)
+            {
+                table.Cell(1, col).Range.ParagraphFormat.Alignment = Microsoft.Office.Interop.Word.WdParagraphAlignment.wdAlignParagraphCenter;
+                table.Cell(1, col).VerticalAlignment = Microsoft.Office.Interop.Word.WdCellVerticalAlignment.wdCellAlignVerticalCenter;
+            }
+
+            // Заполнение данными
+            for (int i = 0; i < items.Rows.Count; i++)
+            {
+                DataRow row = items.Rows[i];
+                decimal price = Convert.ToDecimal(row["Price"]);
+
+                int quantity;
+                if (items.Columns.Contains("Quantity"))
+                    quantity = Convert.ToInt32(row["Quantity"]);
+                else if (items.Columns.Contains("Count"))
+                    quantity = Convert.ToInt32(row["Count"]);
+                else
+                    quantity = 0;
+
+                decimal total = price * quantity;
+
+                int rowIdx = i + 2;
+                table.Cell(rowIdx, 1).Range.Text = (i + 1).ToString();
+                table.Cell(rowIdx, 2).Range.Text = row["Name"].ToString();
+                table.Cell(rowIdx, 3).Range.Text = price.ToString("C2");
+                table.Cell(rowIdx, 4).Range.Text = quantity.ToString();
+                table.Cell(rowIdx, 5).Range.Text = total.ToString("C2");
+
+                // Выравнивание
+                table.Cell(rowIdx, 1).Range.ParagraphFormat.Alignment = Microsoft.Office.Interop.Word.WdParagraphAlignment.wdAlignParagraphCenter;
+                table.Cell(rowIdx, 2).Range.ParagraphFormat.Alignment = Microsoft.Office.Interop.Word.WdParagraphAlignment.wdAlignParagraphLeft;
+                table.Cell(rowIdx, 3).Range.ParagraphFormat.Alignment = Microsoft.Office.Interop.Word.WdParagraphAlignment.wdAlignParagraphCenter;
+                table.Cell(rowIdx, 4).Range.ParagraphFormat.Alignment = Microsoft.Office.Interop.Word.WdParagraphAlignment.wdAlignParagraphCenter;
+                table.Cell(rowIdx, 5).Range.ParagraphFormat.Alignment = Microsoft.Office.Interop.Word.WdParagraphAlignment.wdAlignParagraphCenter;
+
+                for (int col = 1; col <= 5; col++)
+                {
+                    table.Cell(rowIdx, col).VerticalAlignment = Microsoft.Office.Interop.Word.WdCellVerticalAlignment.wdCellAlignVerticalCenter;
+                    table.Cell(rowIdx, col).Range.Font.Size = 9;
+                    table.Cell(rowIdx, col).Range.Font.Name = "Arial";
+                }
+            }
+
+            // Границы таблицы
+            table.Borders.Enable = 1;
+            table.Borders.InsideLineStyle = Microsoft.Office.Interop.Word.WdLineStyle.wdLineStyleSingle;
+            table.Borders.OutsideLineStyle = Microsoft.Office.Interop.Word.WdLineStyle.wdLineStyleSingle;
+            table.Borders.InsideLineWidth = Microsoft.Office.Interop.Word.WdLineWidth.wdLineWidth050pt;
+            table.Borders.OutsideLineWidth = Microsoft.Office.Interop.Word.WdLineWidth.wdLineWidth050pt;
+
+            // Шрифт заголовка
+            for (int col = 1; col <= 5; col++)
+            {
+                table.Cell(1, col).Range.Font.Size = 10;
+                table.Cell(1, col).Range.Font.Name = "Arial";
             }
         }
 
@@ -930,139 +1273,38 @@ namespace Kursovaya
             throw new FileNotFoundException($"Шаблон {templateName} не найден. Проверьте наличие файла в папке Resources");
         }
 
-        private void FillBookmark(Microsoft.Office.Interop.Word.Document doc, string bookmarkName, string value)
-        {
-            try
-            {
-                if (doc.Bookmarks.Exists(bookmarkName))
-                {
-                    Microsoft.Office.Interop.Word.Bookmark bookmark = doc.Bookmarks[bookmarkName];
-                    Microsoft.Office.Interop.Word.Range range = bookmark.Range;
-                    range.Text = value;
-                    doc.Bookmarks[bookmarkName].Delete();
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Ошибка при заполнении закладки '{bookmarkName}': {ex.Message}");
-            }
-        }
-
-        private void ReplaceExampleTableWithActualData(Microsoft.Office.Interop.Word.Document doc, Microsoft.Office.Interop.Word.Application wordApp, System.Data.DataTable items)
-        {
-            try
-            {
-                if (doc.Tables.Count > 0)
-                {
-                    Microsoft.Office.Interop.Word.Table exampleTable = doc.Tables[1];
-                    Microsoft.Office.Interop.Word.Range tableRange = exampleTable.Range;
-                    exampleTable.Delete();
-                    InsertActualOrderTable(doc, wordApp, tableRange, items);
-                }
-                else
-                {
-                    InsertActualOrderTable(doc, wordApp, null, items);
-                }
-            }
-            catch (Exception ex)
-            {
-                InsertActualOrderTable(doc, wordApp, null, items);
-            }
-        }
-
-        private void InsertActualOrderTable(Microsoft.Office.Interop.Word.Document doc, Microsoft.Office.Interop.Word.Application wordApp, Microsoft.Office.Interop.Word.Range targetRange, System.Data.DataTable items)
-        {
-            if (items.Rows.Count == 0)
-            {
-                Microsoft.Office.Interop.Word.Paragraph paragraph;
-                if (targetRange != null)
-                    paragraph = doc.Paragraphs.Add(targetRange);
-                else
-                    paragraph = doc.Paragraphs.Add();
-                paragraph.Range.Text = "Заказ не содержит товаров";
-                paragraph.Range.Font.Size = 12;
-                paragraph.Range.InsertParagraphAfter();
-                return;
-            }
-
-            Microsoft.Office.Interop.Word.Table table;
-
-            if (targetRange != null)
-                table = doc.Tables.Add(targetRange, items.Rows.Count + 1, 5);
-            else
-                table = doc.Tables.Add(doc.Range(doc.Content.End - 1), items.Rows.Count + 1, 5);
-
-            table.PreferredWidth = wordApp.CentimetersToPoints(16);
-            table.AllowAutoFit = true;
-
-            table.Columns[1].PreferredWidth = wordApp.CentimetersToPoints(1);
-            table.Columns[2].PreferredWidth = wordApp.CentimetersToPoints(8);
-            table.Columns[3].PreferredWidth = wordApp.CentimetersToPoints(2);
-            table.Columns[4].PreferredWidth = wordApp.CentimetersToPoints(2);
-            table.Columns[5].PreferredWidth = wordApp.CentimetersToPoints(2);
-
-            table.Cell(1, 1).Range.Text = "№";
-            table.Cell(1, 2).Range.Text = "Наименование";
-            table.Cell(1, 3).Range.Text = "Цена";
-            table.Cell(1, 4).Range.Text = "Кол-во";
-            table.Cell(1, 5).Range.Text = "Сумма";
-
-            for (int i = 0; i < items.Rows.Count; i++)
-            {
-                DataRow row = items.Rows[i];
-                decimal price = Convert.ToDecimal(row["Price"]);
-
-                int quantity;
-                if (items.Columns.Contains("Quantity"))
-                {
-                    quantity = Convert.ToInt32(row["Quantity"]);
-                }
-                else if (items.Columns.Contains("Count"))
-                {
-                    quantity = Convert.ToInt32(row["Count"]);
-                }
-                else
-                {
-                    throw new Exception("Не найдена колонка с количеством товара (ни 'Quantity', ни 'Count')");
-                }
-
-                decimal total = price * quantity;
-
-                table.Cell(i + 2, 1).Range.Text = (i + 1).ToString();
-                table.Cell(i + 2, 2).Range.Text = row["Name"].ToString();
-                table.Cell(i + 2, 3).Range.Text = price.ToString("C");
-                table.Cell(i + 2, 4).Range.Text = quantity.ToString();
-                table.Cell(i + 2, 5).Range.Text = total.ToString("C");
-            }
-
-            table.Borders.Enable = 1;
-            table.Rows[1].Range.Font.Bold = 1;
-
-            table.Columns[1].Cells.VerticalAlignment = Microsoft.Office.Interop.Word.WdCellVerticalAlignment.wdCellAlignVerticalCenter;
-            table.Columns[3].Cells.VerticalAlignment = Microsoft.Office.Interop.Word.WdCellVerticalAlignment.wdCellAlignVerticalCenter;
-            table.Columns[4].Cells.VerticalAlignment = Microsoft.Office.Interop.Word.WdCellVerticalAlignment.wdCellAlignVerticalCenter;
-            table.Columns[5].Cells.VerticalAlignment = Microsoft.Office.Interop.Word.WdCellVerticalAlignment.wdCellAlignVerticalCenter;
-
-            foreach (Microsoft.Office.Interop.Word.Cell cell in table.Columns[3].Cells)
-                cell.Range.ParagraphFormat.Alignment = Microsoft.Office.Interop.Word.WdParagraphAlignment.wdAlignParagraphCenter;
-            foreach (Microsoft.Office.Interop.Word.Cell cell in table.Columns[4].Cells)
-                cell.Range.ParagraphFormat.Alignment = Microsoft.Office.Interop.Word.WdParagraphAlignment.wdAlignParagraphCenter;
-            foreach (Microsoft.Office.Interop.Word.Cell cell in table.Columns[5].Cells)
-                cell.Range.ParagraphFormat.Alignment = Microsoft.Office.Interop.Word.WdParagraphAlignment.wdAlignParagraphCenter;
-        }
-
         private void AddServiceInfoToPreliminaryWord(Microsoft.Office.Interop.Word.Document doc)
         {
             Microsoft.Office.Interop.Word.Range range = doc.Range(doc.Content.End - 1, doc.Content.End - 1);
             range.InsertParagraphAfter();
+
+            // Разделительная линия
+            range.Text = new string('_', 80);
+            range.Font.Size = 8;
+            range.Font.Color = Microsoft.Office.Interop.Word.WdColor.wdColorGray50;
             range.InsertParagraphAfter();
 
+            // Предупреждение о невозврате предоплаты
+            range = doc.Range(doc.Content.End - 1, doc.Content.End - 1);
+            range.Text = "ВНИМАНИЕ: Предоплата в случае отмены заказа НЕ ВОЗВРАЩАЕТСЯ!";
+            range.Font.Size = 12;
+            range.Font.Bold = 1;
+            range.Font.Italic = 1;
+            range.Font.Color = Microsoft.Office.Interop.Word.WdColor.wdColorGray50;
+            range.ParagraphFormat.Alignment = Microsoft.Office.Interop.Word.WdParagraphAlignment.wdAlignParagraphCenter;
+            range.InsertParagraphAfter();
+
+            // Служебная информация
             string fullname = Properties.Settings.Default.userName;
             string formattedname = FormatFullName(fullname);
 
+            range = doc.Range(doc.Content.End - 1, doc.Content.End - 1);
             range.Text = $"Документ сгенерирован: {DateTime.Now:dd.MM.yyyy HH:mm:ss}\rСотрудник: {formattedname}";
             range.Font.Size = 10;
             range.Font.Italic = 1;
+            range.Font.Bold = 0;
+            range.Font.Color = Microsoft.Office.Interop.Word.WdColor.wdColorGray50;
+            range.ParagraphFormat.Alignment = Microsoft.Office.Interop.Word.WdParagraphAlignment.wdAlignParagraphCenter;
         }
 
         private void AddServiceInfoToFinalWord(Microsoft.Office.Interop.Word.Document doc, string orderCreatorName)

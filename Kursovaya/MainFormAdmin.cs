@@ -97,5 +97,12 @@ namespace Kursovaya
             settings.ShowDialog();
             this.Close();
         }
+
+        private void MainFormAdmin_Load(object sender, EventArgs e)
+        {
+            if (label2.Text == "По умолчанию") {
+                button3.Hide();
+            }
+        }
     }
 }

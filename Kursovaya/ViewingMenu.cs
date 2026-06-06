@@ -506,8 +506,6 @@ namespace Kursovaya
             }
 
             // Заполняем DataGridView отфильтрованными данными
-            //!!!!!
-            //string imagesFolder = @"C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\Resources";
             string imagesFolder = @".\Resources\";
 
             foreach (DataRowView rowView in dv)

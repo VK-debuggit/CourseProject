@@ -73,6 +73,7 @@ namespace Kursovaya
             this.comboBox5 = new System.Windows.Forms.ComboBox();
             this.label5 = new System.Windows.Forms.Label();
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
+            this.label28 = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView2)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown1)).BeginInit();
@@ -468,7 +469,6 @@ namespace Kursovaya
             this.comboBox5.Name = "comboBox5";
             this.comboBox5.Size = new System.Drawing.Size(316, 36);
             this.comboBox5.TabIndex = 5;
-            this.comboBox5.SelectedIndexChanged += new System.EventHandler(this.comboBox5_SelectedIndexChanged_1);
             // 
             // label5
             // 
@@ -489,11 +489,21 @@ namespace Kursovaya
             this.pictureBox1.TabIndex = 36;
             this.pictureBox1.TabStop = false;
             // 
+            // label28
+            // 
+            this.label28.AutoSize = true;
+            this.label28.Location = new System.Drawing.Point(566, 242);
+            this.label28.Name = "label28";
+            this.label28.Size = new System.Drawing.Size(79, 28);
+            this.label28.TabIndex = 45;
+            this.label28.Text = "label28";
+            // 
             // MakingAnOrder
             // 
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
             this.BackColor = System.Drawing.Color.FloralWhite;
             this.ClientSize = new System.Drawing.Size(1082, 783);
+            this.Controls.Add(this.label28);
             this.Controls.Add(this.label5);
             this.Controls.Add(this.textBox2);
             this.Controls.Add(this.label26);
@@ -601,5 +611,6 @@ namespace Kursovaya
         private System.Windows.Forms.Label label27;
         private System.Windows.Forms.ComboBox comboBox5;
         private System.Windows.Forms.Label label5;
+        private System.Windows.Forms.Label label28;
     }
 }

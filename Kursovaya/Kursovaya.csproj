@@ -454,6 +454,9 @@
     <Content Include="Resources\belki-zhuru-i-uglevodu-3-1170x679.jpg">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <Content Include="Resources\cafeoptionsStructure.sql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="Resources\cerceri.jpg">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

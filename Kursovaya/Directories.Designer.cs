@@ -180,6 +180,7 @@ namespace Kursovaya
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Справочники";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Directories_FormClosing);
+            this.Load += new System.EventHandler(this.Directories_Load);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
