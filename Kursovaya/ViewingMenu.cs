@@ -201,7 +201,6 @@ namespace Kursovaya
             {
                 ShowPage(currentPage - 1);
                 Pagination(); // Пересоздаем пагинацию с обновленным выделением
-                ResetInactivityTimer(sender, e);
             }
         }
 
@@ -212,7 +211,6 @@ namespace Kursovaya
             {
                 ShowPage(currentPage + 1);
                 Pagination(); // Пересоздаем пагинацию с обновленным выделением
-                ResetInactivityTimer(sender, e);
             }
         }
 
@@ -224,7 +222,6 @@ namespace Kursovaya
             {
                 ShowPage(pageNumber);
                 Pagination(); // Пересоздаем пагинацию с обновленным выделением
-                ResetInactivityTimer(sender, e);
             }
         }
 
@@ -291,7 +288,6 @@ namespace Kursovaya
                 {
                     ShowPage(1);
                     Pagination();
-                    ResetInactivityTimer(null, null);
                 }
                 return true;
             }
@@ -302,19 +298,11 @@ namespace Kursovaya
                 {
                     ShowPage(totalPages);
                     Pagination();
-                    ResetInactivityTimer(null, null);
                 }
                 return true;
             }
 
             return base.ProcessCmdKey(ref msg, keyData);
-        }
-
-        private void ResetInactivityTimer(object sender, EventArgs e)
-        {
-            inactivityTimer.Stop();
-            inactivityTimer.Interval = Properties.Settings.Default.InactivityTimeout * 1000;
-            inactivityTimer.Start();
         }
 
         // ========== ДОБАВЛЕННЫЕ МЕТОДЫ ==========
@@ -516,9 +504,8 @@ namespace Kursovaya
                 string fullImagePath = Path.Combine(imagesFolder, photoFileName);
                 Image img = null;
 
-                if (File.Exists(fullImagePath))
+                if (!string.IsNullOrEmpty(photoFileName) && File.Exists(fullImagePath))
                 {
-                    // Загружаем изображение из файла
                     using (var fs = new FileStream(fullImagePath, FileMode.Open, FileAccess.Read))
                     {
                         img = Image.FromStream(fs);
@@ -526,7 +513,15 @@ namespace Kursovaya
                 }
                 else
                 {
-                    img = null;
+                    // ЗАГРУЖАЕМ КАРТИНКУ-ЗАГЛУШКУ
+                    string placeholderPath = Path.Combine(imagesFolder, "picture.png");
+                    if (File.Exists(placeholderPath))
+                    {
+                        using (var fs = new FileStream(placeholderPath, FileMode.Open, FileAccess.Read))
+                        {
+                            img = Image.FromStream(fs);
+                        }
+                    }
                 }
 
                 int rowIndex = dataGridView1.Rows.Add(

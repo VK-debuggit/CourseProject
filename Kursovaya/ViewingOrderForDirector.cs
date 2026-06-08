@@ -202,9 +202,11 @@ namespace Kursovaya
             if (orderData == null) return;
 
             // Показываем исходные суммы без учета дополнительных расходов
-            label20.Text = orderData.Prepayment.ToString("C");
-            label22.Text = orderData.DiscountAmount.ToString("C");
-            label24.Text = (orderData.FinalAmount > 0 ? orderData.FinalAmount : orderData.TotalAmount - orderData.DiscountAmount).ToString("C");
+            label20.Text = ((int)orderData.Prepayment).ToString("C0");
+            label22.Text = ((int)orderData.DiscountAmount).ToString("C0");
+
+            decimal finalAmount = orderData.FinalAmount > 0 ? orderData.FinalAmount : orderData.TotalAmount - orderData.DiscountAmount;
+            label24.Text = ((int)finalAmount).ToString("C0");
             return;
 
             // Получаем базовую сумму заказа (без дополнительных расходов)

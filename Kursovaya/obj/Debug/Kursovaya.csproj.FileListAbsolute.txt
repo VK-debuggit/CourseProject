@@ -147,3 +147,4 @@ C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\bin\Debug\Resources\clos
 C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\obj\Debug\Kursovaya.g.resources
 C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\bin\Debug\Resources\cafeoptionsStructure.sql
 C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\obj\Debug\Kursovaya.csproj.AssemblyReference.cache
+C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\bin\Debug\Resources\BrutChampagne.jpg

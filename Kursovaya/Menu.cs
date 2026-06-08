@@ -405,6 +405,18 @@ namespace Kursovaya
                                     img = Image.FromStream(fs);
                                 }
                             }
+                            else
+                            {
+                                // Загружаем картику-заглушку
+                                string placeholderPath = Path.Combine(imagesFolder, "picture.png");
+                                if (File.Exists(placeholderPath))
+                                {
+                                    using (var fs = new FileStream(placeholderPath, FileMode.Open, FileAccess.Read))
+                                    {
+                                        img = Image.FromStream(fs);
+                                    }
+                                }
+                            }
 
                             dishes.Add((article, eventName, categoryName, name, compound, weight, price, img, photoFileName));
                             rowCount++;

@@ -55,7 +55,8 @@ namespace Kursovaya
 
             dateTimePicker1.MinDate = DateTime.Today;
             dateTimePicker1.MaxDate = DateTime.Today;
-            dateTimePicker2.MinDate = DateTime.Today;
+            dateTimePicker2.MinDate = DateTime.Today.AddDays(1);
+            dateTimePicker2.Value = DateTime.Today.AddDays(1);
             dateTimePicker2.MaxDate = DateTime.Today.AddMonths(6);
 
             button1.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
@@ -421,8 +422,8 @@ namespace Kursovaya
                 return;
             }
 
-            decimal totalAmount = CalculateTotalAmount();
-            decimal prepayment = CalculatePrepayment(totalAmount);
+            int totalAmount = CalculateTotalAmount();
+            int prepayment = CalculatePrepayment(totalAmount);
 
             int scheduleId = GetScheduleId(comboBox4.Text);
             if (scheduleId == -1)
@@ -511,9 +512,9 @@ namespace Kursovaya
             return -1;
         }
 
-        private decimal CalculatePrepayment(decimal totalAmount)
+        private int CalculatePrepayment(int totalAmount)
         {
-            return Math.Round(totalAmount * 0.10m, 2);
+            return (int)Math.Round(totalAmount * 0.10m);
         }
 
         private bool IsTimeSlotAvailable(string timeSlot)
@@ -816,16 +817,19 @@ namespace Kursovaya
                     imageColumn.Width = 40;
 
                     dataGridView1.Columns.Add("Article", "Артикул");
+                    dataGridView1.Columns["Article"].AutoSizeMode = DataGridViewAutoSizeColumnMode.DisplayedCells;
                     dataGridView1.Columns.Add("Event", "Мероприятие");
                     dataGridView1.Columns["Event"].Visible = false;
                     dataGridView1.Columns.Add("Category", "Категория");
                     dataGridView1.Columns["Category"].Visible = false;
                     dataGridView1.Columns.Add("Name", "Наименование");
+                    dataGridView1.Columns["Name"].DefaultCellStyle.WrapMode = DataGridViewTriState.True;
                     dataGridView1.Columns.Add("Compound", "Описание");
                     dataGridView1.Columns["Compound"].Visible = false;
                     dataGridView1.Columns.Add("Weight", "Вес");
                     dataGridView1.Columns["Weight"].Visible = false;
                     dataGridView1.Columns.Add("Price", "Цена");
+                    dataGridView1.Columns["Price"].AutoSizeMode = DataGridViewAutoSizeColumnMode.DisplayedCells;
                     dataGridView1.Columns.Add(imageColumn);
                     imageColumn.Visible = false;
 
@@ -899,13 +903,15 @@ namespace Kursovaya
         {
             if (e.RowIndex >= 0)
             {
-                if (currentSelectedProductRow >= 0 && currentSelectedProductRow < dataGridView1.Rows.Count)
+                // Сбрасываем цвет ВСЕХ строк в ассортименте
+                foreach (DataGridViewRow row in dataGridView1.Rows)
                 {
-                    dataGridView1.Rows[currentSelectedProductRow].DefaultCellStyle.BackColor = Color.White;
-                    dataGridView1.Rows[currentSelectedProductRow].DefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(255, 221, 153);
+                    row.DefaultCellStyle.BackColor = Color.White;
                 }
 
                 currentSelectedProductRow = e.RowIndex;
+
+                // Выделяем новую строку цветом
                 dataGridView1.Rows[currentSelectedProductRow].DefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
                 dataGridView1.Rows[currentSelectedProductRow].DefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(217, 152, 22);
 
@@ -1007,6 +1013,17 @@ namespace Kursovaya
                         pictureBox1.Image = Image.FromStream(fs);
                     }
                 }
+                else {
+                    // Заглушка, если нет фото или файл не найден
+                    string placeholderPath = Path.Combine(imagesFolder, "picture.png");
+                    if (File.Exists(placeholderPath))
+                    {
+                        using (var fs = new FileStream(placeholderPath, FileMode.Open, FileAccess.Read))
+                        {
+                            pictureBox1.Image = Image.FromStream(fs);
+                        }
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -1026,6 +1043,7 @@ namespace Kursovaya
                 string name = selectedRow.Cells["Name"].Value.ToString();
                 decimal price = Convert.ToDecimal(selectedRow.Cells["Price"].Value);
 
+                // Проверяем, есть ли уже такой товар в корзине
                 DataRow[] existingRows = dataView2.Select($"Article = '{article}'");
 
                 if (existingRows.Length == 0)
@@ -1042,23 +1060,46 @@ namespace Kursovaya
                 }
                 else
                 {
-                    for (int i = 0; i < dataGridView2.Rows.Count; i++)
-                    {
-                        if (dataGridView2.Rows[i].Cells["Article"].Value.ToString() == article)
-                        {
-                            dataGridView2.ClearSelection();
-                            dataGridView2.Rows[i].Selected = true;
-                            dataGridView2_CellClick(null, new DataGridViewCellEventArgs(0, i));
-                            break;
-                        }
-                    }
+                    // Если товар уже есть, просто обновляем информацию (но НЕ выделяем)
+                    MessageBox.Show("Товар уже добавлен в корзину", "Информация",
+                                  MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
 
-                dataGridView1.Rows[currentSelectedProductRow].DefaultCellStyle.BackColor = Color.White;
-                dataGridView1.Rows[currentSelectedProductRow].DefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(255, 221, 153);
+                // Сбрасываем выделение в таблице ассортимента
+                if (currentSelectedProductRow >= 0 && currentSelectedProductRow < dataGridView1.Rows.Count)
+                {
+                    dataGridView1.Rows[currentSelectedProductRow].DefaultCellStyle.BackColor = Color.White;
+                }
+
                 currentSelectedProductRow = -1;
                 button2.Enabled = false;
+
+                // Очищаем информацию о товаре
+                ClearProductDetails();
+
+                // Снимаем выделение в таблице ассортимента
+                dataGridView1.ClearSelection();
+
+                // НЕ ВЫДЕЛЯЕМ добавленный товар в корзине
+                // Просто обновляем корзину без выделения
+                dataGridView2.ClearSelection();
+
+                // Сбрасываем состояние корзины
+                currentSelectedCartRow = -1;
+                button3.Enabled = false;
+                numericUpDown1.Enabled = false;
+                numericUpDown1.Value = 0;
             }
+        }
+
+        // Метод для очистки информации о товаре
+        private void ClearProductDetails()
+        {
+            label24.Text = "";
+            label22.Text = "";
+            label26.Text = "";
+            textBox2.Text = "";
+            pictureBox1.Image = null;
         }
 
         private void UpdateCartSummary()
@@ -1085,6 +1126,7 @@ namespace Kursovaya
             dataGridView1.ClearSelection();
             dataGridView1.DefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(255, 221, 153);
             dataGridView1.DefaultCellStyle.SelectionForeColor = dataGridView1.DefaultCellStyle.ForeColor;
+            dataGridView2.ClearSelection();
         }
 
         private void InitializeNumericUpDown()
@@ -1097,6 +1139,7 @@ namespace Kursovaya
 
         void InitializeDataGridView2()
         {
+            dataView2 = new DataTable();
             dataView2.Columns.Add("Article", typeof(string));
             dataView2.Columns.Add("Name", typeof(string));
             dataView2.Columns.Add("Price", typeof(decimal));
@@ -1105,106 +1148,137 @@ namespace Kursovaya
 
             dataGridView2.DataSource = dataView2;
 
+            // АВТОМАТИЧЕСКОЕ ЗАПОЛНЕНИЕ
+            dataGridView2.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+            dataGridView2.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
+            dataGridView2.DefaultCellStyle.WrapMode = DataGridViewTriState.True;
+
+            // УСТАНАВЛИВАЕМ ПРОПОРЦИИ
             dataGridView2.Columns["Article"].HeaderText = "Артикул";
+            dataGridView2.Columns["Article"].FillWeight = 17;  // 17% ширины
+
             dataGridView2.Columns["Name"].HeaderText = "Наименование";
+            dataGridView2.Columns["Name"].FillWeight = 40;     // 40% ширины
+
             dataGridView2.Columns["Price"].HeaderText = "Цена";
-            dataGridView2.Columns["Quantity"].HeaderText = "Количество";
+            dataGridView2.Columns["Price"].FillWeight = 12;    // 12% ширины
+
+            dataGridView2.Columns["Quantity"].HeaderText = "Кол-во";
+            dataGridView2.Columns["Quantity"].FillWeight = 14; // 14% ширины
+
             dataGridView2.Columns["Total"].HeaderText = "Сумма";
+            dataGridView2.Columns["Total"].FillWeight = 14;    // 14% ширины
 
             dataGridView2.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             dataGridView2.ClearSelection();
+            dataGridView2.DefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(217, 152, 22);
+            dataGridView2.DefaultCellStyle.SelectionForeColor = Color.Black;
 
-            dataGridView2.DefaultCellStyle.SelectionBackColor = Color.White;
-            dataGridView2.DefaultCellStyle.SelectionForeColor = dataGridView2.DefaultCellStyle.ForeColor;
+            dataGridView2.RowTemplate.Height = 40;
 
             button2.Enabled = false;
             button3.Enabled = false;
+            numericUpDown1.Enabled = false;
         }
 
         private void dataGridView2_CellClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex >= 0)
             {
-                if (currentSelectedCartRow >= 0 && currentSelectedCartRow < dataGridView2.Rows.Count)
+                // Сбрасываем цвет ВСЕХ строк в корзине
+                foreach (DataGridViewRow row in dataGridView2.Rows)
                 {
-                    dataGridView2.Rows[currentSelectedCartRow].DefaultCellStyle.BackColor = Color.White;
+                    row.DefaultCellStyle.BackColor = Color.White;
                 }
 
+                // Устанавливаем новую выделенную строку
                 currentSelectedCartRow = e.RowIndex;
+
+                // Выделяем новую строку цветом
                 dataGridView2.Rows[currentSelectedCartRow].DefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
 
-                button3.Enabled = true;
+                // Получаем выбранную строку через DataTable
+                DataRow selectedRow = dataView2.Rows[e.RowIndex];
+                int quantity = Convert.ToInt32(selectedRow["Quantity"]);
 
-                DataGridViewRow selectedRow = dataGridView2.Rows[e.RowIndex];
-                int quantity = Convert.ToInt32(selectedRow.Cells["Quantity"].Value);
                 numericUpDown1.Value = quantity;
                 numericUpDown1.Enabled = true;
+                button3.Enabled = true;
             }
         }
 
         private void numericUpDown1_ValueChanged(object sender, EventArgs e)
         {
-            if (currentSelectedCartRow >= 0 && currentSelectedCartRow < dataGridView2.Rows.Count && dataGridView2.Rows[currentSelectedCartRow] != null)
+            if (currentSelectedCartRow >= 0 && currentSelectedCartRow < dataView2.Rows.Count)
             {
-                DataGridViewRow selectedRow = dataGridView2.Rows[currentSelectedCartRow];
-                string article = selectedRow.Cells["Article"].Value.ToString();
-                decimal price = Convert.ToDecimal(selectedRow.Cells["Price"].Value);
+                DataRow selectedRow = dataView2.Rows[currentSelectedCartRow];
+                string article = selectedRow["Article"].ToString();
+                decimal price = Convert.ToDecimal(selectedRow["Price"]);
                 int newQuantity = (int)numericUpDown1.Value;
 
-                DataRow[] rows = dataView2.Select($"Article = '{article}'");
-                if (rows.Length > 0)
+                if (newQuantity == 0)
                 {
-                    if (newQuantity == 0)
-                    {
-                        rows[0].Delete();
+                    // Удаляем строку
+                    dataView2.Rows.Remove(selectedRow);
 
+                    // Сбрасываем цвет удаленной строки
+                    if (currentSelectedCartRow < dataGridView2.Rows.Count)
+                    {
                         dataGridView2.Rows[currentSelectedCartRow].DefaultCellStyle.BackColor = Color.White;
-                        currentSelectedCartRow = -1;
-                        numericUpDown1.Enabled = false;
-                        numericUpDown1.Value = 0;
-                        button3.Enabled = false;
-                    }
-                    else
-                    {
-                        rows[0]["Quantity"] = newQuantity;
-                        rows[0]["Total"] = newQuantity * price;
-
-                        selectedRow.Cells["Quantity"].Value = newQuantity;
-                        selectedRow.Cells["Total"].Value = newQuantity * price;
                     }
 
-                    UpdateCartSummary();
+                    currentSelectedCartRow = -1;
+                    numericUpDown1.Enabled = false;
+                    numericUpDown1.Value = 0;
+                    button3.Enabled = false;
+
+                    // Очищаем выделение в DataGridView
+                    dataGridView2.ClearSelection();
                 }
+                else
+                {
+                    // Обновляем количество и сумму
+                    selectedRow["Quantity"] = newQuantity;
+                    selectedRow["Total"] = newQuantity * price;
+
+                    // Обновляем отображение в DataGridView
+                    if (currentSelectedCartRow < dataGridView2.Rows.Count)
+                    {
+                        dataGridView2.Rows[currentSelectedCartRow].Cells["Quantity"].Value = newQuantity;
+                        dataGridView2.Rows[currentSelectedCartRow].Cells["Total"].Value = newQuantity * price;
+
+                        // Сохраняем выделение (цвет не меняем)
+                        dataGridView2.Rows[currentSelectedCartRow].DefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
+                    }
+                }
+
+                UpdateCartSummary();
             }
         }
 
         private void button3_Click(object sender, EventArgs e)
         {
-            if (currentSelectedCartRow >= 0 && dataGridView2.Rows[currentSelectedCartRow] != null)
+            if (currentSelectedCartRow >= 0 && currentSelectedCartRow < dataView2.Rows.Count)
             {
-                DataGridViewRow selectedRow = dataGridView2.Rows[currentSelectedCartRow];
-                string article = selectedRow.Cells["Article"].Value.ToString();
-
-                DataRow[] rowsToDelete = dataView2.Select($"Article = '{article}'");
-                if (rowsToDelete.Length > 0)
+                // Сбрасываем цвет перед удалением
+                if (currentSelectedCartRow < dataGridView2.Rows.Count)
                 {
-                    rowsToDelete[0].Delete();
-
-                    UpdateCartSummary();
-
-                    if (currentSelectedCartRow < dataGridView2.Rows.Count)
-                    {
-                        dataGridView2.Rows[currentSelectedCartRow].DefaultCellStyle.BackColor = Color.White;
-                    }
-                    currentSelectedCartRow = -1;
-                    button3.Enabled = false;
-
-                    if (numericUpDown1 != null)
-                    {
-                        numericUpDown1.Enabled = false;
-                        numericUpDown1.Value = 0;
-                    }
+                    dataGridView2.Rows[currentSelectedCartRow].DefaultCellStyle.BackColor = Color.White;
                 }
+
+                // Удаляем строку из DataTable
+                dataView2.Rows.RemoveAt(currentSelectedCartRow);
+
+                // Сбрасываем выделение
+                currentSelectedCartRow = -1;
+                button3.Enabled = false;
+                numericUpDown1.Enabled = false;
+                numericUpDown1.Value = 0;
+
+                // Очищаем выделение в DataGridView
+                dataGridView2.ClearSelection();
+
+                UpdateCartSummary();
             }
             else
             {
@@ -1213,15 +1287,15 @@ namespace Kursovaya
             }
         }
 
-        private decimal CalculateTotalAmount()
+        private int CalculateTotalAmount()
         {
             if (dataView2 == null || dataView2.Rows.Count == 0)
                 return 0;
 
-            decimal total = 0;
+            int total = 0;
             foreach (DataRow row in dataView2.Rows)
             {
-                total += Convert.ToDecimal(row["Total"]);
+                total += Convert.ToInt32(row["Total"]);
             }
             return total;
         }

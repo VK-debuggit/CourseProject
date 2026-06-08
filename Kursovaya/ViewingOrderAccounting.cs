@@ -79,10 +79,100 @@ namespace Kursovaya
 
         private void button5_Click(object sender, EventArgs e)
         {
+            // Собираем параметры фильтрации
+            DateTime startDate = dateTimePicker1.Value;
+            DateTime endDate = dateTimePicker2.Value;
+
+            // Получаем номер заказа для поиска
+            string searchOrderNumber = textBox1.Text.Trim();
+
+            string selectedEmployee = "Все сотрудники";
+            if (comboBox1.SelectedIndex != 0 && comboBox1.SelectedItem != null)
+            {
+                selectedEmployee = comboBox1.SelectedItem.ToString();
+            }
+
+            List<string> selectedStatuses = new List<string>();
+            if (checkBox1.Checked) selectedStatuses.Add(checkBox1.Text);
+            if (checkBox2.Checked) selectedStatuses.Add(checkBox2.Text);
+            if (checkBox3.Checked) selectedStatuses.Add(checkBox3.Text);
+
+            // Проверка с учетом ВСЕХ фильтров
+            if (!HasDataForStatistics(startDate, endDate, selectedEmployee, selectedStatuses))
+            {
+                MessageBox.Show("Данных для статистики за выбранный период не найдено.\nПопробуйте изменить параметры фильтрации.",
+                                "Нет данных",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Information);
+                return;
+            }
+
+            // Открываем форму статистики (нужно также передать searchOrderNumber!)
             this.Visible = false;
-            ViewStatistics viewStatistics = new ViewStatistics();
+            ViewStatistics viewStatistics = new ViewStatistics(startDate, endDate, selectedEmployee, selectedStatuses, searchOrderNumber);
             viewStatistics.ShowDialog();
             this.Close();
+        }
+
+        private bool HasDataForStatistics(DateTime startDate, DateTime endDate, string selectedEmployee, List<string> selectedStatuses)
+        {
+            try
+            {
+                List<string> conditions = new List<string>();
+
+                // 1. Фильтр по датам
+                string startDateStr = startDate.ToString("yyyy-MM-dd");
+                string endDateStr = endDate.ToString("yyyy-MM-dd");
+                conditions.Add($"(o.DateEvent >= '{startDateStr}' AND o.DateEvent <= '{endDateStr}')");
+
+                // 2. Фильтр по сотруднику
+                if (selectedEmployee != "Все сотрудники")
+                {
+                    conditions.Add($"w.FullName = '{selectedEmployee.Replace("'", "''")}'");
+                }
+
+                // 3. Фильтр по статусам
+                if (selectedStatuses.Count > 0)
+                {
+                    List<string> statusConditions = new List<string>();
+                    foreach (string status in selectedStatuses)
+                    {
+                        statusConditions.Add($"s.Status = '{status.Replace("'", "''")}'");
+                    }
+                    conditions.Add("(" + string.Join(" OR ", statusConditions) + ")");
+                }
+
+                // 4. ФИЛЬТР ПО НОМЕРУ ЗАКАЗА (textBox1) - ЭТО БЫЛО ПРОПУЩЕНО!
+                string searchText = textBox1.Text.Trim();
+                if (!string.IsNullOrEmpty(searchText))
+                {
+                    conditions.Add($"o.NumberOrder LIKE '{searchText}%'");
+                }
+
+                string whereClause = "WHERE " + string.Join(" AND ", conditions);
+
+                string query = $@"
+            SELECT COUNT(*) as TotalCount
+            FROM CafeActivities.Orders o
+            LEFT JOIN CafeActivities.Users w ON o.IdUser = w.IDuser
+            LEFT JOIN CafeActivities.Status s ON o.IdStatus = s.IDstatus
+            {whereClause}";
+
+                using (MySqlConnection con = new MySqlConnection(conString))
+                {
+                    con.Open();
+                    using (MySqlCommand cmd = new MySqlCommand(query, con))
+                    {
+                        int count = Convert.ToInt32(cmd.ExecuteScalar());
+                        return count > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при проверке: {ex.Message}", "Ошибка");
+                return true;
+            }
         }
 
         private string FormatPhoneNumber(string phoneNumber)
@@ -230,7 +320,6 @@ namespace Kursovaya
             {
                 ShowPage(currentPage - 1);
                 Pagination(); // Пересоздаем пагинацию с обновленным выделением
-                ResetInactivityTimer(sender, e);
             }
         }
 
@@ -241,7 +330,6 @@ namespace Kursovaya
             {
                 ShowPage(currentPage + 1);
                 Pagination(); // Пересоздаем пагинацию с обновленным выделением
-                ResetInactivityTimer(sender, e);
             }
         }
 
@@ -253,7 +341,6 @@ namespace Kursovaya
             {
                 ShowPage(pageNumber);
                 Pagination(); // Пересоздаем пагинацию с обновленным выделением
-                ResetInactivityTimer(sender, e);
             }
         }
 
@@ -318,7 +405,6 @@ namespace Kursovaya
                 {
                     ShowPage(1);
                     Pagination();
-                    ResetInactivityTimer(null, null);
                 }
                 return true;
             }
@@ -329,7 +415,6 @@ namespace Kursovaya
                 {
                     ShowPage(totalPages);
                     Pagination();
-                    ResetInactivityTimer(null, null);
                 }
                 return true;
             }
@@ -337,38 +422,75 @@ namespace Kursovaya
             return base.ProcessCmdKey(ref msg, keyData);
         }
 
-        private void ResetInactivityTimer(object sender, EventArgs e)
-        {
-            inactivityTimer.Stop();
-            inactivityTimer.Interval = Properties.Settings.Default.InactivityTimeout * 1000;
-            inactivityTimer.Start();
-        }
-
         private void SetupDateControls()
         {
-            DateTime minDate = new DateTime(2025, 01, 01);
-            DateTime maxDate = DateTime.Today.AddMonths(6);
+            // Получаем границы из базы данных
+            DateTime minOrderDate = GetMinOrderDate();  // Самая ранняя дата оформления
+            DateTime maxEventDate = GetMaxEventDate();   // Самая поздняя дата проведения
 
-            dateTimePicker1.MinDate = minDate;
-            dateTimePicker1.MaxDate = DateTime.Today;
-            dateTimePicker2.MinDate = DateTime.Today;
-            dateTimePicker2.MaxDate = maxDate;
+            // Устанавливаем ОДИНАКОВЫЙ диапазон для обоих календарей
+            dateTimePicker1.MinDate = minOrderDate;
+            dateTimePicker1.MaxDate = maxEventDate;
 
-            defaultStartDate = DateTime.Now.AddMonths(-6);
-            defaultEndDate = DateTime.Now.AddMonths(6);
+            dateTimePicker2.MinDate = minOrderDate;
+            dateTimePicker2.MaxDate = maxEventDate;
 
-            if (defaultStartDate < dateTimePicker1.MinDate)
-                defaultStartDate = dateTimePicker1.MinDate;
-            if (defaultStartDate > dateTimePicker1.MaxDate)
-                defaultStartDate = dateTimePicker1.MaxDate;
-
-            if (defaultEndDate < dateTimePicker2.MinDate)
-                defaultEndDate = dateTimePicker2.MinDate;
-            if (defaultEndDate > dateTimePicker2.MaxDate)
-                defaultEndDate = dateTimePicker2.MaxDate;
+            // Значения по умолчанию - весь доступный диапазон
+            defaultStartDate = minOrderDate;
+            defaultEndDate = maxEventDate;
 
             dateTimePicker1.Value = defaultStartDate;
             dateTimePicker2.Value = defaultEndDate;
+        }
+
+        // Самая ранняя дата оформления заказа
+        private DateTime GetMinOrderDate()
+        {
+            try
+            {
+                string query = "SELECT MIN(DateOfConclusion) FROM CafeActivities.Orders WHERE DateOfConclusion IS NOT NULL";
+                using (MySqlConnection con = new MySqlConnection(conString))
+                {
+                    con.Open();
+                    using (MySqlCommand cmd = new MySqlCommand(query, con))
+                    {
+                        object result = cmd.ExecuteScalar();
+                        if (result != null && result != DBNull.Value)
+                            return Convert.ToDateTime(result);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка получения минимальной даты: {ex.Message}", "Ошибка",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+            return DateTime.Today.AddYears(-1);
+        }
+
+        // Самая поздняя дата проведения мероприятия
+        private DateTime GetMaxEventDate()
+        {
+            try
+            {
+                string query = "SELECT MAX(DateEvent) FROM CafeActivities.Orders WHERE DateEvent IS NOT NULL";
+                using (MySqlConnection con = new MySqlConnection(conString))
+                {
+                    con.Open();
+                    using (MySqlCommand cmd = new MySqlCommand(query, con))
+                    {
+                        object result = cmd.ExecuteScalar();
+                        if (result != null && result != DBNull.Value)
+                            return Convert.ToDateTime(result);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка получения максимальной даты: {ex.Message}", "Ошибка",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+            return DateTime.Today.AddMonths(6);
         }
 
         private void SetupUserInfo()
@@ -461,8 +583,8 @@ namespace Kursovaya
 
                     using (MySqlCommand cmd = new MySqlCommand(countQuery, con))
                     {
-                        int totalCount = Convert.ToInt32(cmd.ExecuteScalar());
-                        UpdateRowCount(totalCount);
+                        int totalCount = Convert.ToInt32(cmd.ExecuteScalar()); // ← Это количество с учетом фильтров
+                        UpdateRowCount(totalCount); // ← Передаем отфильтрованное количество
                     }
 
                     DisplayDataInDataGridView(dataTable);
@@ -581,7 +703,7 @@ namespace Kursovaya
             if (!string.IsNullOrEmpty(searchText))
                 dv.RowFilter = $"CONVERT(NumberOrder, 'System.String') LIKE '{searchText}%'";
 
-            decimal totalSum = 0;
+            int totalSum = 0;
             foreach (DataRowView rowView in dv)
             {
                 DataRow row = rowView.Row;
@@ -602,14 +724,14 @@ namespace Kursovaya
                 );
 
                 string status = row["IdStatus"].ToString();
-                decimal priceAll = 0;
-                decimal prepayment = 0;
+                int priceAll = 0;
+                int prepayment = 0;
 
                 if (row["PriceAll"] != null && row["PriceAll"] != DBNull.Value)
-                    decimal.TryParse(row["PriceAll"].ToString(), out priceAll);
+                    int.TryParse(row["PriceAll"].ToString(), out priceAll);
 
                 if (row["Prepayment"] != null && row["Prepayment"] != DBNull.Value)
-                    decimal.TryParse(row["Prepayment"].ToString(), out prepayment);
+                    int.TryParse(row["Prepayment"].ToString(), out prepayment);
 
                 // Форматирование строки
                 DataGridViewRow dataGridRow = dataGridView1.Rows[rowIndex];
@@ -622,7 +744,7 @@ namespace Kursovaya
                         {
                             cell.Style.BackColor = Color.FromArgb(255, 255, 102);
                         }
-                        // Подсчет выручки
+                        // Подсчет выручки: прибавляем предоплату
                         totalSum += prepayment;
                         break;
                     case "Оплачен":
@@ -631,7 +753,7 @@ namespace Kursovaya
                         {
                             cell.Style.BackColor = Color.FromArgb(170, 255, 170);
                         }
-                        // Подсчет выручки
+                        // Подсчет выручки: прибавляем полную стоимость
                         totalSum += priceAll;
                         break;
                     case "Отменен":
@@ -640,12 +762,13 @@ namespace Kursovaya
                         {
                             cell.Style.BackColor = Color.FromArgb(255, 182, 182);
                         }
-                        // Отмененные не считаем в выручке
+                        // Подсчет выручки: прибавляем предоплату (даже если заказ отменен)
+                        totalSum += prepayment;
                         break;
                 }
             }
 
-            label12.Text = totalSum.ToString("C2");
+            label12.Text = totalSum.ToString("C0");
         }
 
         private string FormatDate(object dateValue)
@@ -661,19 +784,25 @@ namespace Kursovaya
             return dateValue.ToString();
         }
 
-        private void UpdateRowCount(int totalCount = 0)
+        private void UpdateRowCount(int totalFilteredCount = 0)
         {
-            // Считаем только видимые строки
-            int visibleCount = 0;
+            // Подсчитываем видимые строки на текущей странице
+            int visibleOnPage = 0;
             for (int i = 0; i < dataGridView1.Rows.Count; i++)
             {
                 if (dataGridView1.Rows[i].Visible)
                 {
-                    visibleCount++;
+                    visibleOnPage++;
                 }
             }
 
-            label4.Text = $"{visibleCount} из {totalCount}";
+            // Если totalFilteredCount не передан или равен 0, считаем из dataGridView1
+            if (totalFilteredCount == 0)
+            {
+                totalFilteredCount = dataGridView1.Rows.Count;
+            }
+
+            label4.Text = $"{visibleOnPage} из {totalFilteredCount}";
         }
 
         private void SearchTimer_Tick(object sender, EventArgs e)
@@ -743,21 +872,9 @@ namespace Kursovaya
                 textBox1.Text = "";
                 FillFilterUsers();
 
-                DateTime safeStartDate = defaultStartDate;
-                DateTime safeEndDate = defaultEndDate;
-
-                if (safeStartDate < dateTimePicker1.MinDate)
-                    safeStartDate = dateTimePicker1.MinDate;
-                if (safeStartDate > dateTimePicker1.MaxDate)
-                    safeStartDate = dateTimePicker1.MaxDate;
-
-                if (safeEndDate < dateTimePicker2.MinDate)
-                    safeEndDate = dateTimePicker2.MinDate;
-                if (safeEndDate > dateTimePicker2.MaxDate)
-                    safeEndDate = dateTimePicker2.MaxDate;
-
-                dateTimePicker1.Value = safeStartDate;
-                dateTimePicker2.Value = safeEndDate;
+                // Сбрасываем даты на весь доступный диапазон
+                dateTimePicker1.Value = dateTimePicker1.MinDate;
+                dateTimePicker2.Value = dateTimePicker2.MaxDate;
 
                 checkBox1.Checked = false;
                 checkBox2.Checked = false;
@@ -806,6 +923,17 @@ namespace Kursovaya
 
         private void button4_Click(object sender, EventArgs e)
         {
+            // Проверяем, есть ли данные для экспорта
+            if (dataGridView1.Rows.Count == 0 || (dataGridView1.Rows.Count == 1 && dataGridView1.Rows[0].IsNewRow))
+            {
+                DialogResult result = MessageBox.Show(
+                    "Данных для экспорта в Excel за выбранный период не найдено.\nПопробуйте изменить параметры фильтрации.",
+                    "Нет данных",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                return;
+            }
+
             ExportToExcel();
         }
 
@@ -831,11 +959,21 @@ namespace Kursovaya
 
         private void dateTimePicker1_ValueChanged(object sender, EventArgs e)
         {
+            // Если дата "С" стала больше даты "До" - корректируем дату "До"
+            if (dateTimePicker1.Value > dateTimePicker2.Value)
+            {
+                dateTimePicker2.Value = dateTimePicker1.Value;
+            }
             LoadData();
         }
 
         private void dateTimePicker2_ValueChanged(object sender, EventArgs e)
         {
+            // Если дата "До" стала меньше даты "С" - корректируем дату "С"
+            if (dateTimePicker2.Value < dateTimePicker1.Value)
+            {
+                dateTimePicker1.Value = dateTimePicker2.Value;
+            }
             LoadData();
         }
 
@@ -1055,26 +1193,33 @@ namespace Kursovaya
                         totalOrders++;
 
                         string status = row.Cells["IdStatus"]?.Value?.ToString() ?? "";
+                        decimal prepayment = 0;
+                        decimal priceAll = 0;
+
+                        // Получаем значения
+                        if (row.Cells["Prepayment"].Value != null && decimal.TryParse(row.Cells["Prepayment"].Value.ToString(), out prepayment))
+                            totalPrepayment += prepayment;
+
+                        if (row.Cells["PriceAll"].Value != null && decimal.TryParse(row.Cells["PriceAll"].Value.ToString(), out priceAll))
+                            totalRevenue += priceAll;
+
                         switch (status)
                         {
                             case "Принят":
                                 acceptedOrders++;
-                                if (row.Cells["Prepayment"].Value != null && decimal.TryParse(row.Cells["Prepayment"].Value.ToString(), out decimal prepayment))
-                                    totalPrepayment += prepayment;
+                                // Для принятых: выручка = предоплата
+                                totalRevenue += prepayment;
                                 break;
                             case "Оплачен":
                                 paidOrders++;
-                                if (row.Cells["PriceAll"].Value != null && decimal.TryParse(row.Cells["PriceAll"].Value.ToString(), out decimal priceAll))
-                                    totalRevenue += priceAll;
+                                // Для оплаченных: выручка = полная стоимость
                                 break;
                             case "Отменен":
                                 cancelledOrders++;
+                                // Для отмененных: выручка = предоплата
+                                totalRevenue += prepayment;
                                 break;
                         }
-
-                        // Для принятых заказов также считаем предоплату в общую выручку
-                        if (status == "Принят" && row.Cells["Prepayment"].Value != null && decimal.TryParse(row.Cells["Prepayment"].Value.ToString(), out decimal prepayment2))
-                            totalRevenue += prepayment2;
                     }
                 }
 

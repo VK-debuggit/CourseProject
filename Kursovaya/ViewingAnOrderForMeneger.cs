@@ -91,7 +91,7 @@ namespace Kursovaya
             label14.Text = orderData.NameClient;
             label10.Text = orderData.Time;
             label16.Text = orderData.NumberPhone;
-            label21.Text = orderData.Prepayment.ToString("C");
+            label21.Text = $"{orderData.Prepayment} ₽";
 
             // Рассчитываем скидку и предоплату
             CalculateDiscountAndPrepayment();
@@ -126,15 +126,15 @@ namespace Kursovaya
             prepayment = amountAfterDiscount / 2;
 
             // Обновляем интерфейс
-            label19.Text = totalAmount.ToString("C");
+            label19.Text = $"{Math.Round(totalAmount)} ₽";
 
             if (discountPercent > 0)
             {
-                label23.Text = discountAmountValue.ToString("C") + discountDescription;
+                label23.Text = $"{Math.Round(discountAmountValue)} ₽{discountDescription}";
             }
             else
             {
-                label23.Text = "0,00 ₽";
+                label23.Text = "0 ₽";
             }
             //label21.Text = prepayment.ToString("C"); 
         }
@@ -209,10 +209,10 @@ namespace Kursovaya
                 FillBookmark(doc, "DateCreate", orderData.Date);
                 FillBookmark(doc, "Time", orderData.Time);
 
-                FillBookmark(doc, "CountOrder", totalAmount.ToString("C"));
-                FillBookmark(doc, "DiscountAmoust", discountAmount.ToString("C"));
-                FillBookmark(doc, "CountOrderAmoust", finalAmount.ToString("C"));
-                FillBookmark(doc, "Prepaymant", prepayment.ToString("C"));
+                FillBookmark(doc, "CountOrder", $"{Math.Round(totalAmount)} ₽");
+                FillBookmark(doc, "DiscountAmoust", $"{Math.Round(discountAmount)} ₽");
+                FillBookmark(doc, "CountOrderAmoust", $"{Math.Round(finalAmount)} ₽");
+                FillBookmark(doc, "Prepaymant", $"{Math.Round(prepayment)} ₽");
                 FillBookmark(doc, "Discount", discountPercent.ToString());
 
                 // Удаляем пример товара из шаблона и вставляем актуальную таблицу
@@ -347,9 +347,9 @@ namespace Kursovaya
 
                 table.Cell(i + 2, 1).Range.Text = (i + 1).ToString();
                 table.Cell(i + 2, 2).Range.Text = row["Name"].ToString();
-                table.Cell(i + 2, 3).Range.Text = price.ToString("C");
+                table.Cell(i + 2, 3).Range.Text = $"{Math.Round(price)} ₽";
                 table.Cell(i + 2, 4).Range.Text = quantity.ToString();
-                table.Cell(i + 2, 5).Range.Text = total.ToString("C");
+                table.Cell(i + 2, 5).Range.Text = $"{Math.Round(total)} ₽";
             }
 
             // Форматирование таблицы
@@ -568,10 +568,10 @@ namespace Kursovaya
                     int statusId = GetStatusId(con, transaction);
 
                     // 6. Рассчитываем суммы с округлением до 2 знаков после запятой
-                    decimal totalAmount = Math.Round(Convert.ToDecimal(CleanDecimalString(label19.Text)), 2);
-                    decimal discountAmount = Math.Round(discountAmountValue, 2);
-                    decimal finalAmount = Math.Round(totalAmount - discountAmount, 2);
-                    decimal prepayment = Math.Round(Convert.ToDecimal(CleanDecimalString(label21.Text)), 2);
+                    decimal totalAmount = Math.Round(Convert.ToDecimal(CleanDecimalString(label19.Text)), 0);
+                    decimal discountAmount = Math.Round(discountAmountValue, 0);
+                    decimal finalAmount = Math.Round(totalAmount - discountAmount, 0);
+                    decimal prepayment = Math.Round(Convert.ToDecimal(CleanDecimalString(label21.Text)), 0);
 
                     // 9. Создаем заказ в таблице NumberOrder
                     InsertMainOrder(con, transaction, nextOrderNumber, clientId, userId, eventId, scheduleId, statusId,
@@ -600,7 +600,11 @@ namespace Kursovaya
                 return "0";
 
             // Убираем символы валюты, пробелы и другие нечисловые символы
-            string cleaned = value.Replace("₽", "").Replace(" ", "").Replace(" ", "").Trim();
+            string cleaned = value.Replace("₽", "").Replace("руб", "").Replace(" ", "").Trim();
+
+            // Если после очистки осталась пустая строка или не число
+            if (string.IsNullOrEmpty(cleaned) || !decimal.TryParse(cleaned, out _))
+                return "0";
 
             return cleaned;
         }

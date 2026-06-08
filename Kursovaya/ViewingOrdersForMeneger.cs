@@ -54,6 +54,7 @@ namespace Kursovaya
             textBox1.BackColor = System.Drawing.Color.FromArgb(255, 221, 153);
             comboBox1.BackColor = System.Drawing.Color.FromArgb(255, 221, 153);
 
+            // Кнопка "Просмотр" изначально НЕДОСТУПНА
             button2.Enabled = false;
 
             SetupDateControls();
@@ -262,6 +263,15 @@ namespace Kursovaya
             }
 
             UpdateRowCount();
+
+            // После смены страницы проверяем, есть ли выделенные строки
+            UpdateButtonState();
+        }
+
+        private void UpdateButtonState()
+        {
+            // Кнопка доступна только если есть выделенные строки
+            button2.Enabled = dataGridView1.SelectedRows.Count > 0;
         }
 
         private void BtnPrev_Click(object sender, EventArgs e)
@@ -270,7 +280,6 @@ namespace Kursovaya
             {
                 ShowPage(currentPage - 1);
                 Pagination();
-                ResetInactivityTimer(sender, e);
             }
         }
 
@@ -280,7 +289,6 @@ namespace Kursovaya
             {
                 ShowPage(currentPage + 1);
                 Pagination();
-                ResetInactivityTimer(sender, e);
             }
         }
 
@@ -291,7 +299,6 @@ namespace Kursovaya
             {
                 ShowPage(pageNumber);
                 Pagination();
-                ResetInactivityTimer(sender, e);
             }
         }
 
@@ -351,7 +358,6 @@ namespace Kursovaya
                 {
                     ShowPage(1);
                     Pagination();
-                    ResetInactivityTimer(null, null);
                 }
                 return true;
             }
@@ -361,7 +367,6 @@ namespace Kursovaya
                 {
                     ShowPage(totalPages);
                     Pagination();
-                    ResetInactivityTimer(null, null);
                 }
                 return true;
             }
@@ -370,13 +375,6 @@ namespace Kursovaya
         }
 
         // ========== ТАЙМЕРЫ ==========
-
-        private void ResetInactivityTimer(object sender, EventArgs e)
-        {
-            inactivityTimer.Stop();
-            inactivityTimer.Interval = Properties.Settings.Default.InactivityTimeout * 1000;
-            inactivityTimer.Start();
-        }
 
         private void SearchTimer_Tick(object sender, EventArgs e)
         {
@@ -388,29 +386,73 @@ namespace Kursovaya
 
         private void SetupDateControls()
         {
-            DateTime minDate = DateTime.Today.AddMonths(-6);
-            DateTime maxDate = DateTime.Today.AddMonths(6);
+            // Получаем границы из базы данных
+            DateTime minOrderDate = GetMinOrderDate();  // Самая ранняя дата оформления
+            DateTime maxEventDate = GetMaxEventDate();   // Самая поздняя дата проведения
 
-            dateTimePicker1.MinDate = minDate;
-            dateTimePicker1.MaxDate = DateTime.Today;
-            dateTimePicker2.MinDate = DateTime.Today;
-            dateTimePicker2.MaxDate = maxDate;
+            // Устанавливаем ОДИНАКОВЫЙ диапазон для обоих календарей
+            dateTimePicker1.MinDate = minOrderDate;
+            dateTimePicker1.MaxDate = maxEventDate;
 
-            defaultStartDate = DateTime.Now.AddMonths(-6);
-            defaultEndDate = DateTime.Now.AddMonths(6);
+            dateTimePicker2.MinDate = minOrderDate;
+            dateTimePicker2.MaxDate = maxEventDate;
 
-            if (defaultStartDate < dateTimePicker1.MinDate)
-                defaultStartDate = dateTimePicker1.MinDate;
-            if (defaultStartDate > dateTimePicker1.MaxDate)
-                defaultStartDate = dateTimePicker1.MaxDate;
-
-            if (defaultEndDate < dateTimePicker2.MinDate)
-                defaultEndDate = dateTimePicker2.MinDate;
-            if (defaultEndDate > dateTimePicker2.MaxDate)
-                defaultEndDate = dateTimePicker2.MaxDate;
+            // Значения по умолчанию - весь доступный диапазон
+            defaultStartDate = minOrderDate;
+            defaultEndDate = maxEventDate;
 
             dateTimePicker1.Value = defaultStartDate;
             dateTimePicker2.Value = defaultEndDate;
+        }
+
+        // Самая ранняя дата оформления заказа
+        private DateTime GetMinOrderDate()
+        {
+            try
+            {
+                string query = "SELECT MIN(DateOfConclusion) FROM CafeActivities.Orders WHERE DateOfConclusion IS NOT NULL";
+                using (MySqlConnection con = new MySqlConnection(conString))
+                {
+                    con.Open();
+                    using (MySqlCommand cmd = new MySqlCommand(query, con))
+                    {
+                        object result = cmd.ExecuteScalar();
+                        if (result != null && result != DBNull.Value)
+                            return Convert.ToDateTime(result);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка получения минимальной даты: {ex.Message}", "Ошибка",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+            return DateTime.Today.AddYears(-1);
+        }
+
+        // Самая поздняя дата проведения мероприятия
+        private DateTime GetMaxEventDate()
+        {
+            try
+            {
+                string query = "SELECT MAX(DateEvent) FROM CafeActivities.Orders WHERE DateEvent IS NOT NULL";
+                using (MySqlConnection con = new MySqlConnection(conString))
+                {
+                    con.Open();
+                    using (MySqlCommand cmd = new MySqlCommand(query, con))
+                    {
+                        object result = cmd.ExecuteScalar();
+                        if (result != null && result != DBNull.Value)
+                            return Convert.ToDateTime(result);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка получения максимальной даты: {ex.Message}", "Ошибка",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+            return DateTime.Today.AddMonths(6);
         }
 
         private void SetupUserInfo()
@@ -478,6 +520,9 @@ namespace Kursovaya
                 DisplayDataInDataGridView(dataTable);
                 currentPage = 1;
                 Pagination();
+
+                // После загрузки новых данных кнопка недоступна
+                button2.Enabled = false;
             }
             catch (Exception ex)
             {
@@ -567,7 +612,7 @@ namespace Kursovaya
             string searchText = textBox1.Text.Trim();
             if (!string.IsNullOrEmpty(searchText))
             {
-                conditions.Add($"p.NumberOrder LIKE '%{MySqlHelper.EscapeString(searchText)}%'");
+                conditions.Add($"p.NumberOrder LIKE '{MySqlHelper.EscapeString(searchText)}%'");
             }
 
             if (conditions.Count > 0)
@@ -682,30 +727,35 @@ namespace Kursovaya
                         break;
                 }
             }
+
+            // Сбрасываем выделение после загрузки данных
+            dataGridView1.ClearSelection();
         }
 
         private void UpdateRowCount()
         {
-            int totalCount = dataGridView1.Rows.Count;
+            // Получаем общее количество строк после всех фильтров
+            int totalFilteredCount = dataGridView1.Rows.Count;
 
-            int totalInDatabase = 0;
-            string q = "SELECT COUNT(*) FROM CafeActivities.Orders;";
-            using (MySqlConnection con = new MySqlConnection(conString))
-            {
-                con.Open();
-                using (MySqlCommand cmd = new MySqlCommand(q, con))
-                {
-                    totalInDatabase = Convert.ToInt32(cmd.ExecuteScalar());
-                }
-            }
-
+            // Подсчитываем видимые строки на текущей странице
             int visibleCount = 0;
-            for (int i = (currentPage - 1) * 20; i < currentPage * 20 && i < totalCount; i++)
+            int startIndex = (currentPage - 1) * 20;
+            int endIndex = Math.Min(startIndex + 20, totalFilteredCount);
+
+            for (int i = startIndex; i < endIndex; i++)
             {
                 visibleCount++;
             }
 
-            label4.Text = $"{visibleCount} из {totalInDatabase}";
+            // Обновляем label
+            if (totalFilteredCount == 0)
+            {
+                label4.Text = "0 из 0";
+            }
+            else
+            {
+                label4.Text = $"{visibleCount} из {totalFilteredCount}";
+            }
         }
 
         // ========== СОБЫТИЯ КНОПОК ==========
@@ -799,11 +849,21 @@ namespace Kursovaya
 
         private void dateTimePicker1_ValueChanged(object sender, EventArgs e)
         {
+            // Если дата "С" стала больше даты "До" - корректируем дату "До"
+            if (dateTimePicker1.Value > dateTimePicker2.Value)
+            {
+                dateTimePicker2.Value = dateTimePicker1.Value;
+            }
             LoadData();
         }
 
         private void dateTimePicker2_ValueChanged(object sender, EventArgs e)
         {
+            // Если дата "До" стала меньше даты "С" - корректируем дату "С"
+            if (dateTimePicker2.Value < dateTimePicker1.Value)
+            {
+                dateTimePicker1.Value = dateTimePicker2.Value;
+            }
             LoadData();
         }
 
@@ -826,12 +886,14 @@ namespace Kursovaya
 
         private void dataGridView1_CellClick(object sender, DataGridViewCellEventArgs e)
         {
-            button2.Enabled = (e.RowIndex >= 0);
+            // При клике на ячейку проверяем, есть ли выделенные строки
+            UpdateButtonState();
         }
 
         private void dataGridView1_SelectionChanged(object sender, EventArgs e)
         {
-            button2.Enabled = dataGridView1.SelectedRows.Count > 0;
+            // При изменении выделения обновляем состояние кнопки
+            UpdateButtonState();
         }
 
         private void dataGridView1_CellDoubleClick(object sender, DataGridViewCellEventArgs e)

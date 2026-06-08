@@ -25,6 +25,7 @@ namespace Kursovaya
     public partial class SelectFormPrint : Form
     {
         private System.Data.DataTable _cartItems;
+        private bool _shouldOpenMakingAnOrder;
         private OrderData _orderData;
         private decimal _discountAmountValue;
         private DocumentType _documentType;
@@ -44,6 +45,7 @@ namespace Kursovaya
             this._documentType = type;
             this._viewingAnOrderForm = null;
             this._previousForm = previousForm;
+            this._shouldOpenMakingAnOrder = true; // Для первичного - открываем MakingAnOrder
             button1.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button2.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button3.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
@@ -59,6 +61,7 @@ namespace Kursovaya
             this._viewingAnOrderForm = parentForm;
             this._additionalExpenses = additionalExpenses;
             this._previousForm = previousForm;
+            this._shouldOpenMakingAnOrder = false;
             button1.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button2.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button3.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
@@ -93,13 +96,26 @@ namespace Kursovaya
             if (_documentType == DocumentType.Preliminary)
             {
                 GeneratePreliminaryWordTicket();
+                this.Visible = false;
+                MakingAnOrder makingAnOrder = new MakingAnOrder();
+                makingAnOrder.ShowDialog();
+                this.Close();
             }
             else
             {
                 GenerateFinalWordTicket();
+                this.Visible = false;
+                _isClosingProgrammatically = true;
+
+                if (_previousForm != null && !_previousForm.IsDisposed)
+                {
+                    _previousForm.Show();
+                }
+
+                this.Close();
             }
 
-            GoToMakingAnOrder();
+            //GoToMakingAnOrder(); // Оставляем вызов
         }
 
         private void button1_Click(object sender, EventArgs e)
@@ -109,27 +125,52 @@ namespace Kursovaya
             if (_documentType == DocumentType.Preliminary)
             {
                 GeneratePreliminaryPDFTicket();
+                this.Visible = false;
+                MakingAnOrder makingAnOrder = new MakingAnOrder();
+                makingAnOrder.ShowDialog();
+                this.Close();
             }
             else
             {
                 GenerateFinalPDFTicket();
+                this.Visible = false;
+                _isClosingProgrammatically = true;
+
+                if (_previousForm != null && !_previousForm.IsDisposed)
+                {
+                    _previousForm.Show();
+                }
+
+                this.Close();
             }
 
-            GoToMakingAnOrder();
+            //GoToMakingAnOrder(); // Оставляем вызов
         }
 
-        private void GoToMakingAnOrder()
-        {
-            this.Close();
+        //private void GoToMakingAnOrder()
+        //{
+        //    _isClosingProgrammatically = true;
 
-            if (_previousForm != null && !_previousForm.IsDisposed)
-            {
-                _previousForm.Close();
-            }
+        //    if (_shouldOpenMakingAnOrder)
+        //    {
+        //        // ПЕРВИЧНЫЙ ДОКУМЕНТ: закрываем всё и открываем MakingAnOrder
+        //        MakingAnOrder makingAnOrder = new MakingAnOrder();
+        //        makingAnOrder.Show();
 
-            MakingAnOrder makingAnOrder = new MakingAnOrder();
-            makingAnOrder.Show();
-        }
+        //        this.Close();
+        //        if (_previousForm != null && !_previousForm.IsDisposed)
+        //        {
+        //            _previousForm.Close();
+        //        }
+        //    }
+        //    else
+        //    {
+        //        // ОКОНЧАТЕЛЬНЫЙ ДОКУМЕНТ: закрываем только форму печати
+        //        // НЕ закрываем и НЕ показываем предыдущую форму, она уже открыта
+        //        this.Close();
+        //        // Убираем _previousForm.Show() - форма и так должна быть видна
+        //    }
+        //}
 
         // ========== ГЕНЕРАЦИЯ PDF С АВТОСОХРАНЕНИЕМ ==========
 

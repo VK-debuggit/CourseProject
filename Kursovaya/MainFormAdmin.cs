@@ -102,6 +102,7 @@ namespace Kursovaya
         {
             if (label2.Text == "По умолчанию") {
                 button3.Hide();
+                button5.Location = new Point(button5.Location.X, 209);
             }
         }
     }

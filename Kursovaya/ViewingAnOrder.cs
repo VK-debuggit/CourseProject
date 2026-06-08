@@ -104,12 +104,12 @@ namespace Kursovaya
                                     ((TimeSpan)reader["EndTime"]).ToString(@"hh\:mm") : "";
                                 string timeRange = $"{startTime} - {endTime}";
 
-                                decimal finalAmount = reader["FinalAmount"] != DBNull.Value ?
-                                    Convert.ToDecimal(reader["FinalAmount"]) : 0;
-                                decimal baseTotalAmount = reader["TotalAmount"] != DBNull.Value ?
-                                    Convert.ToDecimal(reader["TotalAmount"]) : 0;
-                                decimal discountAmount = reader["DiscountAmount"] != DBNull.Value ?
-                                    Convert.ToDecimal(reader["DiscountAmount"]) : 0;
+                                int finalAmount = reader["FinalAmount"] != DBNull.Value ?
+                                    Convert.ToInt32(reader["FinalAmount"]) : 0;
+                                int baseTotalAmount = reader["TotalAmount"] != DBNull.Value ?
+                                    Convert.ToInt32(reader["TotalAmount"]) : 0;
+                                int discountAmount = reader["DiscountAmount"] != DBNull.Value ?
+                                    Convert.ToInt32(reader["DiscountAmount"]) : 0;
 
                                 decimal baseFinalAmount = finalAmount > 0 ? finalAmount : baseTotalAmount - discountAmount;
                                 additionalExpenses = finalAmount - (baseTotalAmount - discountAmount);
@@ -125,11 +125,11 @@ namespace Kursovaya
                                     NameClient = reader["ClientName"].ToString(),
                                     NumberPhone = reader["NumberPhoneClient"].ToString(),
                                     Event = reader["EventName"].ToString(),
-                                    TotalAmount = baseTotalAmount,
-                                    DiscountAmount = discountAmount,
+                                    TotalAmount = Convert.ToInt32(reader["TotalAmount"]), 
+                                    DiscountAmount = Convert.ToInt32(reader["DiscountAmount"]), 
                                     NameUser = reader["NameUser"] != DBNull.Value ? reader["NameUser"].ToString() : "Не указан",
-                                    FinalAmount = finalAmount,
-                                    Prepayment = reader["Prepayment"] != DBNull.Value ? Convert.ToDecimal(reader["Prepayment"]) : 0,
+                                    FinalAmount = Convert.ToInt32(reader["FinalAmount"]), 
+                                    Prepayment = Convert.ToInt32(reader["Prepayment"]),  
                                     Status = reader["OrderStatus"].ToString()
                                 };
 
@@ -193,8 +193,8 @@ namespace Kursovaya
             label8.Text = orderData.NameClient;
             label10.Text = orderData.NumberPhone;
 
-            // Устанавливаем дополнительные расходы в TextBox
-            textBox1.Text = additionalExpenses > 0 ? additionalExpenses.ToString("F2") : "";
+            // Устанавливаем дополнительные расходы в TextBox (целое число)
+            textBox1.Text = additionalExpenses > 0 ? additionalExpenses.ToString() : "";
 
             // Рассчитываем суммы с учетом дополнительных расходов
             CalculateTotalWithAdditionalExpenses();
@@ -271,10 +271,10 @@ namespace Kursovaya
             // Если статус не "Принят", не пересчитываем
             if (orderData.Status != "Принят")
             {
-                // Показываем исходные суммы без учета дополнительных расходов
-                label20.Text = orderData.Prepayment.ToString("C");
-                label22.Text = orderData.DiscountAmount.ToString("C");
-                label27.Text = (orderData.FinalAmount > 0 ? orderData.FinalAmount : orderData.TotalAmount - orderData.DiscountAmount).ToString("C");
+                // Показываем исходные суммы с целыми числами
+                label20.Text = $"{orderData.Prepayment:N0} ₽";
+                label22.Text = $"{orderData.DiscountAmount:N0} ₽";
+                label27.Text = $"{(orderData.FinalAmount > 0 ? orderData.FinalAmount : orderData.TotalAmount - orderData.DiscountAmount):N0} ₽";
                 return;
             }
 
@@ -285,31 +285,31 @@ namespace Kursovaya
             decimal basePrepayment = orderData.Prepayment;
 
             // Получаем дополнительные расходы из TextBox1
-            decimal currentAdditionalExpenses = GetAdditionalExpenses();
+            int currentAdditionalExpenses = GetAdditionalExpenses();
 
             // Проверяем, не превышает ли общая сумма максимальное значение
-            decimal maxTotalAllowed = 9999999999.99m;
+            decimal maxTotalAllowed = 9999999; // 7 цифр
             decimal newFinalAmount = baseFinalAmount + currentAdditionalExpenses;
 
             if (newFinalAmount > maxTotalAllowed)
             {
                 // Вычисляем максимально допустимые дополнительные расходы
-                decimal maxAdditionalExpenses = maxTotalAllowed - baseFinalAmount;
+                int maxAdditionalExpenses = (int)(maxTotalAllowed - baseFinalAmount);
 
                 if (maxAdditionalExpenses < 0)
                 {
-                    maxAdditionalExpenses = 0; // Если базовая сумма уже превышает лимит
+                    maxAdditionalExpenses = 0;
                 }
 
                 // Обрезаем введенное значение
                 currentAdditionalExpenses = maxAdditionalExpenses;
 
                 // Обновляем текст в TextBox
-                textBox1.Text = currentAdditionalExpenses.ToString("F2");
+                textBox1.Text = currentAdditionalExpenses.ToString();
                 textBox1.SelectionStart = textBox1.Text.Length;
 
                 // Показываем предупреждение
-                MessageBox.Show($"Дополнительные расходы ограничены до {maxAdditionalExpenses:C} чтобы общая сумма не превышала {maxTotalAllowed:C}",
+                MessageBox.Show($"Дополнительные расходы ограничены до {maxAdditionalExpenses:N0} ₽, чтобы общая сумма не превышала {maxTotalAllowed:N0} ₽",
                                "Ограничение", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
 
@@ -323,10 +323,10 @@ namespace Kursovaya
             // Предоплата может быть пересчитана пропорционально или оставлена как есть
             decimal newPrepayment = basePrepayment;
 
-            // Отображаем суммы
-            label20.Text = newPrepayment.ToString("C");
-            label22.Text = baseDiscountAmount.ToString("C");
-            label27.Text = newFinalAmount.ToString("C");
+            // Отображаем суммы (целые числа с валютой)
+            label20.Text = $"{newPrepayment:N0} ₽";
+            label22.Text = $"{baseDiscountAmount:N0} ₽";
+            label27.Text = $"{newFinalAmount:N0} ₽";
         }
 
         private void UpdateOrderStatusWithExpenses(string newStatus)
@@ -337,20 +337,20 @@ namespace Kursovaya
                 {
                     con.Open();
 
-                    // Получаем дополнительные расходы
-                    decimal additionalExpenses = GetAdditionalExpenses();
+                    // Получаем дополнительные расходы (целое число)
+                    int additionalExpenses = GetAdditionalExpenses();
 
                     // Рассчитываем новую общую сумму с учетом дополнительных расходов
-                    decimal baseFinalAmount = orderData.FinalAmount > 0 ? orderData.FinalAmount :
+                    int baseFinalAmount = orderData.FinalAmount > 0 ? orderData.FinalAmount :
                                              orderData.TotalAmount - orderData.DiscountAmount;
-                    decimal newFinalAmount = baseFinalAmount + additionalExpenses;
+                    int newFinalAmount = baseFinalAmount + additionalExpenses;
 
                     string updateQuery = @"
-            UPDATE Orders 
-            SET 
-                IdStatus = (SELECT IDstatus FROM Status WHERE Status = @status),
-                PriceAll = @finalAmount
-            WHERE NumberOrder = @orderId";
+                UPDATE Orders 
+                SET 
+                    IdStatus = (SELECT IDstatus FROM Status WHERE Status = @status),
+                    PriceAll = @finalAmount
+                WHERE NumberOrder = @orderId";
 
                     using (MySqlCommand cmd = new MySqlCommand(updateQuery, con))
                     {
@@ -376,13 +376,12 @@ namespace Kursovaya
             }
         }
 
-        private decimal GetAdditionalExpenses()
+        private int GetAdditionalExpenses()
         {
             if (string.IsNullOrWhiteSpace(textBox1.Text))
                 return 0;
 
-            if (decimal.TryParse(textBox1.Text, System.Globalization.NumberStyles.Any,
-                                System.Globalization.CultureInfo.InvariantCulture, out decimal expenses))
+            if (int.TryParse(textBox1.Text, out int expenses))
             {
                 return expenses >= 0 ? expenses : 0;
             }
@@ -400,11 +399,19 @@ namespace Kursovaya
             if (orderItems.Columns.Contains("Name"))
                 dataGridView1.Columns["Name"].HeaderText = "Наименование";
             if (orderItems.Columns.Contains("Price"))
+            {
                 dataGridView1.Columns["Price"].HeaderText = "Цена";
+                dataGridView1.Columns["Price"].DefaultCellStyle.Format = "N0"; // Целые числа
+                dataGridView1.Columns["Price"].DefaultCellStyle.FormatProvider = System.Globalization.CultureInfo.GetCultureInfo("ru-RU");
+            }
             if (orderItems.Columns.Contains("Count"))
                 dataGridView1.Columns["Count"].HeaderText = "Количество";
             if (orderItems.Columns.Contains("Total"))
+            {
                 dataGridView1.Columns["Total"].HeaderText = "Сумма";
+                dataGridView1.Columns["Total"].DefaultCellStyle.Format = "N0"; // Целые числа
+                dataGridView1.Columns["Total"].DefaultCellStyle.FormatProvider = System.Globalization.CultureInfo.GetCultureInfo("ru-RU");
+            }
 
             dataGridView1.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
 
@@ -510,67 +517,26 @@ namespace Kursovaya
         {
             TextBox tb = (TextBox)sender;
 
-            // Разрешаем управляющие символы
+            // Разрешаем управляющие символы (Backspace, Delete, Enter и т.д.)
             if (char.IsControl(e.KeyChar))
                 return;
 
-            // Разрешаем цифры
-            if (char.IsDigit(e.KeyChar))
+            // Запрещаем точку и запятую
+            if (e.KeyChar == '.' || e.KeyChar == ',')
             {
-                // Получаем текст до вставки
-                string textBefore = tb.Text.Substring(0, tb.SelectionStart) +
-                                   tb.Text.Substring(tb.SelectionStart + tb.SelectionLength);
-
-                // Проверяем общую длину числа (с учетом новой цифры)
-                // Для дополнительных расходов можно задать разумный лимит, например 8 цифр до точки
-                if (textBefore.Replace(".", "").Length + 1 > 10) // Максимум 10 цифр (8 до точки + 2 после)
-                {
-                    e.Handled = true;
-                    return;
-                }
-
-                // Проверяем цифры после точки
-                int dotIndex = tb.Text.IndexOf('.');
-                if (dotIndex != -1)
-                {
-                    int cursorPosition = tb.SelectionStart;
-                    int digitsAfterDot = tb.Text.Length - dotIndex - 1;
-
-                    // Если курсор находится после точки и уже есть 2 цифры после точки
-                    if (cursorPosition > dotIndex && digitsAfterDot >= 2)
-                    {
-                        // Если выбрана часть текста, разрешаем замену
-                        if (tb.SelectionLength == 0)
-                        {
-                            e.Handled = true;
-                            return;
-                        }
-                    }
-                }
-
-                e.Handled = false;
+                e.Handled = true;
                 return;
             }
 
-            // Разрешаем десятичную точку
-            if (e.KeyChar == '.')
+            // Разрешаем только цифры
+            if (char.IsDigit(e.KeyChar))
             {
-                // Запрещаем несколько точек
-                if (tb.Text.Contains('.'))
-                {
-                    e.Handled = true;
-                    return;
-                }
+                // Получаем текущий текст без выделенной части
+                string currentText = tb.Text.Substring(0, tb.SelectionStart) +
+                                     tb.Text.Substring(tb.SelectionStart + tb.SelectionLength);
 
-                // Запрещаем точку в начале
-                if (tb.Text.Length == 0)
-                {
-                    e.Handled = true;
-                    return;
-                }
-
-                // Проверяем, что перед точкой не более 8 цифр
-                if (tb.Text.Length > 8)
+                // Проверяем, не превысит ли длина 7 символов после вставки
+                if (currentText.Length >= 7)
                 {
                     e.Handled = true;
                     return;
@@ -591,71 +557,26 @@ namespace Kursovaya
                 return;
             }
 
-            // Удаляем лишние символы (оставляем только цифры и точку)
-            string cleanText = new string(textBox1.Text.Where(c => char.IsDigit(c) || c == '.').ToArray());
+            // Оставляем только цифры
+            string cleanText = new string(textBox1.Text.Where(char.IsDigit).ToArray());
 
-            // Проверяем формат
-            if (!decimal.TryParse(cleanText, System.Globalization.NumberStyles.Any,
-                                 System.Globalization.CultureInfo.InvariantCulture, out decimal value))
+            // Ограничиваем длину до 7 цифр
+            if (cleanText.Length > 7)
             {
-                // Если невалидно, оставляем только валидную часть
-                string validPart = "";
-                bool dotFound = false;
-                int digitsAfterDot = 0;
-
-                foreach (char c in textBox1.Text)
-                {
-                    if (char.IsDigit(c))
-                    {
-                        if (!dotFound)
-                        {
-                            if (validPart.Replace(".", "").Length < 8) // Максимум 8 цифр до точки
-                            {
-                                validPart += c;
-                            }
-                        }
-                        else
-                        {
-                            if (digitsAfterDot < 2) // Максимум 2 цифры после точки
-                            {
-                                validPart += c;
-                                digitsAfterDot++;
-                            }
-                        }
-                    }
-                    else if (c == '.' && !dotFound)
-                    {
-                        validPart += c;
-                        dotFound = true;
-                    }
-                }
-
-                textBox1.Text = validPart;
-                textBox1.SelectionStart = textBox1.Text.Length;
-                return;
+                cleanText = cleanText.Substring(0, 7);
             }
 
-            // НЕ форматируем автоматически при вводе - позволяем пользователю вводить произвольные цифры
-            // Только проверяем, что после точки не более 2 цифр
-            if (cleanText.Contains('.'))
+            if (!string.IsNullOrEmpty(cleanText))
             {
-                string[] parts = cleanText.Split('.');
-                if (parts.Length == 2)
+                if (textBox1.Text != cleanText)
                 {
-                    // Обрезаем лишние цифры после точки (больше 2)
-                    if (parts[1].Length > 2)
-                    {
-                        parts[1] = parts[1].Substring(0, 2);
-                        cleanText = parts[0] + "." + parts[1];
-                    }
-
-                    // НЕ форматируем автоматически - оставляем как ввел пользователь
-                    if (textBox1.Text != cleanText)
-                    {
-                        textBox1.Text = cleanText;
-                        textBox1.SelectionStart = textBox1.Text.Length;
-                    }
+                    textBox1.Text = cleanText;
+                    textBox1.SelectionStart = textBox1.Text.Length;
                 }
+            }
+            else
+            {
+                textBox1.Text = "";
             }
         }
 
@@ -684,8 +605,11 @@ namespace Kursovaya
             }
 
             decimal additionalExpenses = GetAdditionalExpenses();
-            SelectFormPrint selectFormPrint = new SelectFormPrint(orderData, orderItems, DocumentType.Final, this, additionalExpenses);
+            // Передаем this как previousForm, но НЕ закрываем форму здесь
+            SelectFormPrint selectFormPrint = new SelectFormPrint(orderData, orderItems, DocumentType.Final, this, additionalExpenses, this);
             selectFormPrint.ShowDialog();
+            // НЕ вызываем this.Close() - форма закроется сама при необходимости
+            // this.Close(); // УБРАТЬ ИЛИ ЗАКОММЕНТИРОВАТЬ
         }
 
         private string GetTemplatePath()
@@ -981,17 +905,21 @@ namespace Kursovaya
         {
             if (!string.IsNullOrWhiteSpace(textBox1.Text))
             {
-                // При потере фокуса форматируем с двумя знаками после точки
-                if (decimal.TryParse(textBox1.Text, System.Globalization.NumberStyles.Any,
-                                   System.Globalization.CultureInfo.InvariantCulture, out decimal value))
+                // Убираем все нецифровые символы
+                string cleanText = new string(textBox1.Text.Where(char.IsDigit).ToArray());
+
+                if (!string.IsNullOrEmpty(cleanText))
                 {
-                    // Форматируем с двумя знаками после точки
-                    textBox1.Text = value.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
-                    textBox1.SelectionStart = textBox1.Text.Length;
+                    // Ограничиваем до 7 цифр
+                    if (cleanText.Length > 7)
+                    {
+                        cleanText = cleanText.Substring(0, 7);
+                    }
+
+                    textBox1.Text = cleanText;
                 }
                 else
                 {
-                    // Если не число, очищаем
                     textBox1.Text = "";
                 }
             }
@@ -1006,59 +934,21 @@ namespace Kursovaya
             {
                 string clipboardText = Clipboard.GetText();
 
-                // Извлекаем только цифры и точку
-                string numericText = "";
-                bool dotFound = false;
-                int digitsAfterDot = 0;
+                // Оставляем только цифры
+                string numericText = new string(clipboardText.Where(char.IsDigit).ToArray());
 
-                foreach (char c in clipboardText)
+                // Ограничиваем длину до 7 цифр
+                if (numericText.Length > 7)
                 {
-                    if (char.IsDigit(c))
-                    {
-                        if (!dotFound)
-                        {
-                            if (numericText.Replace(".", "").Length < 8) // Максимум 8 цифр до точки
-                            {
-                                numericText += c;
-                            }
-                        }
-                        else
-                        {
-                            if (digitsAfterDot < 2) // Максимум 2 цифры после точки
-                            {
-                                numericText += c;
-                                digitsAfterDot++;
-                            }
-                        }
-                    }
-                    else if (c == '.' && !dotFound)
-                    {
-                        numericText += c;
-                        dotFound = true;
-                    }
+                    numericText = numericText.Substring(0, 7);
                 }
 
                 if (!string.IsNullOrEmpty(numericText))
                 {
-                    // Проверяем и обрезаем лишние цифры после точки (если больше 2)
-                    if (dotFound)
-                    {
-                        string[] parts = numericText.Split('.');
-                        if (parts.Length == 2)
-                        {
-                            if (parts[1].Length > 2)
-                            {
-                                parts[1] = parts[1].Substring(0, 2);
-                            }
-                            numericText = parts[0] + "." + parts[1];
-                        }
-                    }
-
-                    // Вставляем валидную часть
                     textBox1.Text = numericText;
                     textBox1.SelectionStart = textBox1.Text.Length;
 
-                    // Триггерим пересчет с проверкой
+                    // Пересчитываем суммы
                     CalculateTotalWithAdditionalExpenses();
                 }
             }

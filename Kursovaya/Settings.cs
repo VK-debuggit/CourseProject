@@ -55,7 +55,7 @@ namespace Kursovaya
             comboBox2.SelectedIndex = -1;
         }
 
-        // МЕТОД ДЛЯ ВОССТАНОВЛЕНИЯ БАЗЫ ДАННЫХ (НАДЕЖНАЯ ВЕРСИЯ)
+        // МЕТОД ДЛЯ ВОССТАНОВЛЕНИЯ БАЗЫ ДАННЫХ
         private void RestoreDatabaseFromSqlFile()
         {
             try
@@ -191,10 +191,7 @@ namespace Kursovaya
                     }
 
                     // Формируем сообщение о результате
-                    string resultMessage = $"Восстановление базы данных '{databaseName}' завершено!\n\n" +
-                                           $"✅ Выполнено команд: {executedCount}\n" +
-                                           $"❌ Ошибок: {errorCount}\n" +
-                                           $"📊 Создано таблиц: {successfulTables.Count}\n\n";
+                    string resultMessage = $"Восстановление базы данных завершено!";
 
                     if (successfulTables.Count > 0)
                     {

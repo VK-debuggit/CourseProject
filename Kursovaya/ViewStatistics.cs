@@ -16,9 +16,22 @@ namespace Kursovaya
     {
         string conString = $"host={Properties.Settings.Default.host};uid={Properties.Settings.Default.uid};pwd={Properties.Settings.Default.pwd};database={Properties.Settings.Default.database};";
 
-        public ViewStatistics()
+        // Параметры фильтрации
+        private DateTime _startDate;
+        private DateTime _endDate;
+        private string _selectedEmployee;
+        private List<string> _selectedStatuses;
+        private string _searchOrderNumber;
+
+        public ViewStatistics(DateTime startDate, DateTime endDate, string selectedEmployee, List<string> selectedStatuses, string searchOrderNumber)
         {
             InitializeComponent();
+
+            _startDate = startDate;
+            _endDate = endDate;
+            _selectedEmployee = selectedEmployee;
+            _selectedStatuses = selectedStatuses;
+            _searchOrderNumber = searchOrderNumber;
 
             button3.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
 
@@ -37,11 +50,52 @@ namespace Kursovaya
             label1.Text = formattedname;
             label2.Text = Properties.Settings.Default.userRole;
 
-            // Загружаем все диаграммы
+            // Загружаем все диаграммы с учетом фильтров
             LoadTopPopularDishes();
             LoadTopUnpopularDishes();
             LoadPopularEvent();
             LoadMonthlyProfit();
+        }
+
+        // Вспомогательный метод для построения WHERE условий
+        private string BuildFilterConditions()
+        {
+            List<string> conditions = new List<string>();
+
+            // Фильтр по датам
+            string startDateStr = _startDate.ToString("yyyy-MM-dd");
+            string endDateStr = _endDate.ToString("yyyy-MM-dd");
+            conditions.Add($"(o.DateEvent >= '{startDateStr}' AND o.DateEvent <= '{endDateStr}')");
+
+            // Фильтр по сотруднику
+            if (!string.IsNullOrEmpty(_selectedEmployee) && _selectedEmployee != "Все сотрудники")
+            {
+                conditions.Add($"w.FullName = '{_selectedEmployee.Replace("'", "''")}'");
+            }
+
+            // Фильтр по статусам
+            if (_selectedStatuses != null && _selectedStatuses.Count > 0)
+            {
+                List<string> statusConditions = new List<string>();
+                foreach (string status in _selectedStatuses)
+                {
+                    statusConditions.Add($"s.Status = '{status.Replace("'", "''")}'");
+                }
+                conditions.Add("(" + string.Join(" OR ", statusConditions) + ")");
+            }
+
+            // ФИЛЬТР ПО НОМЕРУ ЗАКАЗА - ДОБАВИТЬ!
+            if (!string.IsNullOrEmpty(_searchOrderNumber))
+            {
+                conditions.Add($"o.NumberOrder LIKE '{_searchOrderNumber}%'");
+            }
+
+            if (conditions.Count > 0)
+            {
+                return " AND " + string.Join(" AND ", conditions);
+            }
+
+            return "";
         }
 
         // ========== ДИАГРАММА 1: ТОП-5 САМЫХ ПОПУЛЯРНЫХ БЛЮД (КРУГОВАЯ) ==========
@@ -49,15 +103,21 @@ namespace Kursovaya
         {
             try
             {
-                string query = @"
-                    SELECT 
-                        d.Name,
-                        SUM(od.Count) as TotalQuantity
-                    FROM CafeActivities.OrderComposition od
-                    JOIN CafeActivities.Dishes d ON od.IdDish = d.Article
-                    GROUP BY d.Article, d.Name
-                    ORDER BY TotalQuantity DESC
-                    LIMIT 5";
+                string filterConditions = BuildFilterConditions();
+
+                string query = $@"
+            SELECT 
+                d.Name,
+                SUM(od.Count) as TotalQuantity
+            FROM CafeActivities.OrderComposition od
+            JOIN CafeActivities.Orders o ON od.IdOrder = o.NumberOrder
+            JOIN CafeActivities.Dishes d ON od.IdDish = d.Article
+            LEFT JOIN CafeActivities.Users w ON o.IdUser = w.IDuser
+            LEFT JOIN CafeActivities.Status s ON o.IdStatus = s.IDstatus
+            WHERE 1=1 {filterConditions}
+            GROUP BY d.Article, d.Name
+            ORDER BY TotalQuantity DESC
+            LIMIT 5";
 
                 DataTable data = new DataTable();
                 using (MySqlConnection con = new MySqlConnection(conString))
@@ -70,7 +130,7 @@ namespace Kursovaya
                     }
                 }
 
-                // Настройка диаграммы
+                // Остальной код настройки диаграммы без изменений...
                 Chart chartPopular = new Chart();
                 chartPopular.Size = new Size(450, 380);
                 chartPopular.Location = new Point(30, 40);
@@ -102,7 +162,6 @@ namespace Kursovaya
                 chartPopular.Titles.Add("Топ-5 самых популярных блюд");
                 chartPopular.Titles[0].Font = new Font("Arial", 12, FontStyle.Bold);
 
-                // Настройка легенды
                 chartPopular.Legends.Clear();
                 Legend legendPopular = new Legend("Legend1");
                 legendPopular.Docking = Docking.Right;
@@ -112,7 +171,6 @@ namespace Kursovaya
                 legendPopular.Font = new Font("Arial", 9);
                 chartPopular.Legends.Add(legendPopular);
 
-                // Добавляем на форму
                 this.Controls.Add(chartPopular);
             }
             catch (Exception ex)
@@ -127,15 +185,21 @@ namespace Kursovaya
         {
             try
             {
-                string query = @"
-                    SELECT 
-                        d.Name,
-                        SUM(od.Count) as TotalQuantity
-                    FROM CafeActivities.OrderComposition od
-                    JOIN CafeActivities.Dishes d ON od.IdDish = d.Article
-                    GROUP BY d.Article, d.Name
-                    ORDER BY TotalQuantity ASC
-                    LIMIT 5";
+                string filterConditions = BuildFilterConditions();
+
+                string query = $@"
+            SELECT 
+                d.Name,
+                SUM(od.Count) as TotalQuantity
+            FROM CafeActivities.OrderComposition od
+            JOIN CafeActivities.Orders o ON od.IdOrder = o.NumberOrder
+            JOIN CafeActivities.Dishes d ON od.IdDish = d.Article
+            LEFT JOIN CafeActivities.Users w ON o.IdUser = w.IDuser
+            LEFT JOIN CafeActivities.Status s ON o.IdStatus = s.IDstatus
+            WHERE 1=1 {filterConditions}
+            GROUP BY d.Article, d.Name
+            ORDER BY TotalQuantity ASC
+            LIMIT 5";
 
                 DataTable data = new DataTable();
                 using (MySqlConnection con = new MySqlConnection(conString))
@@ -205,14 +269,19 @@ namespace Kursovaya
         {
             try
             {
-                string query = @"
-                    SELECT 
-                        e.Event,
-                        COUNT(o.NumberOrder) as OrdersCount
-                    FROM CafeActivities.Orders o
-                    JOIN CafeActivities.Events e ON o.IdEvent = e.IDevent
-                    GROUP BY e.IDevent, e.Event
-                    ORDER BY OrdersCount DESC";
+                string filterConditions = BuildFilterConditions();
+
+                string query = $@"
+            SELECT 
+                e.Event,
+                COUNT(o.NumberOrder) as OrdersCount
+            FROM CafeActivities.Orders o
+            JOIN CafeActivities.Events e ON o.IdEvent = e.IDevent
+            LEFT JOIN CafeActivities.Users w ON o.IdUser = w.IDuser
+            LEFT JOIN CafeActivities.Status s ON o.IdStatus = s.IDstatus
+            WHERE 1=1 {filterConditions}
+            GROUP BY e.IDevent, e.Event
+            ORDER BY OrdersCount DESC";
 
                 DataTable data = new DataTable();
                 using (MySqlConnection con = new MySqlConnection(conString))
@@ -282,24 +351,27 @@ namespace Kursovaya
         {
             try
             {
-                string query = @"
-                SET lc_time_names = 'ru_RU';
+                string filterConditions = BuildFilterConditions();
+
+                string query = $@"
+            SET lc_time_names = 'ru_RU';
             
-                SELECT 
-                    DATE_FORMAT(o.DateOfConclusion, '%Y-%m') as Month,
-                    DATE_FORMAT(o.DateOfConclusion, '%M %Y') as MonthName,
-                    SUM(
-                        CASE 
-                            WHEN s.Status = 'Принят' THEN o.Prepayment
-                            WHEN s.Status = 'Оплачен' THEN o.PriceAll
-                            ELSE 0
-                        END
-                    ) as TotalProfit
-                FROM CafeActivities.Orders o
-                JOIN CafeActivities.Status s ON o.IdStatus = s.IDstatus
-                WHERE o.DateOfConclusion >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
-                GROUP BY DATE_FORMAT(o.DateOfConclusion, '%Y-%m'), DATE_FORMAT(o.DateOfConclusion, '%M %Y')
-                ORDER BY DATE_FORMAT(o.DateOfConclusion, '%Y-%m') ASC";
+            SELECT 
+                DATE_FORMAT(o.DateOfConclusion, '%Y-%m') as Month,
+                DATE_FORMAT(o.DateOfConclusion, '%M %Y') as MonthName,
+                SUM(
+                    CASE 
+                        WHEN s.Status = 'Принят' THEN o.Prepayment
+                        WHEN s.Status = 'Оплачен' THEN o.PriceAll
+                        ELSE 0
+                    END
+                ) as TotalProfit
+            FROM CafeActivities.Orders o
+            JOIN CafeActivities.Status s ON o.IdStatus = s.IDstatus
+            LEFT JOIN CafeActivities.Users w ON o.IdUser = w.IDuser
+            WHERE o.DateOfConclusion >= DATE_SUB(NOW(), INTERVAL 12 MONTH) {filterConditions}
+            GROUP BY DATE_FORMAT(o.DateOfConclusion, '%Y-%m'), DATE_FORMAT(o.DateOfConclusion, '%M %Y')
+            ORDER BY DATE_FORMAT(o.DateOfConclusion, '%Y-%m') ASC";
 
                 DataTable data = new DataTable();
                 using (MySqlConnection con = new MySqlConnection(conString))
@@ -312,7 +384,7 @@ namespace Kursovaya
                     }
                 }
 
-                // Настройка диаграммы
+                // Остальной код без изменений...
                 Chart chartProfit = new Chart();
                 chartProfit.Size = new Size(500, 380);
                 chartProfit.Location = new Point(500, 420);
@@ -320,8 +392,8 @@ namespace Kursovaya
 
                 Series series = new Series("Прибыль");
                 series.ChartType = SeriesChartType.Column;
-                series.Label = "#VAL";  // Только число
-                series.ToolTip = "#VALX: #VAL";  // В подсказке показываем с рублями
+                series.Label = "#VAL";
+                series.ToolTip = "#VALX: #VAL";
                 series.IsValueShownAsLabel = true;
 
                 if (data.Rows.Count > 0)
@@ -338,7 +410,6 @@ namespace Kursovaya
                     series.Points.AddXY("Нет данных", 0);
                 }
 
-                // Настройка осей
                 chartProfit.ChartAreas[0].AxisY.Title = "Прибыль (руб.)";
                 chartProfit.ChartAreas[0].AxisY.TitleFont = new Font("Arial", 10, FontStyle.Bold);
                 chartProfit.ChartAreas[0].AxisX.LabelStyle.Angle = 0;
@@ -347,10 +418,9 @@ namespace Kursovaya
 
                 chartProfit.Series.Add(series);
                 chartProfit.Titles.Clear();
-                chartProfit.Titles.Add("Прибыль по месяцам (за последние 12 месяцев)");
+                chartProfit.Titles.Add("Прибыль по месяцам");
                 chartProfit.Titles[0].Font = new Font("Arial", 12, FontStyle.Bold);
 
-                // Добавляем легенду для столбчатой диаграммы
                 chartProfit.Legends.Clear();
                 Legend legendProfit = new Legend("Legend1");
                 legendProfit.Docking = Docking.Top;
@@ -358,7 +428,6 @@ namespace Kursovaya
                 legendProfit.Font = new Font("Arial", 9);
                 chartProfit.Legends.Add(legendProfit);
 
-                // Добавляем на форму
                 this.Controls.Add(chartProfit);
             }
             catch (Exception ex)

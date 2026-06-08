@@ -266,9 +266,9 @@ namespace Kursovaya
             // dataGridView1
             // 
             this.dataGridView1.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
-            this.dataGridView1.AutoSizeRowsMode = System.Windows.Forms.DataGridViewAutoSizeRowsMode.AllHeaders;
+            this.dataGridView1.AutoSizeRowsMode = System.Windows.Forms.DataGridViewAutoSizeRowsMode.AllCells;
             this.dataGridView1.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            this.dataGridView1.Location = new System.Drawing.Point(24, 362);
+            this.dataGridView1.Location = new System.Drawing.Point(12, 362);
             this.dataGridView1.Name = "dataGridView1";
             this.dataGridView1.RowHeadersWidth = 51;
             this.dataGridView1.RowTemplate.Height = 24;
@@ -280,14 +280,14 @@ namespace Kursovaya
             // dataGridView2
             // 
             this.dataGridView2.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
-            this.dataGridView2.AutoSizeRowsMode = System.Windows.Forms.DataGridViewAutoSizeRowsMode.AllCells;
+            this.dataGridView2.AutoSizeRowsMode = System.Windows.Forms.DataGridViewAutoSizeRowsMode.DisplayedHeaders;
             this.dataGridView2.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            this.dataGridView2.Location = new System.Drawing.Point(571, 362);
+            this.dataGridView2.Location = new System.Drawing.Point(559, 362);
             this.dataGridView2.Name = "dataGridView2";
             this.dataGridView2.RowHeadersWidth = 51;
             this.dataGridView2.RowTemplate.Height = 24;
             this.dataGridView2.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.dataGridView2.Size = new System.Drawing.Size(505, 165);
+            this.dataGridView2.Size = new System.Drawing.Size(517, 165);
             this.dataGridView2.TabIndex = 24;
             this.dataGridView2.CellClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.dataGridView2_CellClick);
             // 
@@ -305,9 +305,9 @@ namespace Kursovaya
             this.label17.AutoSize = true;
             this.label17.Location = new System.Drawing.Point(763, 530);
             this.label17.Name = "label17";
-            this.label17.Size = new System.Drawing.Size(72, 28);
+            this.label17.Size = new System.Drawing.Size(42, 28);
             this.label17.TabIndex = 26;
-            this.label17.Text = "0,00 ₽";
+            this.label17.Text = "0 ₽";
             // 
             // label18
             // 
