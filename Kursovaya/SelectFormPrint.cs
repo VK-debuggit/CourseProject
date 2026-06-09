@@ -114,8 +114,28 @@ namespace Kursovaya
 
                 this.Close();
             }
+        }
 
-            //GoToMakingAnOrder(); // Оставляем вызов
+        // Получение базовой папки CafeManagement
+        private static string GetCafeManagementPath()
+        {
+            string documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            string cafePath = Path.Combine(documentsPath, "CafeManagement");
+
+            if (!Directory.Exists(cafePath))
+            {
+                Directory.CreateDirectory(cafePath);
+            }
+
+            return cafePath;
+        }
+
+        // Получение папки для документов
+        private static string GetDocumentsPath()
+        {
+            string docsPath = Path.Combine(GetCafeManagementPath(), "Documents");
+            if (!Directory.Exists(docsPath)) Directory.CreateDirectory(docsPath);
+            return docsPath;
         }
 
         private void button1_Click(object sender, EventArgs e)
@@ -143,34 +163,7 @@ namespace Kursovaya
 
                 this.Close();
             }
-
-            //GoToMakingAnOrder(); // Оставляем вызов
         }
-
-        //private void GoToMakingAnOrder()
-        //{
-        //    _isClosingProgrammatically = true;
-
-        //    if (_shouldOpenMakingAnOrder)
-        //    {
-        //        // ПЕРВИЧНЫЙ ДОКУМЕНТ: закрываем всё и открываем MakingAnOrder
-        //        MakingAnOrder makingAnOrder = new MakingAnOrder();
-        //        makingAnOrder.Show();
-
-        //        this.Close();
-        //        if (_previousForm != null && !_previousForm.IsDisposed)
-        //        {
-        //            _previousForm.Close();
-        //        }
-        //    }
-        //    else
-        //    {
-        //        // ОКОНЧАТЕЛЬНЫЙ ДОКУМЕНТ: закрываем только форму печати
-        //        // НЕ закрываем и НЕ показываем предыдущую форму, она уже открыта
-        //        this.Close();
-        //        // Убираем _previousForm.Show() - форма и так должна быть видна
-        //    }
-        //}
 
         // ========== ГЕНЕРАЦИЯ PDF С АВТОСОХРАНЕНИЕМ ==========
 
@@ -179,17 +172,17 @@ namespace Kursovaya
         {
             try
             {
-                // Создаем стандартную папку для отчетов
+                // Получаем папку для документов
                 string documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-                string reportsFolder = Path.Combine(documentsPath, "CafeOrderReports");
+                string docsFolder = Path.Combine(documentsPath, "CafeManagement", "Documents");
 
-                if (!Directory.Exists(reportsFolder))
+                if (!Directory.Exists(docsFolder))
                 {
-                    Directory.CreateDirectory(reportsFolder);
+                    Directory.CreateDirectory(docsFolder);
                 }
 
                 string fileName = $"Предварительный_документ_заказ_{_orderData.NumberOrder}_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
-                string filePath = Path.Combine(reportsFolder, fileName);
+                string filePath = Path.Combine(docsFolder, fileName);
 
                 decimal totalAmount = CalculateTotalAmount(_cartItems);
                 (decimal discountAmount, decimal discountPercent, decimal prepayment) = CalculateDiscountValues(totalAmount);
@@ -218,16 +211,17 @@ namespace Kursovaya
         {
             try
             {
+                // Получаем папку для документов
                 string documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-                string reportsFolder = Path.Combine(documentsPath, "CafeOrderReports");
+                string docsFolder = Path.Combine(documentsPath, "CafeManagement", "Documents");
 
-                if (!Directory.Exists(reportsFolder))
+                if (!Directory.Exists(docsFolder))
                 {
-                    Directory.CreateDirectory(reportsFolder);
+                    Directory.CreateDirectory(docsFolder);
                 }
 
                 string fileName = $"Итоговый_документ_заказ_{_orderData.NumberOrder}_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
-                string filePath = Path.Combine(reportsFolder, fileName);
+                string filePath = Path.Combine(docsFolder, fileName);
 
                 decimal totalAmount = _orderData.TotalAmount + _additionalExpenses;
                 decimal discountAmount = _orderData.DiscountAmount;
@@ -266,6 +260,7 @@ namespace Kursovaya
                 using (XGraphics gfx = XGraphics.FromPdfPage(page))
                 {
                     XFont titleFont = new XFont("Arial", 18, XFontStyle.Bold);
+                    XFont cancelledFont = new XFont("Arial", 16, XFontStyle.Bold);
                     XFont subtitleFont = new XFont("Arial", 14, XFontStyle.Bold);
                     XFont regularFont = new XFont("Arial", 10, XFontStyle.Regular);
                     XFont boldFont = new XFont("Arial", 10, XFontStyle.Bold);
@@ -278,10 +273,27 @@ namespace Kursovaya
                     float rightColumnX = pageWidth - 200;
                     float rowHeight = 22;
 
-                    // Заголовок
-                    gfx.DrawString("БЛАНК ЗАКАЗА", titleFont, XBrushes.Black,
-                        new XRect(0, yPosition, pageWidth, 30), XStringFormats.TopCenter);
+                    // ========== ЗАГОЛОВОК ==========
+                    // Если заказ отменен - сначала рисуем красную надпись "ЗАКАЗ ОТМЕНЕН"
+                    if (!string.IsNullOrEmpty(_orderData.Status) && _orderData.Status == "Отменен")
+                    {
+                        string cancelledText = "ЗАКАЗ ОТМЕНЕН";
+                        XSize cancelledSize = gfx.MeasureString(cancelledText, cancelledFont);
+                        float cancelledX = (float)((pageWidth - cancelledSize.Width) / 2);
+
+                        gfx.DrawString(cancelledText, cancelledFont, XBrushes.Red,
+                            new XRect(cancelledX, yPosition, cancelledSize.Width, 30), XStringFormats.TopLeft);
+                        yPosition += 35;
+                    }
+
+                    // Затем рисуем "БЛАНК ЗАКАЗА" по центру
+                    string titleText = "БЛАНК ЗАКАЗА";
+                    XSize titleSize = gfx.MeasureString(titleText, titleFont);
+                    float titleX = (float)((pageWidth - titleSize.Width) / 2);
+                    gfx.DrawString(titleText, titleFont, XBrushes.Black,
+                        new XRect(titleX, yPosition, titleSize.Width, 30), XStringFormats.TopLeft);
                     yPosition += 40;
+                    // =================================
 
                     // ========== ДВУХКОЛОНОЧНАЯ ШАПКА ==========
 
@@ -352,7 +364,7 @@ namespace Kursovaya
                         new XRect(rightColumnX, yPosition, 55, rowHeight), XStringFormats.TopLeft);
                     gfx.DrawString(_orderData.Time, regularFont, XBrushes.Black,
                         new XRect(rightColumnX + 55, yPosition, 140, rowHeight), XStringFormats.TopLeft);
-                    yPosition += rowHeight + 20; // Отступ перед "Состав заказа"
+                    yPosition += rowHeight + 20;
 
                     // Заголовок "СОСТАВ ЗАКАЗА"
                     XSize headerSize = gfx.MeasureString("СОСТАВ ЗАКАЗА", subtitleFont);
@@ -404,7 +416,7 @@ namespace Kursovaya
 
                     yPosition += 20;
 
-                    // ========== РАЗДЕЛИТЕЛЬНАЯ ЛИНИЯ ПЕРЕД СЛУЖЕБНОЙ ИНФОРМАЦИЕЙ ==========
+                    // ========== РАЗДЕЛИТЕЛЬНАЯ ЛИНИЯ ==========
                     XPen linePen = new XPen(XColors.LightGray, 0.5);
                     gfx.DrawLine(linePen, 50, yPosition, pageWidth - 50, yPosition);
                     yPosition += 15;
@@ -916,6 +928,7 @@ namespace Kursovaya
             }
         }
 
+        // ИСПРАВЛЕННЫЙ МЕТОД - Предварительный документ (без автосохранения)
         private void GeneratePreliminaryWordTicket()
         {
             Microsoft.Office.Interop.Word.Application wordApp = null;
@@ -941,7 +954,7 @@ namespace Kursovaya
                 (decimal discountAmount, decimal discountPercent, decimal prepayment) = CalculateDiscountValues(totalAmount);
                 decimal finalAmount = totalAmount - discountAmount;
 
-                // 1. Глобальная замена
+                // Заполнение документа
                 ReplaceTextInDocument(doc, "{NumberOrder}", _orderData.NumberOrder.ToString());
                 ReplaceTextInDocument(doc, "{DateOrder}", _orderData.DateOrder);
                 ReplaceTextInDocument(doc, "{NameClient}", _orderData.NameClient);
@@ -955,31 +968,33 @@ namespace Kursovaya
                 ReplaceTextInDocument(doc, "{Prepayment}", prepayment.ToString("C2"));
                 ReplaceTextInDocument(doc, "{Discount}", discountPercent.ToString("F0"));
 
-                // 2. Заменяем таблицу 2 (состав заказа)
                 ReplaceTable2WithOrderItems(doc, wordApp, _cartItems);
 
-                // 3. НАХОДИМ ТАБЛИЦУ С ИТОГАМИ и заменяем плейсхолдеры
                 Microsoft.Office.Interop.Word.Table totalsTable = FindTableByText(doc, "ИТОГ");
                 if (totalsTable != null)
                 {
                     Microsoft.Office.Interop.Word.Range tableRange = totalsTable.Range;
-                    // Исправлены имена плейсхолдеров
                     ReplaceTextInRange(tableRange, "{CountOrder}", totalAmount.ToString("C2"));
                     ReplaceTextInRange(tableRange, "{DiscountAmoust}", discountAmount.ToString("C2"));
                     ReplaceTextInRange(tableRange, "{CountOrderAmoust}", finalAmount.ToString("C2"));
                     ReplaceTextInRange(tableRange, "{Prepayment}", prepayment.ToString("C2"));
-                    ReplaceTextInRange(tableRange, "{Discount}", discountPercent.ToString("F0")); 
-
-                    // Делаем итоговую сумму жирной
+                    ReplaceTextInRange(tableRange, "{Discount}", discountPercent.ToString("F0"));
                     MakeBoldInTable(totalsTable, finalAmount.ToString("C2"));
                 }
 
-                // 4. Добавляем служебную информацию
                 AddServiceInfoToPreliminaryWord(doc);
 
-                doc.Save();
-                MessageBox.Show("Предварительный документ заказа создан.", "Успех",
-                              MessageBoxButtons.OK, MessageBoxIcon.Information);
+                // НЕ СОХРАНЯЕМ АВТОМАТИЧЕСКИ! Просто показываем документ пользователю
+                // Пользователь сам решит, сохранять его или нет
+                // doc.Save() - УБИРАЕМ
+                // doc.SaveAs2 - НЕ ИСПОЛЬЗУЕМ
+
+                MessageBox.Show("Предварительный документ заказа создан.\n\n" +
+                               "После просмотра документа вы можете сохранить его в нужное место.\n" +
+                               "Закройте документ Word для продолжения работы.",
+                               "Успех",
+                               MessageBoxButtons.OK,
+                               MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
@@ -1018,6 +1033,19 @@ namespace Kursovaya
                 doc = wordApp.Documents.Open(templatePath, ReadOnly: false);
                 doc.Activate();
 
+                // ========== ДОБАВЛЯЕМ НАДПИСЬ "ЗАКАЗ ОТМЕНЕН" ПЕРЕД ЗАГОЛОВКОМ ==========
+                if (_orderData.Status == "Отменен")
+                {
+                    // Вставляем текст в начало документа перед существующим заголовком
+                    Microsoft.Office.Interop.Word.Range startRange = doc.Range(0, 0);
+                    startRange.Text = "ЗАКАЗ ОТМЕНЕН\n";
+                    startRange.Font.Bold = 1;
+                    startRange.Font.Size = 22;
+                    startRange.Font.Color = Microsoft.Office.Interop.Word.WdColor.wdColorRed;
+                    startRange.ParagraphFormat.Alignment = Microsoft.Office.Interop.Word.WdParagraphAlignment.wdAlignParagraphCenter;
+                }
+                // ====================================================
+
                 decimal totalAmount = _orderData.TotalAmount + _additionalExpenses;
                 decimal discountAmount = _orderData.DiscountAmount;
                 decimal finalAmount = (_orderData.FinalAmount > 0 ? _orderData.FinalAmount : _orderData.TotalAmount - discountAmount) + _additionalExpenses;
@@ -1037,7 +1065,7 @@ namespace Kursovaya
                 ReplaceTextInDocument(doc, "{CountOrderAmount}", finalAmount.ToString("C2"));
                 ReplaceTextInDocument(doc, "{Prepayment}", prepayment.ToString("C2"));
                 ReplaceTextInDocument(doc, "{AddExpenses}", _additionalExpenses.ToString("C2"));
-                ReplaceTextInDocument(doc, "{Discount}", discountPercent.ToString("F0")); 
+                ReplaceTextInDocument(doc, "{Discount}", discountPercent.ToString("F0"));
 
                 // 2. Заменяем таблицу 2
                 ReplaceTable2WithOrderItems(doc, wordApp, _cartItems);
@@ -1060,9 +1088,12 @@ namespace Kursovaya
                 // 4. Служебная информация
                 AddServiceInfoToFinalWord(doc, _orderData.NameUser ?? "Не указан");
 
-                doc.Save();
-                MessageBox.Show("Окончательный документ заказа создан.", "Успех",
-                              MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("Окончательный документ заказа создан.\n\n" +
+                               "После просмотра документа вы можете сохранить его в нужное место.\n" +
+                               "Закройте документ Word для продолжения работы.",
+                               "Успех",
+                               MessageBoxButtons.OK,
+                               MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {

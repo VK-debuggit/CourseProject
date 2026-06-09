@@ -324,7 +324,7 @@ namespace Kursovaya
             // 
             this.label11.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.label11.AutoSize = true;
-            this.label11.Location = new System.Drawing.Point(617, 384);
+            this.label11.Location = new System.Drawing.Point(646, 384);
             this.label11.Name = "label11";
             this.label11.Size = new System.Drawing.Size(99, 28);
             this.label11.TabIndex = 22;
@@ -334,7 +334,7 @@ namespace Kursovaya
             // 
             this.label12.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.label12.AutoSize = true;
-            this.label12.Location = new System.Drawing.Point(711, 384);
+            this.label12.Location = new System.Drawing.Point(740, 384);
             this.label12.Name = "label12";
             this.label12.Size = new System.Drawing.Size(76, 28);
             this.label12.TabIndex = 23;

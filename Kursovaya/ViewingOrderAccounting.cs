@@ -724,45 +724,46 @@ namespace Kursovaya
                 );
 
                 string status = row["IdStatus"].ToString();
+
+                // ========== ИСПРАВЛЕНИЕ ТУТ ==========
+                // Используем Convert.ToInt32 для правильного преобразования типов
                 int priceAll = 0;
                 int prepayment = 0;
 
                 if (row["PriceAll"] != null && row["PriceAll"] != DBNull.Value)
-                    int.TryParse(row["PriceAll"].ToString(), out priceAll);
+                    priceAll = Convert.ToInt32(row["PriceAll"]);
+                else
+                    priceAll = 0;
 
                 if (row["Prepayment"] != null && row["Prepayment"] != DBNull.Value)
-                    int.TryParse(row["Prepayment"].ToString(), out prepayment);
+                    prepayment = Convert.ToInt32(row["Prepayment"]);
+                else
+                    prepayment = 0;
+                // ====================================
 
-                // Форматирование строки
                 DataGridViewRow dataGridRow = dataGridView1.Rows[rowIndex];
 
                 switch (status)
                 {
                     case "Принят":
-                        // Желтый фон для всей строки
                         foreach (DataGridViewCell cell in dataGridRow.Cells)
                         {
                             cell.Style.BackColor = Color.FromArgb(255, 255, 102);
                         }
-                        // Подсчет выручки: прибавляем предоплату
                         totalSum += prepayment;
                         break;
                     case "Оплачен":
-                        // Зеленый фон для всей строки
                         foreach (DataGridViewCell cell in dataGridRow.Cells)
                         {
                             cell.Style.BackColor = Color.FromArgb(170, 255, 170);
                         }
-                        // Подсчет выручки: прибавляем полную стоимость
                         totalSum += priceAll;
                         break;
                     case "Отменен":
-                        // Красный фон для всей строки
                         foreach (DataGridViewCell cell in dataGridRow.Cells)
                         {
                             cell.Style.BackColor = Color.FromArgb(255, 182, 182);
                         }
-                        // Подсчет выручки: прибавляем предоплату (даже если заказ отменен)
                         totalSum += prepayment;
                         break;
                 }
@@ -1046,7 +1047,7 @@ namespace Kursovaya
                 periodRange.Font.Size = 11;
                 periodRange.Font.Italic = true;
 
-                int headerRow = 5; // Строка с заголовками столбцов
+                int headerRow = 5;
 
                 // Заполняем заголовки столбцов
                 for (int i = 0; i < dataGridView1.Columns.Count; i++)
@@ -1074,7 +1075,6 @@ namespace Kursovaya
                             {
                                 object cellValue = dataGridRow.Cells[column.Name].Value?.ToString() ?? "";
 
-                                // Для номера телефона получаем полный номер из базы
                                 if (column.Name == "NumberPhoneClient")
                                 {
                                     if (fullDataTable != null && dataGridRowIndex < fullDataTable.Rows.Count)
@@ -1098,7 +1098,7 @@ namespace Kursovaya
                 {
                     if (dataGridView1.Columns[i].HeaderText == "Статус" && dataGridView1.Columns[i].Visible)
                     {
-                        statusColumnIndex = i + 1; // +1 потому что Excel индексируется с 1
+                        statusColumnIndex = i + 1;
                         break;
                     }
                 }
@@ -1152,7 +1152,6 @@ namespace Kursovaya
                 Microsoft.Office.Interop.Excel.Range allDataRange = dataWorksheet.UsedRange;
                 allDataRange.Columns.AutoFit();
 
-                // Ограничиваем максимальную ширину столбцов
                 foreach (Microsoft.Office.Interop.Excel.Range column in allDataRange.Columns)
                 {
                     if (column.ColumnWidth > 30)
@@ -1176,9 +1175,9 @@ namespace Kursovaya
                 statsPeriodRange.Font.Size = 11;
                 statsPeriodRange.Font.Italic = true;
 
-                int statsRow = 4; // Начальная строка для статистики
+                int statsRow = 4;
 
-                // Рассчитываем статистику
+                // ========== ИСПРАВЛЕННЫЙ РАСЧЕТ СТАТИСТИКИ ==========
                 int totalOrders = 0;
                 int acceptedOrders = 0;
                 int paidOrders = 0;
@@ -1198,30 +1197,33 @@ namespace Kursovaya
 
                         // Получаем значения
                         if (row.Cells["Prepayment"].Value != null && decimal.TryParse(row.Cells["Prepayment"].Value.ToString(), out prepayment))
+                        {
                             totalPrepayment += prepayment;
+                        }
 
                         if (row.Cells["PriceAll"].Value != null && decimal.TryParse(row.Cells["PriceAll"].Value.ToString(), out priceAll))
-                            totalRevenue += priceAll;
+                        {
+                            // Не добавляем сразу, будем добавлять по статусу
+                        }
 
                         switch (status)
                         {
                             case "Принят":
                                 acceptedOrders++;
-                                // Для принятых: выручка = предоплата
-                                totalRevenue += prepayment;
+                                totalRevenue += prepayment;  // Только предоплата
                                 break;
                             case "Оплачен":
                                 paidOrders++;
-                                // Для оплаченных: выручка = полная стоимость
+                                totalRevenue += priceAll;    // Полная стоимость
                                 break;
                             case "Отменен":
                                 cancelledOrders++;
-                                // Для отмененных: выручка = предоплата
-                                totalRevenue += prepayment;
+                                totalRevenue += prepayment; // Только предоплата
                                 break;
                         }
                     }
                 }
+                // =================================================
 
                 // Общая статистика
                 statsWorksheet.Cells[statsRow, 1] = "ОБЩАЯ СТАТИСТИКА:";
@@ -1254,13 +1256,11 @@ namespace Kursovaya
 
                 statsWorksheet.Cells[statsRow, 1] = "Общая выручка:";
                 statsWorksheet.Cells[statsRow, 1].Font.Bold = true;
-                statsWorksheet.Cells[statsRow, 2] = totalRevenue.ToString("C2");
-                statsWorksheet.Cells[statsRow, 2].NumberFormat = "#,##0.00 ₽";
+                statsWorksheet.Cells[statsRow, 2] = totalRevenue.ToString("N2") + " ₽";
                 statsRow++;
 
                 statsWorksheet.Cells[statsRow, 1] = "Сумма предоплат:";
-                statsWorksheet.Cells[statsRow, 2] = totalPrepayment.ToString("C2");
-                statsWorksheet.Cells[statsRow, 2].NumberFormat = "#,##0.00 ₽";
+                statsWorksheet.Cells[statsRow, 2] = totalPrepayment.ToString("N2") + " ₽";
                 statsRow += 2;
 
                 // Информация об отчете
@@ -1294,7 +1294,6 @@ namespace Kursovaya
             }
             finally
             {
-                // Освобождаем COM-объекты
                 if (workbook != null)
                 {
                     System.Runtime.InteropServices.Marshal.ReleaseComObject(workbook);

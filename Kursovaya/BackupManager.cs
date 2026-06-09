@@ -40,20 +40,13 @@ namespace Kursovaya
             return englishTableName;
         }
 
-        // Новый метод для получения пути к папке Backups на уровне Resources
-        private static string GetBackupsBasePath()
+        public static string GetBackupsBasePath()
         {
             try
             {
-                // Получаем путь к папке с исполняемым файлом (.exe)
-                string exePath = Application.StartupPath;
-
-                // Поднимаемся на уровень выше из папки bin/Debug или bin/Release
-                // Application.StartupPath обычно указывает на: .../Kursovaya/bin/Debug/
-                string projectRoot = Directory.GetParent(exePath).Parent.Parent.FullName;
-
-                // Создаем папку Backups на одном уровне с Resources
-                string backupsPath = Path.Combine(projectRoot, "Backups");
+                // Используем папку Документы пользователя (всегда есть права на запись)
+                string documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+                string backupsPath = Path.Combine(documentsPath, "CafeManagement", "Backups");
 
                 // Создаем папку если не существует
                 if (!Directory.Exists(backupsPath))
@@ -65,17 +58,44 @@ namespace Kursovaya
             }
             catch (Exception ex)
             {
-                // Если не удалось получить путь к проекту, используем папку в документах
-                LogBackupOperation($"Ошибка получения пути к проекту: {ex.Message}. Использую папку в документах.");
-                string documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-                string fallbackPath = Path.Combine(documentsPath, "CafeManagement", "Backups");
+                // Если не удалось, используем временную папку
+                string tempPath = Path.GetTempPath();
+                string fallbackPath = Path.Combine(tempPath, "CafeManagement", "Backups");
 
                 if (!Directory.Exists(fallbackPath))
                 {
                     Directory.CreateDirectory(fallbackPath);
                 }
 
+                LogBackupOperation($"Использую временную папку для бэкапов: {fallbackPath}");
                 return fallbackPath;
+            }
+        }
+
+        // Новый метод для ручного бэкапа в выбранную папку
+        public static bool CreateManualBackupToFolder(string backupFolderPath)
+        {
+            try
+            {
+                // Создаем папку
+                if (!Directory.Exists(backupFolderPath))
+                {
+                    Directory.CreateDirectory(backupFolderPath);
+                }
+
+                // Создаем CSV файлы
+                SaveDatabaseToCsv(backupFolderPath);
+
+                // Создаем SQL файл
+                SaveDatabaseToSql(backupFolderPath);
+
+                LogBackupOperation($"Ручная резервная копия создана: {backupFolderPath}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                LogBackupOperation($"Ошибка при создании ручной резервной копии: {ex.Message}");
+                return false;
             }
         }
 

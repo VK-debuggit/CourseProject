@@ -28,6 +28,7 @@ namespace Kursovaya
             button1.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button2.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button3.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
+            button4.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button5.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button6.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             textBox1.BackColor = System.Drawing.Color.FromArgb(255, 221, 153);
@@ -369,6 +370,7 @@ namespace Kursovaya
         }
 
         // Автоматическое формирование пути при выборе таблицы для экспорта
+        // Автоматическое формирование пути при выборе таблицы для экспорта
         private void ComboBox2_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (comboBox2.SelectedItem != null)
@@ -377,7 +379,13 @@ namespace Kursovaya
                 string tableName = GetEnglishTableName(russianTableName);
 
                 string defaultFileName = $"Export_{tableName}_{DateTime.Now:yyyyMMdd_HHmmss}.csv";
-                string exportFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "CafeExport");
+
+                // Используем ту же папку, что и для бэкапов - CafeManagement
+                string exportFolder = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                    "CafeManagement",
+                    "Exports"
+                );
 
                 if (!Directory.Exists(exportFolder))
                 {
@@ -389,75 +397,87 @@ namespace Kursovaya
             }
         }
 
-        // Получение списка всех таблиц из БД
+        // Получение списка всех таблиц (прописаны все таблицы вручную + проверка подключения)
         void SelectAllTablesFromDB()
         {
             try
             {
-                string query = @"
-                                SELECT table_name 
-                                FROM information_schema.tables 
-                                WHERE table_schema = @databaseName 
-                                  AND table_type = 'BASE TABLE'
-                                ORDER BY table_name";
-
-                using (MySqlConnection con = new MySqlConnection(conString))
-                using (MySqlCommand cmd = new MySqlCommand(query, con))
+                // Основной список всех таблиц
+                List<string> allTables = new List<string>
                 {
-                    cmd.Parameters.AddWithValue("@databaseName", Properties.Settings.Default.database);
-                    con.Open();
+                    "Roles",
+                    "Users",
+                    "Categories",
+                    "Events",
+                    "Schedule",
+                    "Status",
+                    "Clients",
+                    "Dishes",
+                    "Orders",
+                    "OrderComposition"
+                };
 
-                    comboBox1.Items.Clear();
-                    comboBox2.Items.Clear();
+                // Фильтруем таблицы в зависимости от пользователя
+                List<string> filteredTables = new List<string>();
 
-                    List<string> allTables = new List<string>();
-
-                    using (MySqlDataReader rdr = cmd.ExecuteReader())
+                // Проверяем, если пользователь "По умолчанию"
+                if (label1.Text == "По умолчанию")
+                {
+                    // Только таблица Roles (Роли)
+                    if (allTables.Contains("Roles"))
                     {
-                        while (rdr.Read())
-                        {
-                            string englishName = rdr["table_name"].ToString();
-                            allTables.Add(englishName);
-                        }
+                        filteredTables.Add("Roles");
                     }
-
-                    // Фильтруем таблицы в зависимости от пользователя
-                    List<string> filteredTables = new List<string>();
-
-                    // Проверяем, если пользователь "По умолчанию"
-                    if (label1.Text == "По умолчанию")
-                    {
-                        // Только таблица Roles (Роли)
-                        if (allTables.Contains("Roles"))
-                        {
-                            filteredTables.Add("Roles");
-                        }
-                    }
-                    else
-                    {
-                        // Все таблицы, кроме Roles
-                        filteredTables = allTables.Where(t => t != "Roles").ToList();
-                    }
-
-                    // Добавляем в комбобоксы с русскими названиями
-                    foreach (string englishName in filteredTables)
-                    {
-                        string russianName = GetRussianTableName(englishName);
-                        comboBox1.Items.Add(russianName);
-                        comboBox2.Items.Add(russianName);
-                    }
-
-                    if (comboBox1.Items.Count > 0)
-                        comboBox1.SelectedIndex = -1;
-                    if (comboBox2.Items.Count > 0)
-                        comboBox2.SelectedIndex = -1;
                 }
+                else
+                {
+                    // Все таблицы, кроме Roles
+                    filteredTables = allTables.Where(t => t != "Roles").ToList();
+                }
+
+                // Очищаем комбобоксы
+                comboBox1.Items.Clear();
+                comboBox2.Items.Clear();
+
+                // Добавляем в комбобоксы с русскими названиями
+                foreach (string englishName in filteredTables)
+                {
+                    string russianName = GetRussianTableName(englishName);
+                    comboBox1.Items.Add(russianName);
+                    comboBox2.Items.Add(russianName);
+                }
+
+                if (comboBox1.Items.Count > 0)
+                    comboBox1.SelectedIndex = -1;
+                if (comboBox2.Items.Count > 0)
+                    comboBox2.SelectedIndex = -1;
             }
             catch (Exception ex)
             {
+                // В случае ошибки - резервный хардкод
                 comboBox1.Items.Clear();
                 comboBox2.Items.Clear();
-                System.Diagnostics.Debug.WriteLine($"Ошибка получения списка таблиц: {ex.Message}");
+
+                if (label1.Text == "По умолчанию")
+                {
+                    comboBox1.Items.Add("Роли");
+                    comboBox2.Items.Add("Роли");
+                }
+                else
+                {
+                    string[] defaultTables = {
+                "Пользователи", "Категории", "Мероприятия",
+                "Расписание", "Статусы", "Клиенты",
+                "Блюда", "Заказы", "Состав заказа"
+            };
+                    comboBox1.Items.AddRange(defaultTables);
+                    comboBox2.Items.AddRange(defaultTables);
+                }
+
+                comboBox1.SelectedIndex = -1;
+                comboBox2.SelectedIndex = -1;
+
+                System.Diagnostics.Debug.WriteLine($"Ошибка: {ex.Message}");
             }
         }
 
@@ -602,6 +622,7 @@ namespace Kursovaya
         }
 
         // Парсинг CSV строки с учетом кавычек
+        // Парсинг CSV строки с учетом кавычек (разделитель ";")
         private string[] ParseCSVLine(string line)
         {
             List<string> result = new List<string>();
@@ -921,6 +942,7 @@ namespace Kursovaya
         }
 
         // Кнопка для выполнения экспорта
+        // Кнопка для выполнения экспорта
         private void button5_Click(object sender, EventArgs e)
         {
             if (comboBox2.SelectedItem == null)
@@ -975,15 +997,15 @@ namespace Kursovaya
                     Directory.CreateDirectory(directory);
                 }
 
-                // Записываем в CSV
+                // Записываем в CSV с разделителем ";" и кодировкой UTF-8
                 using (StreamWriter writer = new StreamWriter(filePathForExport, false, Encoding.UTF8))
                 {
-                    // Записываем заголовки
+                    // Записываем заголовки (с разделителем ";")
                     for (int i = 0; i < dataTable.Columns.Count; i++)
                     {
                         writer.Write(dataTable.Columns[i].ColumnName);
                         if (i < dataTable.Columns.Count - 1)
-                            writer.Write(",");
+                            writer.Write(";");  // ← Разделитель ";"
                     }
                     writer.WriteLine();
 
@@ -996,15 +1018,15 @@ namespace Kursovaya
                             object value = row[colIndex];
                             string strValue = (value == DBNull.Value) ? "" : value.ToString();
 
-                            // Экранируем специальные символы
-                            if (strValue.Contains(",") || strValue.Contains("\"") || strValue.Contains("\n"))
+                            // Экранируем специальные символы (теперь разделитель ";")
+                            if (strValue.Contains(";") || strValue.Contains("\"") || strValue.Contains("\n"))
                             {
                                 strValue = "\"" + strValue.Replace("\"", "\"\"") + "\"";
                             }
 
                             writer.Write(strValue);
                             if (colIndex < dataTable.Columns.Count - 1)
-                                writer.Write(",");
+                                writer.Write(";");  // ← Разделитель ";"
                         }
                         writer.WriteLine();
                     }
@@ -1230,8 +1252,72 @@ namespace Kursovaya
                 label5.Visible = false;
                 comboBox2.Visible = false;
                 textBox1.Visible = false;
+                button4.Visible = false;
                 button5.Visible = false;
                 Height = 372;
+                label3.Location = new Point(label3.Location.X, label3.Location.Y - 54);
+                comboBox1.Location = new Point(comboBox1.Location.X, comboBox1.Location.Y - 54);
+                label6.Location = new Point(label6.Location.X, label6.Location.Y - 54);
+                textBox2.Location = new Point(textBox2.Location.X, textBox2.Location.Y - 54);
+                button2.Location = new Point(button2.Location.X, button2.Location.Y - 54);
+                button3.Location = new Point(button3.Location.X, button3.Location.Y - 54);
+
+                // Принудительно устанавливаем таблицу для пользователя "По умолчанию"
+                comboBox1.Items.Clear();
+                comboBox1.Items.Add("Роли");
+                comboBox1.SelectedIndex = -1;
+            }
+        }
+
+        private void button4_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                // Проверяем, есть ли доступ к базе данных
+                using (MySqlConnection testCon = new MySqlConnection(conString))
+                {
+                    testCon.Open();
+                    testCon.Close();
+                }
+
+                // Используем стандартную папку для бэкапов
+                string backupBasePath = BackupManager.GetBackupsBasePath();
+                string timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
+                string backupFolder = Path.Combine(backupBasePath, $"Manual_Backup_{timestamp}");
+
+                // Создаем бэкап
+                bool success = BackupManager.CreateManualBackupToFolder(backupFolder);
+
+                if (success)
+                {
+                    MessageBox.Show(
+                        $"Резервная копия успешно создана!\n\n" +
+                        $"Папка с бэкапом: {backupFolder}\n\n" +
+                        $"Содержит:\n" +
+                        $"- backup.sql (структура и данные БД)\n" +
+                        $"- CSV-файлы всех таблиц (с русскими названиями)",
+                        "Успех",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information
+                    );
+                }
+                else
+                {
+                    MessageBox.Show(
+                        "Ошибка при создании резервной копии.\n" +
+                        "Проверьте подключение к базе данных.",
+                        "Ошибка",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка подключения к базе данных: {ex.Message}",
+                               "Ошибка",
+                               MessageBoxButtons.OK,
+                               MessageBoxIcon.Error);
             }
         }
     }
