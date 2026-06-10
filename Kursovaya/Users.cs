@@ -1081,7 +1081,7 @@ namespace Kursovaya
             // Получаем доступный список языков и устанавливаем нужный
             foreach (InputLanguage lang in InputLanguage.InstalledInputLanguages)
             {
-                // Ищем русский язык
+                // Ищем английский язык
                 if (lang.Culture.TwoLetterISOLanguageName == "en")
                 {
                     InputLanguage.CurrentInputLanguage = lang;
@@ -1095,7 +1095,7 @@ namespace Kursovaya
             // Получаем доступный список языков и устанавливаем нужный
             foreach (InputLanguage lang in InputLanguage.InstalledInputLanguages)
             {
-                // Ищем русский язык
+                // Ищем английский язык
                 if (lang.Culture.TwoLetterISOLanguageName == "en")
                 {
                     InputLanguage.CurrentInputLanguage = lang;

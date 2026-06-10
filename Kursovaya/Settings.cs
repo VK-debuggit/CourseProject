@@ -87,19 +87,6 @@ namespace Kursovaya
                     return;
                 }
 
-                // Подтверждение операции
-                DialogResult confirmResult = MessageBox.Show(
-                    $"ВНИМАНИЕ! Это действие восстановит базу данных '{databaseName}' из файла.\n\n" +
-                    "Если база данных уже существует, она будет УДАЛЕНА и создана заново.\n" +
-                    "Все существующие данные в этой базе будут потеряны без возможности восстановления.\n\n" +
-                    "Вы уверены, что хотите продолжить?",
-                    "Подтверждение восстановления БД",
-                    MessageBoxButtons.YesNo,
-                    MessageBoxIcon.Warning);
-
-                if (confirmResult != DialogResult.Yes)
-                    return;
-
                 Cursor = Cursors.WaitCursor;
 
                 // Создаем подключение к серверу MySQL (без указания базы данных)
@@ -193,11 +180,6 @@ namespace Kursovaya
 
                     // Формируем сообщение о результате
                     string resultMessage = $"Восстановление базы данных завершено!";
-
-                    if (successfulTables.Count > 0)
-                    {
-                        resultMessage += $"Созданные таблицы:\n{string.Join(", ", successfulTables)}\n\n";
-                    }
 
                     if (errorMessages.Count > 0)
                     {
@@ -750,17 +732,6 @@ namespace Kursovaya
                 return;
             }
 
-            // Подтверждение операции
-            DialogResult result = MessageBox.Show($"ВНИМАНИЕ! Импорт в таблицу '{tableName}'.\n\n" +
-                                                  "Все данные в таблице будут УДАЛЕНЫ и заменены данными из CSV.\n" +
-                                                  "ID записей будут сохранены такие же, как в CSV файле.\n\n" +
-                                                  "Вы уверены, что хотите продолжить?",
-                                                  "Подтверждение полной замены данных",
-                                                  MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-
-            if (result != DialogResult.Yes)
-                return;
-
             try
             {
                 Cursor = Cursors.WaitCursor;
@@ -899,9 +870,8 @@ namespace Kursovaya
 
                         transaction.Commit();
 
-                        MessageBox.Show($"Импорт таблицы '{tableName}' успешно завершен!\n\n" +
+                        MessageBox.Show($"Импорт таблицы успешно завершен!\n" +
                                        $"Добавлено записей: {insertedCount}\n" +
-                                       $"Все ID сохранены из CSV файла.\n\n" +
                                        $"Таблица полностью заменена данными из CSV.",
                                        "Результат импорта", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
@@ -941,7 +911,6 @@ namespace Kursovaya
             return $"INSERT INTO `{tableName}` ({columnsList}) VALUES ({parametersList})";
         }
 
-        // Кнопка для выполнения экспорта
         // Кнопка для выполнения экспорта
         private void button5_Click(object sender, EventArgs e)
         {
@@ -1005,7 +974,7 @@ namespace Kursovaya
                     {
                         writer.Write(dataTable.Columns[i].ColumnName);
                         if (i < dataTable.Columns.Count - 1)
-                            writer.Write(";");  // ← Разделитель ";"
+                            writer.Write(";");
                     }
                     writer.WriteLine();
 
@@ -1016,23 +985,37 @@ namespace Kursovaya
                         for (int colIndex = 0; colIndex < dataTable.Columns.Count; colIndex++)
                         {
                             object value = row[colIndex];
-                            string strValue = (value == DBNull.Value) ? "" : value.ToString();
+                            string strValue = "";
 
-                            // Экранируем специальные символы (теперь разделитель ";")
-                            if (strValue.Contains(";") || strValue.Contains("\"") || strValue.Contains("\n"))
+                            if (value == DBNull.Value)
+                            {
+                                strValue = "";
+                            }
+                            else if (value is DateTime dateValue)
+                            {
+                                // ФОРМАТИРУЕМ ДАТУ В ПРАВИЛЬНЫЙ ФОРМАТ
+                                strValue = dateValue.ToString("yyyy-MM-dd");
+                            }
+                            else
+                            {
+                                strValue = value.ToString();
+                            }
+
+                            // Экранируем специальные символы (разделитель ";")
+                            if (strValue.Contains(";") || strValue.Contains("\"") || strValue.Contains("\n") || strValue.Contains("\r"))
                             {
                                 strValue = "\"" + strValue.Replace("\"", "\"\"") + "\"";
                             }
 
                             writer.Write(strValue);
                             if (colIndex < dataTable.Columns.Count - 1)
-                                writer.Write(";");  // ← Разделитель ";"
+                                writer.Write(";");
                         }
                         writer.WriteLine();
                     }
                 }
 
-                MessageBox.Show($"Экспорт таблицы '{tableName}' успешно завершен!\n\n" +
+                MessageBox.Show($"Экспорт таблицы успешно завершен!\n" +
                                $"Сохранено записей: {dataTable.Rows.Count}\n" +
                                $"Файл сохранен: {filePathForExport}",
                                "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -1106,20 +1089,6 @@ namespace Kursovaya
 
                     // Имя базы данных из настроек
                     string databaseName = Properties.Settings.Default.database;
-
-                    // Подтверждение операции
-                    DialogResult confirmResult = MessageBox.Show(
-                        $"ВНИМАНИЕ! Это действие восстановит базу данных '{databaseName}' из файла:\n\n" +
-                        $"{sqlFilePath}\n\n" +
-                        "Если база данных уже существует, она будет УДАЛЕНА и создана заново.\n" +
-                        "Все существующие данные в этой базе будут потеряны без возможности восстановления.\n\n" +
-                        "Вы уверены, что хотите продолжить?",
-                        "Подтверждение полного восстановления БД",
-                        MessageBoxButtons.YesNo,
-                        MessageBoxIcon.Warning);
-
-                    if (confirmResult != DialogResult.Yes)
-                        return;
 
                     Cursor = Cursors.WaitCursor;
 
@@ -1197,15 +1166,9 @@ namespace Kursovaya
                             cmd.ExecuteNonQuery();
 
                         // Формируем сообщение о результате
-                        string resultMessage = $"Восстановление базы данных '{databaseName}' завершено!\n\n" +
-                                               $"Выполнено команд: {executedCount}\n" +
+                        string resultMessage = $"Восстановление базы данных завершено!\n" +
                                                $"Ошибок: {errorCount}\n" +
-                                               $"Создано таблиц: {successfulTables.Count}\n\n";
-
-                        if (successfulTables.Count > 0)
-                        {
-                            resultMessage += $"Созданные таблицы:\n{string.Join(", ", successfulTables)}\n\n";
-                        }
+                                               $"Создано таблиц: {successfulTables.Count}\n";
 
                         if (errorMessages.Count > 0)
                         {
@@ -1291,11 +1254,11 @@ namespace Kursovaya
                 if (success)
                 {
                     MessageBox.Show(
-                        $"Резервная копия успешно создана!\n\n" +
+                        $"Резервная копия успешно создана!\n" +
                         $"Папка с бэкапом: {backupFolder}\n\n" +
                         $"Содержит:\n" +
-                        $"- backup.sql (структура и данные БД)\n" +
-                        $"- CSV-файлы всех таблиц (с русскими названиями)",
+                        $"- backup.sql\n" +
+                        $"- CSV-файлы всех таблиц",
                         "Успех",
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Information

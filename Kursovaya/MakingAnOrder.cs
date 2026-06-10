@@ -1316,7 +1316,16 @@ namespace Kursovaya
 
         private void textBox1_Enter(object sender, EventArgs e)
         {
-
+            // Получаем доступный список языков и устанавливаем нужный
+            foreach (InputLanguage lang in InputLanguage.InstalledInputLanguages)
+            {
+                // Ищем русский язык
+                if (lang.Culture.TwoLetterISOLanguageName == "ru")
+                {
+                    InputLanguage.CurrentInputLanguage = lang;
+                    break;
+                }
+            }
         }
     }
 }

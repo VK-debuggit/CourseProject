@@ -209,14 +209,38 @@ namespace Kursovaya
 
                     using (StreamWriter writer = new StreamWriter(filePath, false, new UTF8Encoding(true)))
                     {
+                        // Записываем заголовки
                         writer.WriteLine(string.Join(";",
                             table.Columns.Cast<DataColumn>()
                                 .Select(col => EscapeCsvValue(col.ColumnName))));
 
+                        // Записываем данные
                         foreach (DataRow row in table.Rows)
                         {
-                            writer.WriteLine(string.Join(";",
-                                row.ItemArray.Select(cell => EscapeCsvValue(cell?.ToString() ?? ""))));
+                            List<string> values = new List<string>();
+
+                            foreach (var item in row.ItemArray)
+                            {
+                                string stringValue = item?.ToString() ?? "";
+
+                                // ========== ФОРМАТИРОВАНИЕ ДАТ ==========
+                                if (item is DateTime dateValue)
+                                {
+                                    // Для дат используем формат YYYY-MM-DD (без времени)
+                                    stringValue = dateValue.ToString("yyyy-MM-dd");
+                                }
+                                else if (item is DateTime?)
+                                {
+                                    DateTime? nullableDate = (DateTime?)item;
+                                    if (nullableDate.HasValue)
+                                        stringValue = nullableDate.Value.ToString("yyyy-MM-dd");
+                                }
+                                // =======================================
+
+                                values.Add(EscapeCsvValue(stringValue));
+                            }
+
+                            writer.WriteLine(string.Join(";", values));
                         }
                     }
                 }
@@ -270,8 +294,8 @@ namespace Kursovaya
                         {
                             while (reader.Read())
                             {
-                                List<string> columnValues = new List<string>();
                                 List<string> columnNames = new List<string>();
+                                List<string> columnValues = new List<string>();
 
                                 for (int i = 0; i < reader.FieldCount; i++)
                                 {
@@ -286,18 +310,32 @@ namespace Kursovaya
                                     }
                                     else
                                     {
-                                        string value = reader.GetValue(i).ToString();
+                                        object value = reader.GetValue(i);
+                                        string stringValue = value.ToString();
 
-                                        // ПРОВЕРЯЕМ ТИП ДАННЫХ - если это decimal, заменяем запятую на точку
-                                        Type valueType = reader.GetValue(i).GetType();
-                                        if (valueType == typeof(decimal) || valueType == typeof(float) || valueType == typeof(double))
+                                        // ========== ОСНОВНОЕ ИСПРАВЛЕНИЕ: ФОРМАТИРОВАНИЕ ДАТ ==========
+                                        Type valueType = value.GetType();
+
+                                        if (valueType == typeof(DateTime))
                                         {
-                                            // Заменяем запятую на точку для десятичных чисел
-                                            value = value.Replace(',', '.');
+                                            // Для дат используем формат YYYY-MM-DD (без времени)
+                                            DateTime dateValue = (DateTime)value;
+                                            stringValue = dateValue.ToString("yyyy-MM-dd");
                                         }
+                                        else if (valueType == typeof(DateTime?))
+                                        {
+                                            DateTime? dateValue = (DateTime?)value;
+                                            if (dateValue.HasValue)
+                                                stringValue = dateValue.Value.ToString("yyyy-MM-dd");
+                                        }
+                                        else if (valueType == typeof(decimal) || valueType == typeof(float) || valueType == typeof(double))
+                                        {
+                                            stringValue = stringValue.Replace(',', '.');
+                                        }
+                                        // ========================================================
 
-                                        value = MySqlHelper.EscapeString(value);
-                                        columnValues.Add($"'{value}'");
+                                        stringValue = MySqlHelper.EscapeString(stringValue);
+                                        columnValues.Add($"'{stringValue}'");
                                     }
                                 }
 

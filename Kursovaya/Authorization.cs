@@ -478,8 +478,6 @@ namespace Kursovaya
                 // Проверяем капчу
                 if (textBox3.Text != currentCaptcha)
                 {
-                    MessageBox.Show("Неверный код с картинки!", "Ошибка капчи",
-                                  MessageBoxButtons.OK, MessageBoxIcon.Error);
                     StartBlocking(); // БЛОКИРУЕМ
                     return;
                 }

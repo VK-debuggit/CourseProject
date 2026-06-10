@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS `Categories` (
   `IDcategory` int NOT NULL AUTO_INCREMENT,
   `Category` varchar(50) NOT NULL,
   PRIMARY KEY (`IDcategory`)
-) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Экспортируемые данные не выделены.
 
@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS `Clients` (
   `Name` varchar(50) NOT NULL,
   `NumberPhone` varchar(16) NOT NULL,
   PRIMARY KEY (`IDclient`)
-) ENGINE=InnoDB AUTO_INCREMENT=44 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=42 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Экспортируемые данные не выделены.
 
@@ -45,8 +45,8 @@ CREATE TABLE IF NOT EXISTS `Dishes` (
   `IdCategory` int NOT NULL,
   `Name` varchar(100) NOT NULL,
   `Compound` text NOT NULL,
-  `Weight` decimal(7,2) NOT NULL,
-  `Price` decimal(10,2) NOT NULL,
+  `Weight` int NOT NULL,
+  `Price` int NOT NULL,
   `Photo` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`Article`),
   KEY `IdEvent` (`IdEvent`),
@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS `Events` (
   `IDevent` int NOT NULL AUTO_INCREMENT,
   `Event` varchar(50) NOT NULL,
   PRIMARY KEY (`IDevent`)
-) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Экспортируемые данные не выделены.
 
@@ -90,10 +90,10 @@ CREATE TABLE IF NOT EXISTS `Orders` (
   `IdStatus` int NOT NULL,
   `IdEvent` int NOT NULL,
   `IdUser` int NOT NULL,
-  `Price` decimal(10,2) NOT NULL,
-  `DiscountAmount` decimal(7,2) DEFAULT NULL,
-  `PriceAll` decimal(10,2) NOT NULL,
-  `Prepayment` decimal(10,2) DEFAULT NULL,
+  `Price` int NOT NULL,
+  `DiscountAmount` int DEFAULT NULL,
+  `PriceAll` int NOT NULL,
+  `Prepayment` int DEFAULT NULL,
   PRIMARY KEY (`NumberOrder`),
   KEY `IdClient` (`IdClient`),
   KEY `IdSchedule` (`IdSchedule`),
@@ -114,7 +114,7 @@ CREATE TABLE IF NOT EXISTS `Roles` (
   `IDrole` int NOT NULL AUTO_INCREMENT,
   `Role` varchar(50) NOT NULL,
   PRIMARY KEY (`IDrole`)
-) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Экспортируемые данные не выделены.
 
@@ -133,7 +133,7 @@ CREATE TABLE IF NOT EXISTS `Status` (
   `IDstatus` int NOT NULL AUTO_INCREMENT,
   `Status` varchar(50) NOT NULL,
   PRIMARY KEY (`IDstatus`)
-) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Экспортируемые данные не выделены.
 
@@ -147,7 +147,7 @@ CREATE TABLE IF NOT EXISTS `Users` (
   PRIMARY KEY (`IDuser`),
   KEY `IdRole` (`IdRole`),
   CONSTRAINT `users_ibfk_1` FOREIGN KEY (`IdRole`) REFERENCES `Roles` (`IDrole`)
-) ENGINE=InnoDB AUTO_INCREMENT=24 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Экспортируемые данные не выделены.
 

@@ -103,7 +103,7 @@ namespace Kursovaya
             // button4
             // 
             this.button4.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.button4.Location = new System.Drawing.Point(12, 216);
+            this.button4.Location = new System.Drawing.Point(12, 266);
             this.button4.Name = "button4";
             this.button4.Size = new System.Drawing.Size(231, 44);
             this.button4.TabIndex = 9;
@@ -114,7 +114,7 @@ namespace Kursovaya
             // button6
             // 
             this.button6.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.button6.Location = new System.Drawing.Point(12, 266);
+            this.button6.Location = new System.Drawing.Point(12, 216);
             this.button6.Name = "button6";
             this.button6.Size = new System.Drawing.Size(231, 44);
             this.button6.TabIndex = 11;
