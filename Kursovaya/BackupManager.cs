@@ -44,9 +44,9 @@ namespace Kursovaya
         {
             try
             {
-                // Используем папку Документы пользователя (всегда есть права на запись)
-                string documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-                string backupsPath = Path.Combine(documentsPath, "CafeManagement", "Backups");
+                // Используем папку, где находится EXE-файл (папка с программой)
+                string exeDirectory = Path.GetDirectoryName(Application.ExecutablePath);
+                string backupsPath = Path.Combine(exeDirectory, "CafeManagement", "Backups");
 
                 // Создаем папку если не существует
                 if (!Directory.Exists(backupsPath))

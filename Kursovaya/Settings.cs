@@ -352,7 +352,6 @@ namespace Kursovaya
         }
 
         // Автоматическое формирование пути при выборе таблицы для экспорта
-        // Автоматическое формирование пути при выборе таблицы для экспорта
         private void ComboBox2_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (comboBox2.SelectedItem != null)
@@ -362,12 +361,9 @@ namespace Kursovaya
 
                 string defaultFileName = $"Export_{tableName}_{DateTime.Now:yyyyMMdd_HHmmss}.csv";
 
-                // Используем ту же папку, что и для бэкапов - CafeManagement
-                string exportFolder = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-                    "CafeManagement",
-                    "Exports"
-                );
+                // Используем папку в директории программы
+                string exeDirectory = Path.GetDirectoryName(Application.ExecutablePath);
+                string exportFolder = Path.Combine(exeDirectory, "CafeManagement", "Exports");
 
                 if (!Directory.Exists(exportFolder))
                 {

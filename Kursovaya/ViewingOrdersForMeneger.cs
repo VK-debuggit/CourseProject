@@ -45,6 +45,8 @@ namespace Kursovaya
             searchTimer.Interval = 500;
             searchTimer.Tick += SearchTimer_Tick;
 
+            this.Shown += ViewingOrdersForMeneger_Shown;
+
             button1.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button2.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button3.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
@@ -62,6 +64,11 @@ namespace Kursovaya
             FillFilterUsers();
 
             LoadData();
+        }
+
+        private void ViewingOrdersForMeneger_Shown(object sender, EventArgs e)
+        {
+            Pagination();
         }
 
         // ========== МЕТОДЫ ДЛЯ СОХРАНЕНИЯ/ВОССТАНОВЛЕНИЯ СОСТОЯНИЯ ==========
@@ -156,42 +163,46 @@ namespace Kursovaya
 
         void Pagination()
         {
-            // Удаляем старые элементы пагинации
-            for (int j = 0, count = this.Controls.Count; j < count; ++j)
+            // удаляем старые элементы пагинации
+            for (int j = this.Controls.Count - 1; j >= 0; j--)
             {
                 if (this.Controls[j].Name.StartsWith("page") ||
                     this.Controls[j].Name == "btnPrev" ||
                     this.Controls[j].Name == "btnNext")
                 {
                     this.Controls.RemoveAt(j);
-                    j--;
-                    count--;
                 }
             }
 
-            // Вычисляем количество страниц
+            // вычисляем количество страниц
             totalPages = dataGridView1.Rows.Count / 20;
             if (Convert.ToBoolean(dataGridView1.Rows.Count % 20)) totalPages += 1;
             if (totalPages == 0) totalPages = 1;
 
-            // Позиционируем пагинацию под DataGridView
-            int yPosition = dataGridView1.Bottom + 10;
+            // ВАЖНО: Используем явное вычисление позиции, а не dataGridView1.Bottom
+            int yPosition = dataGridView1.Location.Y + dataGridView1.Height + 10;
             int leftMargin = 13;
 
-            // Кнопка "Назад"
+            // Дополнительная проверка: если yPosition слишком мал, используем запасной вариант
+            if (yPosition <= dataGridView1.Location.Y + 10)
+            {
+                yPosition = dataGridView1.Location.Y + dataGridView1.Height + 10;
+            }
+
+            // кнопка "Назад"
             Button btnPrev = new Button();
             btnPrev.Name = "btnPrev";
             btnPrev.Text = "◀";
             btnPrev.Font = new Font("Microsoft Sans Serif", 8, FontStyle.Bold);
             btnPrev.Size = new Size(30, 25);
             btnPrev.Location = new Point(leftMargin, yPosition);
-            btnPrev.Click += new EventHandler(BtnPrev_Click);
+            btnPrev.Click += BtnPrev_Click;
             btnPrev.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             btnPrev.FlatStyle = FlatStyle.Flat;
             btnPrev.FlatAppearance.BorderSize = 0;
             this.Controls.Add(btnPrev);
 
-            // Ссылки на страницы
+            // ссылки на страницы
             int x = leftMargin + 35;
             int step = 20;
 
@@ -199,12 +210,12 @@ namespace Kursovaya
             {
                 int pageNumber = i + 1;
                 LinkLabel link = new LinkLabel();
-                link.Text = Convert.ToString(pageNumber);
+                link.Text = pageNumber.ToString();
                 link.Font = new Font("Microsoft Sans Serif", 14, FontStyle.Regular);
                 link.Name = "page" + pageNumber;
                 link.AutoSize = true;
                 link.Location = new Point(x, yPosition);
-                link.Click += new EventHandler(LinkLabel_Click);
+                link.Click += LinkLabel_Click;
                 link.BackColor = Color.Transparent;
 
                 if (pageNumber == currentPage)
@@ -223,19 +234,20 @@ namespace Kursovaya
                 x += step;
             }
 
-            // Кнопка "Вперед"
+            // кнопка "Вперед"
             Button btnNext = new Button();
             btnNext.Name = "btnNext";
             btnNext.Text = "▶";
             btnNext.Font = new Font("Microsoft Sans Serif", 8, FontStyle.Bold);
             btnNext.Size = new Size(30, 25);
             btnNext.Location = new Point(x, yPosition);
-            btnNext.Click += new EventHandler(BtnNext_Click);
+            btnNext.Click += BtnNext_Click;
             btnNext.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             btnNext.FlatStyle = FlatStyle.Flat;
             btnNext.FlatAppearance.BorderSize = 0;
             this.Controls.Add(btnNext);
 
+            // показываем текущую страницу
             ShowPage(currentPage);
             UpdateNavigationButtons();
             UpdateRowCount();
@@ -263,9 +275,7 @@ namespace Kursovaya
             }
 
             UpdateRowCount();
-
-            // После смены страницы проверяем, есть ли выделенные строки
-            UpdateButtonState();
+            //UpdateButtonState();
         }
 
         private void UpdateButtonState()
@@ -279,7 +289,7 @@ namespace Kursovaya
             if (currentPage > 1)
             {
                 ShowPage(currentPage - 1);
-                Pagination();
+                Pagination(); // Пересоздаём пагинацию после смены страницы
             }
         }
 
@@ -288,7 +298,7 @@ namespace Kursovaya
             if (currentPage < totalPages)
             {
                 ShowPage(currentPage + 1);
-                Pagination();
+                Pagination(); // Пересоздаём пагинацию после смены страницы
             }
         }
 
@@ -298,7 +308,7 @@ namespace Kursovaya
             if (l != null && int.TryParse(l.Text, out int pageNumber))
             {
                 ShowPage(pageNumber);
-                Pagination();
+                Pagination(); // Пересоздаём пагинацию после смены страницы
             }
         }
 
@@ -519,10 +529,11 @@ namespace Kursovaya
 
                 DisplayDataInDataGridView(dataTable);
                 currentPage = 1;
-                Pagination();
 
                 // После загрузки новых данных кнопка недоступна
                 button2.Enabled = false;
+
+                Pagination();
             }
             catch (Exception ex)
             {
@@ -734,27 +745,27 @@ namespace Kursovaya
 
         private void UpdateRowCount()
         {
-            // Получаем общее количество строк после всех фильтров
-            int totalFilteredCount = dataGridView1.Rows.Count;
-
             // Подсчитываем видимые строки на текущей странице
             int visibleCount = 0;
             int startIndex = (currentPage - 1) * 20;
-            int endIndex = Math.Min(startIndex + 20, totalFilteredCount);
+            int endIndex = Math.Min(startIndex + 20, dataGridView1.Rows.Count);
 
             for (int i = startIndex; i < endIndex; i++)
             {
-                visibleCount++;
+                if (i < dataGridView1.Rows.Count && dataGridView1.Rows[i].Visible)
+                {
+                    visibleCount++;
+                }
             }
 
             // Обновляем label
-            if (totalFilteredCount == 0)
+            if (dataGridView1.Rows.Count == 0)
             {
                 label4.Text = "0 из 0";
             }
             else
             {
-                label4.Text = $"{visibleCount} из {totalFilteredCount}";
+                label4.Text = $"{visibleCount} из {dataGridView1.Rows.Count}";
             }
         }
 

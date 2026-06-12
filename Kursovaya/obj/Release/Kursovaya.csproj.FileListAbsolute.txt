@@ -132,3 +132,4 @@ C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\obj\Release\Kursovaya.g.
 C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\obj\Release\Kursovaya.SelectFormPrint.resources
 C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\obj\Release\Kursovaya.Settings.resources
 C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\obj\Release\Kursovaya.ViewStatistics.resources
+C:\Users\Виктория\Downloads\Kursovaya\Kursovaya\bin\Release\Resources\Роли.csv

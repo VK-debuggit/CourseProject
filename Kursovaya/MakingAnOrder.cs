@@ -157,7 +157,6 @@ namespace Kursovaya
             return monthNames[month];
         }
 
-        // НОВАЯ ВЕРСИЯ: Событие ValueChanged с логикой "анти-тык"
         private void dateTimePicker2_ValueChanged_AntiClick(object sender, EventArgs e)
         {
             DateTime selectedDate = dateTimePicker2.Value.Date;
@@ -181,7 +180,6 @@ namespace Kursovaya
             UpdateAvailableDatesLabel(selectedDate);
 
             // Сюда управление дойдет ТОЛЬКО если дата имеет доступные окошки
-            // Спокойно заполняем comboBox4 (пользователь увидит только доступное время)
             FillFilterShedule();
         }
 
@@ -1183,12 +1181,18 @@ namespace Kursovaya
 
         private void dataGridView2_CellClick(object sender, DataGridViewCellEventArgs e)
         {
-            if (e.RowIndex >= 0)
+            // Проверяем, что клик был по существующей строке, а не по заголовку или пустой области
+            if (e.RowIndex >= 0 && e.RowIndex < dataGridView2.Rows.Count)
             {
+                // Дополнительная проверка: строка не должна быть новой (пустой) строкой
+                if (dataGridView2.Rows[e.RowIndex].IsNewRow)
+                    return;
+
                 // Сбрасываем цвет ВСЕХ строк в корзине
                 foreach (DataGridViewRow row in dataGridView2.Rows)
                 {
-                    row.DefaultCellStyle.BackColor = Color.White;
+                    if (row.Cells.Count > 0) // Проверяем, что строка не повреждена
+                        row.DefaultCellStyle.BackColor = Color.White;
                 }
 
                 // Устанавливаем новую выделенную строку
@@ -1197,13 +1201,16 @@ namespace Kursovaya
                 // Выделяем новую строку цветом
                 dataGridView2.Rows[currentSelectedCartRow].DefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
 
-                // Получаем выбранную строку через DataTable
-                DataRow selectedRow = dataView2.Rows[e.RowIndex];
-                int quantity = Convert.ToInt32(selectedRow["Quantity"]);
+                // Получаем выбранную строку через DataTable (тоже с проверкой)
+                if (e.RowIndex < dataView2.Rows.Count)
+                {
+                    DataRow selectedRow = dataView2.Rows[e.RowIndex];
+                    int quantity = Convert.ToInt32(selectedRow["Quantity"]);
 
-                numericUpDown1.Value = quantity;
-                numericUpDown1.Enabled = true;
-                button3.Enabled = true;
+                    numericUpDown1.Value = quantity;
+                    numericUpDown1.Enabled = true;
+                    button3.Enabled = true;
+                }
             }
         }
 
@@ -1211,6 +1218,13 @@ namespace Kursovaya
         {
             if (currentSelectedCartRow >= 0 && currentSelectedCartRow < dataView2.Rows.Count)
             {
+                // Проверяем, что строка существует в dataGridView2
+                if (currentSelectedCartRow >= dataGridView2.Rows.Count)
+                {
+                    currentSelectedCartRow = -1;
+                    return;
+                }
+
                 DataRow selectedRow = dataView2.Rows[currentSelectedCartRow];
                 string article = selectedRow["Article"].ToString();
                 decimal price = Convert.ToDecimal(selectedRow["Price"]);
@@ -1222,7 +1236,7 @@ namespace Kursovaya
                     dataView2.Rows.Remove(selectedRow);
 
                     // Сбрасываем цвет удаленной строки
-                    if (currentSelectedCartRow < dataGridView2.Rows.Count)
+                    if (currentSelectedCartRow < dataGridView2.Rows.Count && dataGridView2.Rows[currentSelectedCartRow].Cells.Count > 0)
                     {
                         dataGridView2.Rows[currentSelectedCartRow].DefaultCellStyle.BackColor = Color.White;
                     }
@@ -1242,7 +1256,7 @@ namespace Kursovaya
                     selectedRow["Total"] = newQuantity * price;
 
                     // Обновляем отображение в DataGridView
-                    if (currentSelectedCartRow < dataGridView2.Rows.Count)
+                    if (currentSelectedCartRow < dataGridView2.Rows.Count && dataGridView2.Rows[currentSelectedCartRow].Cells.Count > 0)
                     {
                         dataGridView2.Rows[currentSelectedCartRow].Cells["Quantity"].Value = newQuantity;
                         dataGridView2.Rows[currentSelectedCartRow].Cells["Total"].Value = newQuantity * price;
@@ -1260,8 +1274,8 @@ namespace Kursovaya
         {
             if (currentSelectedCartRow >= 0 && currentSelectedCartRow < dataView2.Rows.Count)
             {
-                // Сбрасываем цвет перед удалением
-                if (currentSelectedCartRow < dataGridView2.Rows.Count)
+                // Проверяем, что строка существует в dataGridView2
+                if (currentSelectedCartRow < dataGridView2.Rows.Count && dataGridView2.Rows[currentSelectedCartRow].Cells.Count > 0)
                 {
                     dataGridView2.Rows[currentSelectedCartRow].DefaultCellStyle.BackColor = Color.White;
                 }

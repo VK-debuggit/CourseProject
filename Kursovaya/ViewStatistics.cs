@@ -23,6 +23,30 @@ namespace Kursovaya
         private List<string> _selectedStatuses;
         private string _searchOrderNumber;
 
+        // Ссылки на диаграммы для динамического изменения размера
+        private Chart _chartPopular;
+        private Chart _chartUnpopular;
+        private Chart _chartEvent;
+        private Chart _chartProfit;
+
+        // Отступы (в пикселях)
+        private const int MARGIN_TOP = 40;
+        private const int MARGIN_BOTTOM = 40;
+        private const int MARGIN_LEFT = 40;
+        private const int MARGIN_RIGHT = 40;
+        private const int GAP_BETWEEN = 30; // Расстояние между диаграммами
+
+        // Базовые размеры для расчета шрифтов
+        private const int BASE_WIDTH = 500;
+        private const int BASE_HEIGHT = 380;
+        private const float BASE_TITLE_FONT_SIZE = 14f;
+        private const float BASE_LEGEND_TITLE_FONT_SIZE = 12f;
+        private const float BASE_LEGEND_FONT_SIZE = 10f;
+        private const float BASE_SERIES_FONT_SIZE = 12f;
+        private const float BASE_AXIS_TITLE_FONT_SIZE = 14f;
+        private const float BASE_AXIS_LABEL_FONT_SIZE = 14f;
+        private const float BASE_PROFIT_TITLE_FONT_SIZE = 16f;
+
         public ViewStatistics(DateTime startDate, DateTime endDate, string selectedEmployee, List<string> selectedStatuses, string searchOrderNumber)
         {
             InitializeComponent();
@@ -53,11 +77,139 @@ namespace Kursovaya
             label1.Text = formattedname;
             label2.Text = Properties.Settings.Default.userRole;
 
+            // Подписываемся на событие изменения размера
+            this.Resize += ViewStatistics_Resize;
+
             // Загружаем все диаграммы с учетом фильтров
             LoadTopPopularDishes();
             LoadTopUnpopularDishes();
             LoadPopularEvent();
             LoadMonthlyProfit();
+        }
+
+        // Метод для вычисления коэффициента масштабирования шрифта
+        private float GetFontScaleFactor(Chart chart)
+        {
+            // Вычисляем коэффициент на основе размера диаграммы относительно базового
+            float widthScale = chart.Width / (float)BASE_WIDTH;
+            float heightScale = chart.Height / (float)BASE_HEIGHT;
+            // Берем минимальный коэффициент, чтобы шрифт не стал слишком большим
+            return Math.Min(widthScale, heightScale);
+        }
+
+        // Обновление шрифтов на диаграмме
+        private void UpdateChartFonts(Chart chart, float baseTitleSize, float baseLegendTitleSize,
+                                       float baseLegendSize, float baseSeriesSize,
+                                       float baseAxisTitleSize = 0, float baseAxisLabelSize = 0)
+        {
+            if (chart == null) return;
+
+            float scale = GetFontScaleFactor(chart);
+            scale = Math.Max(scale, 0.6f); // Минимум 60% от базового
+            scale = Math.Min(scale, 1.5f); // Максимум 150% от базового
+
+            // Обновляем заголовок
+            if (chart.Titles.Count > 0)
+            {
+                chart.Titles[0].Font = new Font("Arial", baseTitleSize * scale, FontStyle.Bold);
+            }
+
+            // Обновляем легенду
+            if (chart.Legends.Count > 0)
+            {
+                chart.Legends[0].TitleFont = new Font("Arial", baseLegendTitleSize * scale, FontStyle.Bold);
+                chart.Legends[0].Font = new Font("Arial", baseLegendSize * scale);
+            }
+
+            // Обновляем серии
+            foreach (var series in chart.Series)
+            {
+                series.Font = new Font("Arial", baseSeriesSize * scale);
+            }
+
+            // Обновляем оси (если есть)
+            if (chart.ChartAreas.Count > 0)
+            {
+                if (baseAxisTitleSize > 0 && chart.ChartAreas[0].AxisY.TitleFont != null)
+                {
+                    chart.ChartAreas[0].AxisY.TitleFont = new Font("Arial", baseAxisTitleSize * scale, FontStyle.Bold);
+                }
+                if (baseAxisLabelSize > 0 && chart.ChartAreas[0].AxisX.LabelStyle.Font != null)
+                {
+                    chart.ChartAreas[0].AxisX.LabelStyle.Font = new Font("Arial", baseAxisLabelSize * scale);
+                    chart.ChartAreas[0].AxisY.LabelStyle.Font = new Font("Arial", baseAxisLabelSize * scale);
+                }
+            }
+        }
+
+        // Обновление всех шрифтов на всех диаграммах
+        private void UpdateAllFonts()
+        {
+            // Популярные блюда (круговая диаграмма)
+            UpdateChartFonts(_chartPopular, BASE_TITLE_FONT_SIZE, BASE_LEGEND_TITLE_FONT_SIZE,
+                            BASE_LEGEND_FONT_SIZE, BASE_SERIES_FONT_SIZE);
+
+            // Непопулярные блюда (круговая диаграмма)
+            UpdateChartFonts(_chartUnpopular, BASE_TITLE_FONT_SIZE, BASE_LEGEND_TITLE_FONT_SIZE,
+                            BASE_LEGEND_FONT_SIZE, BASE_SERIES_FONT_SIZE);
+
+            // Мероприятия (круговая диаграмма)
+            UpdateChartFonts(_chartEvent, BASE_TITLE_FONT_SIZE, BASE_LEGEND_TITLE_FONT_SIZE,
+                            BASE_LEGEND_FONT_SIZE, BASE_SERIES_FONT_SIZE);
+
+            // Прибыль по месяцам (столбчатая диаграмма) - с осями
+            UpdateChartFonts(_chartProfit, BASE_PROFIT_TITLE_FONT_SIZE, BASE_LEGEND_TITLE_FONT_SIZE,
+                            BASE_LEGEND_FONT_SIZE, BASE_SERIES_FONT_SIZE,
+                            BASE_AXIS_TITLE_FONT_SIZE, BASE_AXIS_LABEL_FONT_SIZE);
+        }
+
+        // Обработчик изменения размера окна
+        private void ViewStatistics_Resize(object sender, EventArgs e)
+        {
+            UpdateChartsLayout();
+            UpdateAllFonts(); // Обновляем шрифты после изменения размера
+        }
+
+        // Метод для обновления расположения и размеров диаграмм
+        private void UpdateChartsLayout()
+        {
+            if (_chartPopular == null || _chartUnpopular == null ||
+                _chartEvent == null || _chartProfit == null) return;
+
+            // Вычисляем доступное пространство
+            int availableWidth = this.ClientSize.Width - MARGIN_LEFT - MARGIN_RIGHT;
+            int availableHeight = this.ClientSize.Height - MARGIN_TOP - MARGIN_BOTTOM;
+
+            // Ширина одной диаграммы (половина доступной ширины минус половина промежутка)
+            int chartWidth = (availableWidth - GAP_BETWEEN) / 2;
+            // Высота одной диаграммы (половина доступной высоты минус половина промежутка)
+            int chartHeight = (availableHeight - GAP_BETWEEN) / 2;
+
+            // Минимальные размеры (чтобы диаграммы не сжимались слишком сильно)
+            int minWidth = 350;
+            int minHeight = 280;
+            chartWidth = Math.Max(chartWidth, minWidth);
+            chartHeight = Math.Max(chartHeight, minHeight);
+
+            // ========== ВЕРХНИЕ ДИАГРАММЫ ==========
+            // Левая верхняя (популярные блюда)
+            _chartPopular.Size = new Size(chartWidth, chartHeight);
+            _chartPopular.Location = new Point(MARGIN_LEFT, MARGIN_TOP);
+
+            // Правая верхняя (непопулярные блюда)
+            _chartUnpopular.Size = new Size(chartWidth, chartHeight);
+            _chartUnpopular.Location = new Point(MARGIN_LEFT + chartWidth + GAP_BETWEEN, MARGIN_TOP);
+
+            // ========== НИЖНИЕ ДИАГРАММЫ ==========
+            int bottomY = MARGIN_TOP + chartHeight + GAP_BETWEEN;
+
+            // Левая нижняя (мероприятия)
+            _chartEvent.Size = new Size(chartWidth, chartHeight);
+            _chartEvent.Location = new Point(MARGIN_LEFT, bottomY);
+
+            // Правая нижняя (прибыль по месяцам)
+            _chartProfit.Size = new Size(chartWidth, chartHeight);
+            _chartProfit.Location = new Point(MARGIN_LEFT + chartWidth + GAP_BETWEEN, bottomY);
         }
 
         // Вспомогательный метод для построения WHERE условий
@@ -87,7 +239,7 @@ namespace Kursovaya
                 conditions.Add("(" + string.Join(" OR ", statusConditions) + ")");
             }
 
-            // ФИЛЬТР ПО НОМЕРУ ЗАКАЗА
+            // Фильтр по номеру заказа
             if (!string.IsNullOrEmpty(_searchOrderNumber))
             {
                 conditions.Add($"o.NumberOrder LIKE '{_searchOrderNumber}%'");
@@ -133,10 +285,8 @@ namespace Kursovaya
                     }
                 }
 
-                Chart chartPopular = new Chart();
-                chartPopular.Size = new Size(500, 380);  // Такой же размер как у непопулярных
-                chartPopular.Location = new Point(80, 40);
-                chartPopular.ChartAreas.Add(new ChartArea());
+                _chartPopular = new Chart();
+                _chartPopular.ChartAreas.Add(new ChartArea());
 
                 Series series = new Series("Популярные блюда");
                 series.ChartType = SeriesChartType.Pie;
@@ -144,7 +294,6 @@ namespace Kursovaya
                 series.LabelToolTip = "#VALX: #PERCENT{P0} (#VAL шт.)";
                 series.ToolTip = "#VALX: #PERCENT{P0} (#VAL шт.)";
                 series.LegendText = "#VALX";
-                series.Font = new Font("Arial", 12);
 
                 if (data.Rows.Count > 0)
                 {
@@ -160,25 +309,21 @@ namespace Kursovaya
                     series.Points.AddXY("Нет данных", 1);
                 }
 
-                chartPopular.Series.Add(series);
-                chartPopular.Titles.Clear();
-                chartPopular.Titles.Add("Топ-5 самых популярных блюд");
-                chartPopular.Titles[0].Font = new Font("Arial", 14, FontStyle.Bold);
+                _chartPopular.Series.Add(series);
+                _chartPopular.Titles.Clear();
+                _chartPopular.Titles.Add("Топ-5 самых популярных блюд");
 
-                // ========== ТОЧНО ТАКИЕ ЖЕ НАСТРОЙКИ ЛЕГЕНДЫ, КАК У НЕПОПУЛЯРНЫХ БЛЮД ==========
-                chartPopular.Legends.Clear();
+                _chartPopular.Legends.Clear();
                 Legend legendPopular = new Legend("Legend1");
                 legendPopular.Docking = Docking.Right;
                 legendPopular.Alignment = StringAlignment.Center;
                 legendPopular.Title = "Блюда";
-                legendPopular.TitleFont = new Font("Arial", 12, FontStyle.Bold);
-                legendPopular.Font = new Font("Arial", 10);
                 legendPopular.IsTextAutoFit = false;
                 legendPopular.TextWrapThreshold = 25;
 
-                chartPopular.Legends.Add(legendPopular);
+                _chartPopular.Legends.Add(legendPopular);
 
-                this.Controls.Add(chartPopular);
+                this.Controls.Add(_chartPopular);
             }
             catch (Exception ex)
             {
@@ -219,11 +364,8 @@ namespace Kursovaya
                     }
                 }
 
-                // ПРЕЖНИЙ РАЗМЕР 500x380
-                Chart chartUnpopular = new Chart();
-                chartUnpopular.Size = new Size(500, 380);
-                chartUnpopular.Location = new Point(680, 40);
-                chartUnpopular.ChartAreas.Add(new ChartArea());
+                _chartUnpopular = new Chart();
+                _chartUnpopular.ChartAreas.Add(new ChartArea());
 
                 Series series = new Series("Непопулярные блюда");
                 series.ChartType = SeriesChartType.Pie;
@@ -231,7 +373,6 @@ namespace Kursovaya
                 series.LabelToolTip = "#VALX: #PERCENT{P0} (#VAL шт.)";
                 series.ToolTip = "#VALX: #PERCENT{P0} (#VAL шт.)";
                 series.LegendText = "#VALX";
-                series.Font = new Font("Arial", 12);
 
                 if (data.Rows.Count > 0)
                 {
@@ -247,24 +388,21 @@ namespace Kursovaya
                     series.Points.AddXY("Нет данных", 1);
                 }
 
-                chartUnpopular.Series.Add(series);
-                chartUnpopular.Titles.Clear();
-                chartUnpopular.Titles.Add("Топ-5 самых непопулярных блюд");
-                chartUnpopular.Titles[0].Font = new Font("Arial", 14, FontStyle.Bold);
+                _chartUnpopular.Series.Add(series);
+                _chartUnpopular.Titles.Clear();
+                _chartUnpopular.Titles.Add("Топ-5 самых непопулярных блюд");
 
-                chartUnpopular.Legends.Clear();
+                _chartUnpopular.Legends.Clear();
                 Legend legendUnpopular = new Legend("Legend1");
                 legendUnpopular.Docking = Docking.Right;
                 legendUnpopular.Alignment = StringAlignment.Center;
                 legendUnpopular.Title = "Блюда";
-                legendUnpopular.TitleFont = new Font("Arial", 12, FontStyle.Bold);
-                legendUnpopular.Font = new Font("Arial", 10);
                 legendUnpopular.IsTextAutoFit = false;
                 legendUnpopular.TextWrapThreshold = 25;
 
-                chartUnpopular.Legends.Add(legendUnpopular);
+                _chartUnpopular.Legends.Add(legendUnpopular);
 
-                this.Controls.Add(chartUnpopular);
+                this.Controls.Add(_chartUnpopular);
             }
             catch (Exception ex)
             {
@@ -303,10 +441,8 @@ namespace Kursovaya
                     }
                 }
 
-                Chart chartEvent = new Chart();
-                chartEvent.Size = new Size(500, 380);  // ОСТАВЛЯЕМ ПРЕЖНИЙ РАЗМЕР
-                chartEvent.Location = new Point(80, 420);
-                chartEvent.ChartAreas.Add(new ChartArea());
+                _chartEvent = new Chart();
+                _chartEvent.ChartAreas.Add(new ChartArea());
 
                 Series series = new Series("Мероприятия");
                 series.ChartType = SeriesChartType.Pie;
@@ -314,7 +450,6 @@ namespace Kursovaya
                 series.LabelToolTip = "#VALX: #PERCENT{P0} (#VAL заказов)";
                 series.ToolTip = "#VALX: #PERCENT{P0} (#VAL заказов)";
                 series.LegendText = "#VALX";
-                series.Font = new Font("Arial", 12);
 
                 if (data.Rows.Count > 0)
                 {
@@ -330,28 +465,24 @@ namespace Kursovaya
                     series.Points.AddXY("Нет данных", 1);
                 }
 
-                chartEvent.Series.Add(series);
-                chartEvent.Titles.Clear();
-                chartEvent.Titles.Add("Распределение заказов по мероприятиям");
-                chartEvent.Titles[0].Font = new Font("Arial", 14, FontStyle.Bold);
+                _chartEvent.Series.Add(series);
+                _chartEvent.Titles.Clear();
+                _chartEvent.Titles.Add("Распределение заказов по мероприятиям");
 
-                // НАСТРОЙКА ЛЕГЕНДЫ ДЛЯ ПЕРЕНОСА ТЕКСТА
-                chartEvent.Legends.Clear();
+                _chartEvent.Legends.Clear();
                 Legend legendEvent = new Legend("Legend1");
                 legendEvent.Docking = Docking.Right;
                 legendEvent.Alignment = StringAlignment.Center;
                 legendEvent.Title = "Мероприятия";
-                legendEvent.TitleFont = new Font("Arial", 12, FontStyle.Bold);
-                legendEvent.Font = new Font("Arial", 10);
-                legendEvent.IsTextAutoFit = false;      // Отключаем автоуменьшение
-                legendEvent.TextWrapThreshold = 20;     // Переносим слова длиннее 20 символов
+                legendEvent.IsTextAutoFit = false;
+                legendEvent.TextWrapThreshold = 20;
 
                 legendEvent.CellColumns.Clear();
                 legendEvent.TableStyle = LegendTableStyle.Wide;
 
-                chartEvent.Legends.Add(legendEvent);
+                _chartEvent.Legends.Add(legendEvent);
 
-                this.Controls.Add(chartEvent);
+                this.Controls.Add(_chartEvent);
             }
             catch (Exception ex)
             {
@@ -398,18 +529,14 @@ namespace Kursovaya
                     }
                 }
 
-                // ПРЕЖНИЙ РАЗМЕР, НО СДВИНУТАЯ ПОЗИЦИЯ
-                Chart chartProfit = new Chart();
-                chartProfit.Size = new Size(500, 380);
-                chartProfit.Location = new Point(680, 420);
-                chartProfit.ChartAreas.Add(new ChartArea());
+                _chartProfit = new Chart();
+                _chartProfit.ChartAreas.Add(new ChartArea());
 
                 Series series = new Series("Прибыль");
                 series.ChartType = SeriesChartType.Column;
                 series.Label = "#VAL";
                 series.ToolTip = "#VALX: #VAL";
                 series.IsValueShownAsLabel = true;
-                series.Font = new Font("Arial", 14); // Увеличенный шрифт для значений
 
                 if (data.Rows.Count > 0)
                 {
@@ -425,26 +552,22 @@ namespace Kursovaya
                     series.Points.AddXY("Нет данных", 0);
                 }
 
-                chartProfit.ChartAreas[0].AxisY.Title = "Прибыль (руб.)";
-                chartProfit.ChartAreas[0].AxisY.TitleFont = new Font("Arial", 14, FontStyle.Bold);
-                chartProfit.ChartAreas[0].AxisX.LabelStyle.Font = new Font("Arial", 14);
-                chartProfit.ChartAreas[0].AxisX.LabelStyle.Angle = 0;
-                chartProfit.ChartAreas[0].AxisX.Interval = 1;
-                chartProfit.ChartAreas[0].AxisX.LabelStyle.IsStaggered = true;
+                _chartProfit.ChartAreas[0].AxisY.Title = "Прибыль (руб.)";
+                _chartProfit.ChartAreas[0].AxisX.LabelStyle.Angle = 0;
+                _chartProfit.ChartAreas[0].AxisX.Interval = 1;
+                _chartProfit.ChartAreas[0].AxisX.LabelStyle.IsStaggered = true;
 
-                chartProfit.Series.Add(series);
-                chartProfit.Titles.Clear();
-                chartProfit.Titles.Add("Прибыль по месяцам");
-                chartProfit.Titles[0].Font = new Font("Arial", 16, FontStyle.Bold);
+                _chartProfit.Series.Add(series);
+                _chartProfit.Titles.Clear();
+                _chartProfit.Titles.Add("Прибыль по месяцам");
 
-                chartProfit.Legends.Clear();
+                _chartProfit.Legends.Clear();
                 Legend legendProfit = new Legend("Legend1");
                 legendProfit.Docking = Docking.Top;
                 legendProfit.Alignment = StringAlignment.Center;
-                legendProfit.Font = new Font("Arial", 14);
-                chartProfit.Legends.Add(legendProfit);
+                _chartProfit.Legends.Add(legendProfit);
 
-                this.Controls.Add(chartProfit);
+                this.Controls.Add(_chartProfit);
             }
             catch (Exception ex)
             {

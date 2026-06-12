@@ -116,11 +116,11 @@ namespace Kursovaya
             }
         }
 
-        // Получение базовой папки CafeManagement
+        // Получение базовой папки CafeManagement (в папке с программой)
         private static string GetCafeManagementPath()
         {
-            string documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-            string cafePath = Path.Combine(documentsPath, "CafeManagement");
+            string exeDirectory = Path.GetDirectoryName(System.Windows.Forms.Application.ExecutablePath);
+            string cafePath = Path.Combine(exeDirectory, "CafeManagement");
 
             if (!Directory.Exists(cafePath))
             {
@@ -130,13 +130,13 @@ namespace Kursovaya
             return cafePath;
         }
 
-        // Получение папки для документов
-        private static string GetDocumentsPath()
-        {
-            string docsPath = Path.Combine(GetCafeManagementPath(), "Documents");
-            if (!Directory.Exists(docsPath)) Directory.CreateDirectory(docsPath);
-            return docsPath;
-        }
+        //// Получение папки для документов
+        //private static string GetDocumentsPath()
+        //{
+        //    string docsPath = Path.Combine(GetCafeManagementPath(), "Documents");
+        //    if (!Directory.Exists(docsPath)) Directory.CreateDirectory(docsPath);
+        //    return docsPath;
+        //}
 
         private void button1_Click(object sender, EventArgs e)
         {
