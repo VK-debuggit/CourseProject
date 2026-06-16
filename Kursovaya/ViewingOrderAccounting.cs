@@ -608,7 +608,7 @@ namespace Kursovaya
                 query.Append(string.Join(" AND ", conditions));
             }
 
-            query.Append(" ORDER BY p.DateEvent ASC, p.NumberOrder ASC");
+            query.Append(" ORDER BY p.NumberOrder ASC");
             return query.ToString();
         }
 

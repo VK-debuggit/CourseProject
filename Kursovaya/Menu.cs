@@ -1175,7 +1175,7 @@ namespace Kursovaya
 
                         if (rowsAffected > 0)
                         {
-                            _lastInsertedDishId = null;
+                            _lastInsertedDishId = selectedId.ToString();
 
                             MessageBox.Show("Блюдо успешно обновлено", "Успех",
                                           MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -1184,6 +1184,12 @@ namespace Kursovaya
                             ClearForm();
                             FillDataGridView();
                             ClearAllFields();
+
+                            if (dataGridView1.Rows.Count > 0)
+                            {
+                                dataGridView1.Rows[0].Selected = true;
+                                dataGridView1.FirstDisplayedScrollingRowIndex = 0;
+                            }
                         }
                         else
                         {

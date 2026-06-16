@@ -751,7 +751,7 @@ namespace Kursovaya
 
                         if (rowsAffected > 0)
                         {
-                            _lastInsertedClientId = null;
+                            _lastInsertedClientId = selectedId;
 
                             if (originalPhoneNumbers.ContainsKey(selectedId))
                             {
@@ -762,6 +762,12 @@ namespace Kursovaya
                                           MessageBoxButtons.OK, MessageBoxIcon.Information);
                             ClearAllFields();
                             FillDataGridView();
+
+                            if (dataGridView1.Rows.Count > 0)
+                            {
+                                dataGridView1.Rows[0].Selected = true;
+                                dataGridView1.FirstDisplayedScrollingRowIndex = 0;
+                            }
                         }
                     }
                 }

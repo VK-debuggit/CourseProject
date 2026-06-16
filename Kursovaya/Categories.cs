@@ -416,13 +416,19 @@ namespace Kursovaya
 
                         if (rowsAffected > 0)
                         {
-                            _lastInsertedCategoryId = null;
+                            _lastInsertedCategoryId = selectedId;
 
                             MessageBox.Show("Категория успешно обновлена", "Успех",
                                           MessageBoxButtons.OK, MessageBoxIcon.Information);
                             textBox1.Clear();
                             FillDataGridViewCategory();
                             ClearAllFields();
+
+                            if (dataGridView1.Rows.Count > 0)
+                            {
+                                dataGridView1.Rows[0].Selected = true;
+                                dataGridView1.FirstDisplayedScrollingRowIndex = 0;
+                            }
                         }
                     }
                 }

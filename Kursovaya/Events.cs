@@ -321,10 +321,18 @@ namespace Kursovaya
 
                         if (rowsAffected > 0)
                         {
+                            _lastInsertedEventId = selectedId;
+
                             MessageBox.Show("Мероприятие успешно обновлено", "Успех",
                                           MessageBoxButtons.OK, MessageBoxIcon.Information);
                             textBox1.Clear();
                             FillDataGridView();
+
+                            if (dataGridView1.Rows.Count > 0)
+                            {
+                                dataGridView1.Rows[0].Selected = true;
+                                dataGridView1.FirstDisplayedScrollingRowIndex = 0;
+                            }
                         }
                     }
                 }
