@@ -16,27 +16,23 @@ namespace Kursovaya
     {
         string conString = $"host={Properties.Settings.Default.host};uid={Properties.Settings.Default.uid};pwd={Properties.Settings.Default.pwd};database={Properties.Settings.Default.database};";
 
-        // Параметры фильтрации
         private DateTime _startDate;
         private DateTime _endDate;
         private string _selectedEmployee;
         private List<string> _selectedStatuses;
         private string _searchOrderNumber;
 
-        // Ссылки на диаграммы для динамического изменения размера
         private Chart _chartPopular;
         private Chart _chartUnpopular;
         private Chart _chartEvent;
         private Chart _chartProfit;
 
-        // Отступы (в пикселях)
         private const int MARGIN_TOP = 40;
         private const int MARGIN_BOTTOM = 40;
         private const int MARGIN_LEFT = 40;
         private const int MARGIN_RIGHT = 40;
-        private const int GAP_BETWEEN = 30; // Расстояние между диаграммами
+        private const int GAP_BETWEEN = 30;
 
-        // Базовые размеры для расчета шрифтов
         private const int BASE_WIDTH = 500;
         private const int BASE_HEIGHT = 380;
         private const float BASE_TITLE_FONT_SIZE = 14f;
@@ -51,7 +47,6 @@ namespace Kursovaya
         {
             InitializeComponent();
 
-            // Развернуть форму на весь экран
             this.WindowState = FormWindowState.Maximized;
 
             _startDate = startDate;
@@ -77,27 +72,23 @@ namespace Kursovaya
             label1.Text = formattedname;
             label2.Text = Properties.Settings.Default.userRole;
 
-            // Подписываемся на событие изменения размера
             this.Resize += ViewStatistics_Resize;
 
-            // Загружаем все диаграммы с учетом фильтров
             LoadTopPopularDishes();
             LoadTopUnpopularDishes();
             LoadPopularEvent();
             LoadMonthlyProfit();
         }
 
-        // Метод для вычисления коэффициента масштабирования шрифта
+        //Вычисление коэффициента масштабирования шрифта
         private float GetFontScaleFactor(Chart chart)
         {
-            // Вычисляем коэффициент на основе размера диаграммы относительно базового
             float widthScale = chart.Width / (float)BASE_WIDTH;
             float heightScale = chart.Height / (float)BASE_HEIGHT;
-            // Берем минимальный коэффициент, чтобы шрифт не стал слишком большим
             return Math.Min(widthScale, heightScale);
         }
 
-        // Обновление шрифтов на диаграмме
+        //Обновление шрифтов на диаграмме
         private void UpdateChartFonts(Chart chart, float baseTitleSize, float baseLegendTitleSize,
                                        float baseLegendSize, float baseSeriesSize,
                                        float baseAxisTitleSize = 0, float baseAxisLabelSize = 0)
@@ -105,29 +96,25 @@ namespace Kursovaya
             if (chart == null) return;
 
             float scale = GetFontScaleFactor(chart);
-            scale = Math.Max(scale, 0.6f); // Минимум 60% от базового
-            scale = Math.Min(scale, 1.5f); // Максимум 150% от базового
+            scale = Math.Max(scale, 0.6f);
+            scale = Math.Min(scale, 1.5f);
 
-            // Обновляем заголовок
             if (chart.Titles.Count > 0)
             {
                 chart.Titles[0].Font = new Font("Arial", baseTitleSize * scale, FontStyle.Bold);
             }
 
-            // Обновляем легенду
             if (chart.Legends.Count > 0)
             {
                 chart.Legends[0].TitleFont = new Font("Arial", baseLegendTitleSize * scale, FontStyle.Bold);
                 chart.Legends[0].Font = new Font("Arial", baseLegendSize * scale);
             }
 
-            // Обновляем серии
             foreach (var series in chart.Series)
             {
                 series.Font = new Font("Arial", baseSeriesSize * scale);
             }
 
-            // Обновляем оси (если есть)
             if (chart.ChartAreas.Count > 0)
             {
                 if (baseAxisTitleSize > 0 && chart.ChartAreas[0].AxisY.TitleFont != null)
@@ -142,93 +129,76 @@ namespace Kursovaya
             }
         }
 
-        // Обновление всех шрифтов на всех диаграммах
+        //Обновление всех шрифтов
         private void UpdateAllFonts()
         {
-            // Популярные блюда (круговая диаграмма)
             UpdateChartFonts(_chartPopular, BASE_TITLE_FONT_SIZE, BASE_LEGEND_TITLE_FONT_SIZE,
                             BASE_LEGEND_FONT_SIZE, BASE_SERIES_FONT_SIZE);
 
-            // Непопулярные блюда (круговая диаграмма)
             UpdateChartFonts(_chartUnpopular, BASE_TITLE_FONT_SIZE, BASE_LEGEND_TITLE_FONT_SIZE,
                             BASE_LEGEND_FONT_SIZE, BASE_SERIES_FONT_SIZE);
 
-            // Мероприятия (круговая диаграмма)
             UpdateChartFonts(_chartEvent, BASE_TITLE_FONT_SIZE, BASE_LEGEND_TITLE_FONT_SIZE,
                             BASE_LEGEND_FONT_SIZE, BASE_SERIES_FONT_SIZE);
 
-            // Прибыль по месяцам (столбчатая диаграмма) - с осями
             UpdateChartFonts(_chartProfit, BASE_PROFIT_TITLE_FONT_SIZE, BASE_LEGEND_TITLE_FONT_SIZE,
                             BASE_LEGEND_FONT_SIZE, BASE_SERIES_FONT_SIZE,
                             BASE_AXIS_TITLE_FONT_SIZE, BASE_AXIS_LABEL_FONT_SIZE);
         }
 
-        // Обработчик изменения размера окна
-        private void ViewStatistics_Resize(object sender, EventArgs e)
-        {
-            UpdateChartsLayout();
-            UpdateAllFonts(); // Обновляем шрифты после изменения размера
-        }
-
-        // Метод для обновления расположения и размеров диаграмм
+        //Обновление расположения и размеров диаграмм
         private void UpdateChartsLayout()
         {
             if (_chartPopular == null || _chartUnpopular == null ||
                 _chartEvent == null || _chartProfit == null) return;
 
-            // Вычисляем доступное пространство
             int availableWidth = this.ClientSize.Width - MARGIN_LEFT - MARGIN_RIGHT;
             int availableHeight = this.ClientSize.Height - MARGIN_TOP - MARGIN_BOTTOM;
 
-            // Ширина одной диаграммы (половина доступной ширины минус половина промежутка)
             int chartWidth = (availableWidth - GAP_BETWEEN) / 2;
-            // Высота одной диаграммы (половина доступной высоты минус половина промежутка)
             int chartHeight = (availableHeight - GAP_BETWEEN) / 2;
 
-            // Минимальные размеры (чтобы диаграммы не сжимались слишком сильно)
             int minWidth = 350;
             int minHeight = 280;
             chartWidth = Math.Max(chartWidth, minWidth);
             chartHeight = Math.Max(chartHeight, minHeight);
 
-            // ========== ВЕРХНИЕ ДИАГРАММЫ ==========
-            // Левая верхняя (популярные блюда)
             _chartPopular.Size = new Size(chartWidth, chartHeight);
             _chartPopular.Location = new Point(MARGIN_LEFT, MARGIN_TOP);
 
-            // Правая верхняя (непопулярные блюда)
             _chartUnpopular.Size = new Size(chartWidth, chartHeight);
             _chartUnpopular.Location = new Point(MARGIN_LEFT + chartWidth + GAP_BETWEEN, MARGIN_TOP);
 
-            // ========== НИЖНИЕ ДИАГРАММЫ ==========
             int bottomY = MARGIN_TOP + chartHeight + GAP_BETWEEN;
 
-            // Левая нижняя (мероприятия)
             _chartEvent.Size = new Size(chartWidth, chartHeight);
             _chartEvent.Location = new Point(MARGIN_LEFT, bottomY);
 
-            // Правая нижняя (прибыль по месяцам)
             _chartProfit.Size = new Size(chartWidth, chartHeight);
             _chartProfit.Location = new Point(MARGIN_LEFT + chartWidth + GAP_BETWEEN, bottomY);
         }
 
-        // Вспомогательный метод для построения WHERE условий
+        //Обработчик изменения размера окна
+        private void ViewStatistics_Resize(object sender, EventArgs e)
+        {
+            UpdateChartsLayout();
+            UpdateAllFonts();
+        }
+
+        //Построение условий фильтрации
         private string BuildFilterConditions()
         {
             List<string> conditions = new List<string>();
 
-            // Фильтр по датам
             string startDateStr = _startDate.ToString("yyyy-MM-dd");
             string endDateStr = _endDate.ToString("yyyy-MM-dd");
             conditions.Add($"(o.DateEvent >= '{startDateStr}' AND o.DateEvent <= '{endDateStr}')");
 
-            // Фильтр по сотруднику
             if (!string.IsNullOrEmpty(_selectedEmployee) && _selectedEmployee != "Все сотрудники")
             {
                 conditions.Add($"w.FullName = '{_selectedEmployee.Replace("'", "''")}'");
             }
 
-            // Фильтр по статусам
             if (_selectedStatuses != null && _selectedStatuses.Count > 0)
             {
                 List<string> statusConditions = new List<string>();
@@ -239,7 +209,6 @@ namespace Kursovaya
                 conditions.Add("(" + string.Join(" OR ", statusConditions) + ")");
             }
 
-            // Фильтр по номеру заказа
             if (!string.IsNullOrEmpty(_searchOrderNumber))
             {
                 conditions.Add($"o.NumberOrder LIKE '{_searchOrderNumber}%'");
@@ -253,7 +222,7 @@ namespace Kursovaya
             return "";
         }
 
-        // ========== ДИАГРАММА 1: ТОП-5 САМЫХ ПОПУЛЯРНЫХ БЛЮД ==========
+        //Загрузка топ-5 популярных блюд
         private void LoadTopPopularDishes()
         {
             try
@@ -332,7 +301,7 @@ namespace Kursovaya
             }
         }
 
-        // ========== ДИАГРАММА 2: ТОП-5 САМЫХ НЕПОПУЛЯРНЫХ БЛЮД ==========
+        //Загрузка топ-5 непопулярных блюд
         private void LoadTopUnpopularDishes()
         {
             try
@@ -411,7 +380,7 @@ namespace Kursovaya
             }
         }
 
-        // ========== ДИАГРАММА 3: РАСПРЕДЕЛЕНИЕ ЗАКАЗОВ ПО МЕРОПРИЯТИЯМ ==========
+        //Загрузка распределения заказов по мероприятиям
         private void LoadPopularEvent()
         {
             try
@@ -491,7 +460,7 @@ namespace Kursovaya
             }
         }
 
-        // ========== ДИАГРАММА 4: ПРИБЫЛЬ ПО МЕСЯЦАМ ==========
+        //Загрузка прибыли по месяцам
         private void LoadMonthlyProfit()
         {
             try
@@ -576,10 +545,9 @@ namespace Kursovaya
             }
         }
 
-        // ========== КНОПКИ НАВИГАЦИИ ==========
-
         private bool allowClose = false;
 
+        //Обработчик кнопки возврата в учет заказов
         private void button3_Click(object sender, EventArgs e)
         {
             allowClose = true;
@@ -589,6 +557,7 @@ namespace Kursovaya
             this.Close();
         }
 
+        //Обработчик закрытия формы
         private void ViewStatistics_FormClosing(object sender, FormClosingEventArgs e)
         {
             if (e.CloseReason == CloseReason.ApplicationExitCall)

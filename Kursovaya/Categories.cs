@@ -16,7 +16,7 @@ namespace Kursovaya
         string conString = $"host={Properties.Settings.Default.host};uid={Properties.Settings.Default.uid};pwd={Properties.Settings.Default.pwd};database={Properties.Settings.Default.database};";
         private int selectedProductRowIndex = -1;
         private int rowCount = 0;
-        private int? _lastInsertedCategoryId = null; // Хранит ID последней добавленной категории
+        private int? _lastInsertedCategoryId = null;
 
         public Categories()
         {
@@ -57,6 +57,7 @@ namespace Kursovaya
 
         private bool allowClose = false;
 
+        //Обработчик кнопки возврата в справочники
         private void button4_Click(object sender, EventArgs e)
         {
             allowClose = true;
@@ -66,6 +67,7 @@ namespace Kursovaya
             this.Close();
         }
 
+        //Обработчик закрытия формы
         private void Categories_FormClosing(object sender, FormClosingEventArgs e)
         {
             if (e.CloseReason == CloseReason.ApplicationExitCall)
@@ -79,9 +81,9 @@ namespace Kursovaya
             }
         }
 
+        //Загрузка данных категорий в DataGridView
         void FillDataGridViewCategory()
         {
-            // По умолчанию сортируем по алфавиту
             string SelectQuery = @"SELECT IDcategory, Category FROM CafeActivities.Categories ORDER BY Category ASC;";
 
             using (MySqlConnection con = new MySqlConnection(conString))
@@ -100,7 +102,6 @@ namespace Kursovaya
 
                     rowCount = 0;
 
-                    // Временный список для хранения всех записей
                     var categories = new List<(int Id, string Name)>();
 
                     while (rdr.Read())
@@ -111,7 +112,6 @@ namespace Kursovaya
                         rowCount++;
                     }
 
-                    // Если есть новая запись, перемещаем её в начало
                     if (_lastInsertedCategoryId.HasValue)
                     {
                         var newCategory = categories.FirstOrDefault(c => c.Id == _lastInsertedCategoryId.Value);
@@ -120,11 +120,9 @@ namespace Kursovaya
                             categories.Remove(newCategory);
                             categories.Insert(0, newCategory);
                         }
-                        // Сбрасываем ID после использования (чтобы при следующем обновлении был алфавитный порядок)
                         _lastInsertedCategoryId = null;
                     }
 
-                    // Добавляем в DataGridView
                     foreach (var category in categories)
                     {
                         dataGridView1.Rows.Add(category.Id, category.Name);
@@ -132,7 +130,6 @@ namespace Kursovaya
 
                     label5.Text = rowCount.ToString();
 
-                    // Показываем информацию о загруженных данных
                     if (rowCount == 0)
                     {
                         MessageBox.Show("Данные не найдены", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -141,6 +138,7 @@ namespace Kursovaya
             }
         }
 
+        //Ограничение ввода в текстовое поле
         private void textBox1_KeyPress(object sender, KeyPressEventArgs e)
         {
             TextBox tb = (TextBox)sender;
@@ -152,7 +150,6 @@ namespace Kursovaya
             {
                 int cursorPos = tb.SelectionStart;
 
-                // Делаем только первую букву заглавной
                 string newText = char.ToUpper(tb.Text[0]) + tb.Text.Substring(1);
 
                 if (tb.Text != newText)
@@ -162,28 +159,23 @@ namespace Kursovaya
                 }
             }
 
-            // Если вводится пробел
             if (e.KeyChar == ' ')
             {
-                // Запрещаем пробел в начале
                 if (tb.Text.Length == 0)
                 {
                     e.Handled = true;
                     return;
                 }
 
-                // Запрещаем пробел после пробела
                 if (tb.Text.Length > 0 && tb.Text[tb.Text.Length - 1] == ' ')
                 {
                     e.Handled = true;
                     return;
                 }
 
-                // Разрешаем пробел после буквы
                 return;
             }
 
-            // Проверяем русские буквы
             if ((e.KeyChar >= 'А' && e.KeyChar <= 'Я') ||
                 (e.KeyChar >= 'а' && e.KeyChar <= 'я') ||
                 e.KeyChar == 'Ё' || e.KeyChar == 'ё')
@@ -192,6 +184,7 @@ namespace Kursovaya
             e.Handled = true;
         }
 
+        //Проверка существования категории в базе данных
         private bool IsCategoryExists(string categoryName)
         {
             string query = "SELECT COUNT(*) FROM Categories WHERE Category = @category;";
@@ -213,11 +206,12 @@ namespace Kursovaya
                 {
                     MessageBox.Show($"Ошибка проверки категории: {ex.Message}", "Ошибка",
                                   MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return true; // В случае ошибки считаем, что категория существует
+                    return true;
                 }
             }
         }
 
+        //Проверка существования категории исключая текущую запись
         private bool IsCategoryExistsExceptCurrent(int categoryId, string categoryName)
         {
             string query = "SELECT COUNT(*) FROM Categories WHERE Category = @category AND IDcategory != @categoryId;";
@@ -245,14 +239,9 @@ namespace Kursovaya
             }
         }
 
-        private void textBox1_TextChanged(object sender, EventArgs e)
-        {
-            UpdateButtonsState();
-        }
-
+        //Обновление состояния кнопок
         void UpdateButtonsState()
         {
-            // Включаем кнопку только если TextBox не пустой
             categoryInsert.Enabled = !string.IsNullOrWhiteSpace(textBox1.Text);
             string currentText = textBox1.Text.Trim();
             bool hasText = !string.IsNullOrWhiteSpace(currentText);
@@ -270,16 +259,14 @@ namespace Kursovaya
             deleteCategory.Enabled = (dataGridView1.CurrentRow != null);
         }
 
+        //Обработчик изменения выделения в DataGridView
         private void dataGridView1_SelectionChanged(object sender, EventArgs e)
         {
             if (dataGridView1.CurrentRow != null && dataGridView1.CurrentRow.Index >= 0)
             {
                 try
                 {
-                    // Заполняем поля данными из выбранной строки
                     DataGridViewRow selectedRow = dataGridView1.CurrentRow;
-
-                    // Основные данные
                     textBox1.Text = selectedRow.Cells["Category"].Value?.ToString() ?? "";
                 }
                 catch (Exception ex)
@@ -287,11 +274,11 @@ namespace Kursovaya
                     MessageBox.Show($"Ошибка при заполнении полей: {ex.Message}");
                 }
 
-                // Обновляем состояние кнопок
                 UpdateButtonsState();
             }
         }
 
+        //Проверка использования категории в других таблицах
         private bool IsCategoryInUse(int categoryId)
         {
             string checkQueries = @"SELECT COUNT(*) FROM Dishes WHERE IdCategory = @categoryId;";
@@ -323,6 +310,7 @@ namespace Kursovaya
             }
         }
 
+        //Очистка всех полей формы
         private void ClearAllFields()
         {
             dataGridView1.ClearSelection();
@@ -332,19 +320,18 @@ namespace Kursovaya
             UpdateButtonsState();
         }
 
+        //Обработчик загрузки формы
         private void Categories_Load(object sender, EventArgs e)
         {
-            // Очищаем все поля при загрузке формы
             ClearAllFields();
-            // Сбрасываем ID последней добавленной категории
             _lastInsertedCategoryId = null;
         }
 
+        //Обработчик кнопки добавления категории
         private void categoryInsert_Click(object sender, EventArgs e)
         {
             string categoryName = textBox1.Text.Trim();
 
-            // Проверка на существование
             if (IsCategoryExists(categoryName))
             {
                 MessageBox.Show("Категория с таким наименованием уже существует", "Ошибка",
@@ -352,7 +339,6 @@ namespace Kursovaya
                 return;
             }
 
-            // Валидация данных
             if (string.IsNullOrEmpty(categoryName))
             {
                 MessageBox.Show("Заполните поле категории", "Ошибка",
@@ -360,7 +346,6 @@ namespace Kursovaya
                 return;
             }
 
-            // Добавление в базу данных с получением ID новой записи
             string query = "INSERT INTO Categories (Category) VALUES (@category); SELECT LAST_INSERT_ID();";
 
             using (MySqlConnection con = new MySqlConnection(conString))
@@ -371,19 +356,16 @@ namespace Kursovaya
                     using (MySqlCommand cmd = new MySqlCommand(query, con))
                     {
                         cmd.Parameters.AddWithValue("@category", categoryName);
-                        // Получаем ID только что добавленной категории
                         int newId = Convert.ToInt32(cmd.ExecuteScalar());
 
-                        // Сохраняем ID новой записи
                         _lastInsertedCategoryId = newId;
 
                         MessageBox.Show("Категория успешно добавлена", "Успех",
                                       MessageBoxButtons.OK, MessageBoxIcon.Information);
                         textBox1.Clear();
-                        FillDataGridViewCategory(); // Обновляем DataGridView
+                        FillDataGridViewCategory();
                         ClearAllFields();
 
-                        // Выделяем и показываем первую строку (новую категорию)
                         if (dataGridView1.Rows.Count > 0)
                         {
                             dataGridView1.Rows[0].Selected = true;
@@ -399,6 +381,7 @@ namespace Kursovaya
             }
         }
 
+        //Обработчик кнопки обновления категории
         private void updateCategory_Click(object sender, EventArgs e)
         {
             if (dataGridView1.CurrentRow == null)
@@ -411,7 +394,6 @@ namespace Kursovaya
             int selectedId = Convert.ToInt32(dataGridView1.CurrentRow.Cells["IDcategory"].Value);
             string newCategoryName = textBox1.Text.Trim();
 
-            // Проверка на существование (исключая текущую категорию)
             if (IsCategoryExistsExceptCurrent(selectedId, newCategoryName))
             {
                 MessageBox.Show("Категория с таким наименованием уже существует", "Ошибка",
@@ -419,7 +401,6 @@ namespace Kursovaya
                 return;
             }
 
-            // Обновление в базе данных
             string query = "UPDATE Categories SET Category = @category WHERE IDcategory = @categoryId";
 
             using (MySqlConnection con = new MySqlConnection(conString))
@@ -435,13 +416,12 @@ namespace Kursovaya
 
                         if (rowsAffected > 0)
                         {
-                            // Сбрасываем ID последней добавленной категории при редактировании
                             _lastInsertedCategoryId = null;
 
                             MessageBox.Show("Категория успешно обновлена", "Успех",
                                           MessageBoxButtons.OK, MessageBoxIcon.Information);
                             textBox1.Clear();
-                            FillDataGridViewCategory(); // Обновляем DataGridView
+                            FillDataGridViewCategory();
                             ClearAllFields();
                         }
                     }
@@ -454,6 +434,7 @@ namespace Kursovaya
             }
         }
 
+        //Обработчик кнопки удаления категории
         private void deleteCategory_Click(object sender, EventArgs e)
         {
             if (dataGridView1.CurrentRow == null)
@@ -466,7 +447,6 @@ namespace Kursovaya
             int selectedId = Convert.ToInt32(dataGridView1.CurrentRow.Cells["IDcategory"].Value);
             string categoryName = dataGridView1.CurrentRow.Cells["Category"].Value.ToString();
 
-            // Подтверждение удаления
             DialogResult result = MessageBox.Show(
                 $"Вы уверены, что хотите удалить категорию \"{categoryName}\"?",
                 "Подтверждение удаления",
@@ -476,7 +456,6 @@ namespace Kursovaya
             if (result != DialogResult.Yes)
                 return;
 
-            // Проверка на использование категории в других таблицах
             if (IsCategoryInUse(selectedId))
             {
                 MessageBox.Show("Невозможно удалить категорию, так как она используется в других таблицах",
@@ -484,7 +463,6 @@ namespace Kursovaya
                 return;
             }
 
-            // Удаление из базы данных
             string query = "DELETE FROM Categories WHERE IDcategory = @categoryId";
 
             using (MySqlConnection con = new MySqlConnection(conString))
@@ -499,13 +477,12 @@ namespace Kursovaya
 
                         if (rowsAffected > 0)
                         {
-                            // Сбрасываем ID последней добавленной категории при удалении
                             _lastInsertedCategoryId = null;
 
                             MessageBox.Show("Категория успешно удалена", "Успех",
                                           MessageBoxButtons.OK, MessageBoxIcon.Information);
                             textBox1.Clear();
-                            FillDataGridViewCategory(); // Обновляем DataGridView
+                            FillDataGridViewCategory();
                             ClearAllFields();
                         }
                     }
@@ -518,6 +495,7 @@ namespace Kursovaya
             }
         }
 
+        //Обработчик клика по ячейке DataGridView
         private void dataGridView1_CellClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex >= 0)
@@ -527,17 +505,17 @@ namespace Kursovaya
             }
         }
 
+        //Обработчик завершения привязки данных
         private void dataGridView1_DataBindingComplete(object sender, DataGridViewBindingCompleteEventArgs e)
         {
             dataGridView1.ClearSelection();
         }
 
+        //Установка русской раскладки при установке курсора в текстовое поле
         private void textBox1_Enter(object sender, EventArgs e)
         {
-            // Получаем доступный список языков и устанавливаем нужный
             foreach (InputLanguage lang in InputLanguage.InstalledInputLanguages)
             {
-                // Ищем русский язык
                 if (lang.Culture.TwoLetterISOLanguageName == "ru")
                 {
                     InputLanguage.CurrentInputLanguage = lang;

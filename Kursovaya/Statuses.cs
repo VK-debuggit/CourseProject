@@ -15,7 +15,7 @@ namespace Kursovaya
     {
         string conString = $"host={Properties.Settings.Default.host};uid={Properties.Settings.Default.uid};pwd={Properties.Settings.Default.pwd};database={Properties.Settings.Default.database};";
         private int rowCount = 0;
-        private int? _lastInsertedStatusId = null; // Хранит ID последнего добавленного статуса
+        private int? _lastInsertedStatusId = null;
 
         public Statuses()
         {
@@ -50,6 +50,7 @@ namespace Kursovaya
 
         private bool allowClose = false;
 
+        //Обработчик кнопки возврата в справочники
         private void button4_Click(object sender, EventArgs e)
         {
             allowClose = true;
@@ -59,6 +60,7 @@ namespace Kursovaya
             this.Close();
         }
 
+        //Обработчик закрытия формы
         private void Statuses_FormClosing(object sender, FormClosingEventArgs e)
         {
             if (e.CloseReason == CloseReason.ApplicationExitCall)
@@ -72,6 +74,7 @@ namespace Kursovaya
             }
         }
 
+        //Загрузка данных статусов в DataGridView
         void FillDataGridView()
         {
             string SelectQuery = @"SELECT IDstatus, Status FROM CafeActivities.Status ORDER BY Status ASC;";
@@ -90,7 +93,6 @@ namespace Kursovaya
                     dataGridView1.Columns["IDstatus"].Visible = false;
                     dataGridView1.Columns.Add("Status", "Статус");
 
-                    // Временный список для хранения всех записей
                     var statuses = new List<(int Id, string Name)>();
                     rowCount = 0;
 
@@ -102,7 +104,6 @@ namespace Kursovaya
                         rowCount++;
                     }
 
-                    // Если есть новая запись, перемещаем её в начало
                     if (_lastInsertedStatusId.HasValue)
                     {
                         var newStatus = statuses.FirstOrDefault(s => s.Id == _lastInsertedStatusId.Value);
@@ -111,10 +112,8 @@ namespace Kursovaya
                             statuses.Remove(newStatus);
                             statuses.Insert(0, newStatus);
                         }
-                        // Сбрасываем ID после использования НО не здесь, а после отображения
                     }
 
-                    // Добавляем в DataGridView
                     foreach (var status in statuses)
                     {
                         dataGridView1.Rows.Add(status.Id, status.Name);
@@ -122,21 +121,18 @@ namespace Kursovaya
 
                     label5.Text = rowCount.ToString();
 
-                    // Показываем информацию о загруженных данных
                     if (rowCount == 0)
                     {
                         MessageBox.Show("Данные не найдены", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
 
-                    // Сбрасываем ID после отображения
                     _lastInsertedStatusId = null;
-
-                    // Очищаем выделение и поля
                     ClearAllFields();
                 }
             }
         }
 
+        //Ограничение ввода в текстовое поле
         private void textBox1_KeyPress(object sender, KeyPressEventArgs e)
         {
             TextBox tb = (TextBox)sender;
@@ -148,7 +144,6 @@ namespace Kursovaya
             {
                 int cursorPos = tb.SelectionStart;
 
-                // Делаем только первую букву заглавной
                 string newText = char.ToUpper(tb.Text[0]) + tb.Text.Substring(1);
 
                 if (tb.Text != newText)
@@ -158,28 +153,23 @@ namespace Kursovaya
                 }
             }
 
-            // Если вводится пробел
             if (e.KeyChar == ' ')
             {
-                // Запрещаем пробел в начале
                 if (tb.Text.Length == 0)
                 {
                     e.Handled = true;
                     return;
                 }
 
-                // Запрещаем пробел после пробела
                 if (tb.Text.Length > 0 && tb.Text[tb.Text.Length - 1] == ' ')
                 {
                     e.Handled = true;
                     return;
                 }
 
-                // Разрешаем пробел после буквы
                 return;
             }
 
-            // Проверяем русские буквы
             if ((e.KeyChar >= 'А' && e.KeyChar <= 'Я') ||
                 (e.KeyChar >= 'а' && e.KeyChar <= 'я') ||
                 e.KeyChar == 'Ё' || e.KeyChar == 'ё')
@@ -188,6 +178,7 @@ namespace Kursovaya
             e.Handled = true;
         }
 
+        //Проверка существования статуса в базе данных
         private bool IsStatusExists(string statusName)
         {
             string query = "SELECT COUNT(*) FROM Status WHERE Status = @status;";
@@ -209,11 +200,12 @@ namespace Kursovaya
                 {
                     MessageBox.Show($"Ошибка проверки статуса: {ex.Message}", "Ошибка",
                                   MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return true; // В случае ошибки считаем, что статус существует
+                    return true;
                 }
             }
         }
 
+        //Проверка существования статуса исключая текущую запись
         private bool IsStatusExistsExceptCurrent(int statusId, string statusName)
         {
             string query = "SELECT COUNT(*) FROM Status WHERE Status = @status AND IDstatus != @statusId;";
@@ -241,11 +233,11 @@ namespace Kursovaya
             }
         }
 
+        //Обработчик кнопки добавления статуса
         private void button1_Click(object sender, EventArgs e)
         {
             string statusName = textBox1.Text.Trim();
 
-            // Проверка на существование
             if (IsStatusExists(statusName))
             {
                 MessageBox.Show("Статус заказа с таким наименованием уже существует", "Ошибка",
@@ -253,7 +245,6 @@ namespace Kursovaya
                 return;
             }
 
-            // Валидация данных
             if (string.IsNullOrEmpty(statusName))
             {
                 MessageBox.Show("Заполните поле статуса заказа", "Ошибка",
@@ -261,7 +252,6 @@ namespace Kursovaya
                 return;
             }
 
-            // Добавление в базу данных с получением ID новой записи
             string query = "INSERT INTO Status (Status) VALUES (@status); SELECT LAST_INSERT_ID();";
 
             using (MySqlConnection con = new MySqlConnection(conString))
@@ -272,18 +262,15 @@ namespace Kursovaya
                     using (MySqlCommand cmd = new MySqlCommand(query, con))
                     {
                         cmd.Parameters.AddWithValue("@status", statusName);
-                        // Получаем ID только что добавленного статуса
                         int newId = Convert.ToInt32(cmd.ExecuteScalar());
 
-                        // Сохраняем ID новой записи
                         _lastInsertedStatusId = newId;
 
                         MessageBox.Show("Статус заказа успешно добавлен", "Успех",
                                       MessageBoxButtons.OK, MessageBoxIcon.Information);
                         textBox1.Clear();
-                        FillDataGridView(); // Обновляем DataGridView
+                        FillDataGridView();
 
-                        // Выделяем и показываем первую строку (новый статус)
                         if (dataGridView1.Rows.Count > 0)
                         {
                             dataGridView1.Rows[0].Selected = true;
@@ -299,6 +286,7 @@ namespace Kursovaya
             }
         }
 
+        //Обработчик кнопки обновления статуса
         private void button2_Click(object sender, EventArgs e)
         {
             if (dataGridView1.CurrentRow == null)
@@ -311,7 +299,6 @@ namespace Kursovaya
             int selectedId = Convert.ToInt32(dataGridView1.CurrentRow.Cells["IDstatus"].Value);
             string newStatusName = textBox1.Text.Trim();
 
-            // Проверка на существование (исключая текущий статус)
             if (IsStatusExistsExceptCurrent(selectedId, newStatusName))
             {
                 MessageBox.Show("Статус заказа с таким наименованием уже существует", "Ошибка",
@@ -319,7 +306,6 @@ namespace Kursovaya
                 return;
             }
 
-            // Обновление в базе данных
             string query = "UPDATE Status SET Status = @Status WHERE IDstatus = @selectedId";
 
             using (MySqlConnection con = new MySqlConnection(conString))
@@ -338,7 +324,7 @@ namespace Kursovaya
                             MessageBox.Show("Статус заказа успешно обновлен", "Успех",
                                           MessageBoxButtons.OK, MessageBoxIcon.Information);
                             textBox1.Clear();
-                            FillDataGridView(); // Обновляем DataGridView
+                            FillDataGridView();
                         }
                     }
                 }
@@ -350,14 +336,9 @@ namespace Kursovaya
             }
         }
 
-        private void textBox1_TextChanged(object sender, EventArgs e)
-        {
-            UpdateButtonsState();
-        }
-
+        //Обновление состояния кнопок
         void UpdateButtonsState()
         {
-            // Включаем кнопку только если TextBox не пустой
             button1.Enabled = !string.IsNullOrWhiteSpace(textBox1.Text);
             string currentText = textBox1.Text.Trim();
             bool hasText = !string.IsNullOrWhiteSpace(currentText);
@@ -372,20 +353,22 @@ namespace Kursovaya
                 button2.Enabled = false;
             }
 
-            // Кнопка удаления доступна только когда выбрана запись
             button3.Enabled = (dataGridView1.CurrentRow != null);
         }
 
+        private void textBox1_TextChanged(object sender, EventArgs e)
+        {
+            UpdateButtonsState();
+        }
+
+        //Обработчик изменения выделения в DataGridView
         private void dataGridView1_SelectionChanged(object sender, EventArgs e)
         {
             if (dataGridView1.CurrentRow != null && dataGridView1.CurrentRow.Index >= 0)
             {
                 try
                 {
-                    // Заполняем поля данными из выбранной строки
                     DataGridViewRow selectedRow = dataGridView1.CurrentRow;
-
-                    // Основные данные
                     textBox1.Text = selectedRow.Cells["Status"].Value?.ToString() ?? "";
                 }
                 catch (Exception ex)
@@ -393,11 +376,11 @@ namespace Kursovaya
                     MessageBox.Show($"Ошибка при заполнении полей: {ex.Message}");
                 }
 
-                // Обновляем состояние кнопок
                 UpdateButtonsState();
             }
         }
 
+        //Обработчик кнопки удаления статуса
         private void button3_Click(object sender, EventArgs e)
         {
             if (dataGridView1.CurrentRow == null)
@@ -410,7 +393,6 @@ namespace Kursovaya
             int selectedId = Convert.ToInt32(dataGridView1.CurrentRow.Cells["IDstatus"].Value);
             string statusName = dataGridView1.CurrentRow.Cells["Status"].Value.ToString();
 
-            // Подтверждение удаления
             DialogResult result = MessageBox.Show(
                 $"Вы уверены, что хотите удалить статус \"{statusName}\"?",
                 "Подтверждение удаления",
@@ -420,7 +402,6 @@ namespace Kursovaya
             if (result != DialogResult.Yes)
                 return;
 
-            // Проверка на использование статуса в других таблицах
             if (IsStatusInUse(selectedId))
             {
                 MessageBox.Show("Невозможно удалить статус заказа, так как он используется в других таблицах",
@@ -428,7 +409,6 @@ namespace Kursovaya
                 return;
             }
 
-            // Удаление из базы данных
             string query = "DELETE FROM Status WHERE IDstatus = @statusId";
 
             using (MySqlConnection con = new MySqlConnection(conString))
@@ -446,7 +426,7 @@ namespace Kursovaya
                             MessageBox.Show("Статус заказа успешно удален", "Успех",
                                           MessageBoxButtons.OK, MessageBoxIcon.Information);
                             textBox1.Clear();
-                            FillDataGridView(); // Обновляем DataGridView
+                            FillDataGridView();
                         }
                     }
                 }
@@ -458,6 +438,7 @@ namespace Kursovaya
             }
         }
 
+        //Проверка использования статуса в других таблицах
         private bool IsStatusInUse(int statusId)
         {
             string checkQueries = @"SELECT COUNT(*) FROM Orders WHERE IdStatus = @statusId;";
@@ -489,6 +470,7 @@ namespace Kursovaya
             }
         }
 
+        //Очистка всех полей формы
         private void ClearAllFields()
         {
             dataGridView1.ClearSelection();
@@ -497,19 +479,18 @@ namespace Kursovaya
             UpdateButtonsState();
         }
 
+        //Обработчик загрузки формы
         private void Statuses_Load(object sender, EventArgs e)
         {
-            // Очищаем все поля при загрузке формы
             ClearAllFields();
             _lastInsertedStatusId = null;
         }
 
+        //Установка русской раскладки при установке курсора в текстовое поле
         private void textBox1_Enter(object sender, EventArgs e)
         {
-            // Получаем доступный список языков и устанавливаем нужный
             foreach (InputLanguage lang in InputLanguage.InstalledInputLanguages)
             {
-                // Ищем русский язык
                 if (lang.Culture.TwoLetterISOLanguageName == "ru")
                 {
                     InputLanguage.CurrentInputLanguage = lang;

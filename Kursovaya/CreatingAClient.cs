@@ -23,15 +23,12 @@ namespace Kursovaya
         private bool isSearching = false;
         private int? _lastInsertedClientId = null;
 
-        // Для сохранения состояния
         private string savedName = "";
         private string savedPhone = "";
         private string savedPhone2 = "";
 
-        // Хранилище для оригинальных номеров телефонов
         private Dictionary<int, string> originalPhoneNumbers = new Dictionary<int, string>();
 
-        // Статические поля для передачи данных
         public static string SelectedClientName { get; set; } = "";
         public static string SelectedClientPhone { get; set; } = "";
         public static bool ClientWasSelected { get; set; } = false;
@@ -46,7 +43,6 @@ namespace Kursovaya
 
             FillDataGridView();
 
-            // Подписываемся на событие клика по ячейке
             dataGridView1.CellClick += DataGridView1_CellClick;
 
             inactivityTimeout = Properties.Settings.Default.InactivityTimeout * 1000;
@@ -106,7 +102,7 @@ namespace Kursovaya
             button5.Click += button5_Click;
         }
 
-        // Метод для маскирования номера телефона
+        //Функция маскирования номера телефона
         private string MaskPhoneNumber(string phoneNumber)
         {
             if (string.IsNullOrEmpty(phoneNumber))
@@ -138,6 +134,7 @@ namespace Kursovaya
             return phoneNumber;
         }
 
+        //Сброс таймера неактивности
         private void ResetInactivityTimer(object sender, EventArgs e)
         {
             inactivityTimer.Stop();
@@ -145,21 +142,21 @@ namespace Kursovaya
             inactivityTimer.Start();
         }
 
+        //Обработчик тиков таймера неактивности
         private void InactivityTimer_Tick(object sender, EventArgs e)
         {
             inactivityTimer.Stop();
             ShowLoginForm();
         }
 
+        //Отображение формы авторизации
         private void ShowLoginForm()
         {
-            // Сохраняем состояние (если нужно)
             SaveFormState();
 
             this.Hide();
             var loginForm = new Authorization();
 
-            // Передаем информацию для возврата
             string expectedUserName = Properties.Settings.Default.userName;
             string expectedUserRole = Properties.Settings.Default.userRole;
             loginForm.SetReturnAfterInactivity(this, expectedUserName, expectedUserRole);
@@ -168,36 +165,34 @@ namespace Kursovaya
             {
                 if (loginForm.IsAuthorizedAsExpected())
                 {
-                    // Тот же пользователь - восстанавливаем форму
                     UpdateCurrentUserInfo();
                     RefreshFormData();
                     RestoreFormState();
                     this.Show();
                     ResetInactivityTimer(null, null);
                 }
-                // Если другой пользователь - форма уже закрыта в HandleReturnAfterInactivity
             }
         }
 
+        //Сохранение состояния формы
         private void SaveFormState()
         {
-            // Сохраняем текущее состояние формы
             savedName = textBox1.Text;
             savedPhone = maskedTextBox1.Text;
             savedPhone2 = maskedTextBox2.Text;
         }
 
+        //Восстановление состояния формы
         private void RestoreFormState()
         {
-            // Восстанавливаем состояние формы
             textBox1.Text = savedName;
             maskedTextBox1.Text = savedPhone;
             maskedTextBox2.Text = savedPhone2;
 
-            // Обновляем DataGridView если нужно
             FillDataGridView();
         }
 
+        //Обновление информации о текущем пользователе
         private void UpdateCurrentUserInfo()
         {
             string fullname = Properties.Settings.Default.userName;
@@ -216,16 +211,19 @@ namespace Kursovaya
             label2.Text = Properties.Settings.Default.userRole;
         }
 
+        //Обновление данных формы
         private void RefreshFormData()
         {
             FillDataGridView();
         }
 
+        //Обработчик кнопки очистки поиска
         private void button5_Click(object sender, EventArgs e)
         {
             ClearSearchField();
         }
 
+        //Очистка поля поиска
         private void ClearSearchField()
         {
             searchTimer.Stop();
@@ -234,26 +232,7 @@ namespace Kursovaya
             FillDataGridView();
         }
 
-        private void maskedTextBox1_Enter(object sender, EventArgs e)
-        {
-            SetCursorToFirstEmptyPosition(maskedTextBox1);
-        }
-
-        private void maskedTextBox1_Click(object sender, EventArgs e)
-        {
-            SetCursorToFirstEmptyPosition(maskedTextBox1);
-        }
-
-        private void maskedTextBox2_Enter(object sender, EventArgs e)
-        {
-            SetCursorToFirstEmptyPosition(maskedTextBox2);
-        }
-
-        private void maskedTextBox2_Click(object sender, EventArgs e)
-        {
-            SetCursorToFirstEmptyPosition(maskedTextBox2);
-        }
-
+        //Установка курсора на первую пустую позицию в MaskedTextBox
         private void SetCursorToFirstEmptyPosition(MaskedTextBox maskedTextBox)
         {
             if (!string.IsNullOrWhiteSpace(maskedTextBox.Text) &&
@@ -276,12 +255,34 @@ namespace Kursovaya
             maskedTextBox.SelectionStart = maskedTextBox.Text.Length;
         }
 
+        private void maskedTextBox1_Enter(object sender, EventArgs e)
+        {
+            SetCursorToFirstEmptyPosition(maskedTextBox1);
+        }
+
+        private void maskedTextBox1_Click(object sender, EventArgs e)
+        {
+            SetCursorToFirstEmptyPosition(maskedTextBox1);
+        }
+
+        private void maskedTextBox2_Enter(object sender, EventArgs e)
+        {
+            SetCursorToFirstEmptyPosition(maskedTextBox2);
+        }
+
+        private void maskedTextBox2_Click(object sender, EventArgs e)
+        {
+            SetCursorToFirstEmptyPosition(maskedTextBox2);
+        }
+
+        //Обработчик изменения текста в поле поиска
         private void maskedTextBox2_TextChanged(object sender, EventArgs e)
         {
             searchTimer.Stop();
             searchTimer.Start();
         }
 
+        //Обработчик тиков таймера поиска
         private void SearchTimer_Tick(object sender, EventArgs e)
         {
             searchTimer.Stop();
@@ -311,6 +312,7 @@ namespace Kursovaya
 
         private bool allowClose = false;
 
+        //Обработчик кнопки выбора клиента
         private void button4_Click(object sender, EventArgs e)
         {
             if (dataGridView1.SelectedRows.Count == 0)
@@ -348,6 +350,7 @@ namespace Kursovaya
             this.Close();
         }
 
+        //Обработчик закрытия формы
         private void CreatingAClient_FormClosing(object sender, FormClosingEventArgs e)
         {
             if (e.CloseReason == CloseReason.ApplicationExitCall)
@@ -361,6 +364,7 @@ namespace Kursovaya
             }
         }
 
+        //Загрузка данных в DataGridView
         void FillDataGridView(string where = "")
         {
             string SelectQuery = @"SELECT IDclient, Name, NumberPhone FROM Clients ORDER BY Name ASC";
@@ -393,18 +397,14 @@ namespace Kursovaya
 
                     originalPhoneNumbers.Clear();
 
-                    // Настройка DataGridView
                     dataGridView1.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
 
-                    // Скрытый столбец ID
                     dataGridView1.Columns.Add("IDclient", "Id");
                     dataGridView1.Columns["IDclient"].Visible = false;
 
-                    // Столбец ФИО (растягивается)
                     dataGridView1.Columns.Add("Name", "ФИО");
                     dataGridView1.Columns["Name"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
 
-                    // Столбец телефона
                     dataGridView1.Columns.Add("NumberPhone", "Номер телефона");
                     dataGridView1.Columns["NumberPhone"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
 
@@ -436,7 +436,7 @@ namespace Kursovaya
 
                     foreach (var client in clients)
                     {
-                        string displayPhone = MaskPhoneNumber(client.Phone);  // Показываем маскированный номер
+                        string displayPhone = MaskPhoneNumber(client.Phone);
                         dataGridView1.Rows.Add(client.Id, client.Name, displayPhone);
                     }
 
@@ -455,6 +455,7 @@ namespace Kursovaya
             }
         }
 
+        //Ограничение ввода в поле ФИО
         private void textBox1_KeyPress(object sender, KeyPressEventArgs e)
         {
             TextBox tb = (TextBox)sender;
@@ -508,6 +509,7 @@ namespace Kursovaya
             e.Handled = true;
         }
 
+        //Ограничение ввода в поле телефона
         private void maskedTextBox1_KeyPress(object sender, KeyPressEventArgs e)
         {
             if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar))
@@ -516,6 +518,7 @@ namespace Kursovaya
             }
         }
 
+        //Ограничение ввода в поле поиска
         private void maskedTextBox2_KeyPress(object sender, KeyPressEventArgs e)
         {
             if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar))
@@ -524,6 +527,7 @@ namespace Kursovaya
             }
         }
 
+        //Проверка существования клиента по номеру телефона
         private bool IsClientExists(string numberPhone)
         {
             string query = "SELECT COUNT(*) FROM Clients WHERE NumberPhone = @numberPhone;";
@@ -549,6 +553,7 @@ namespace Kursovaya
             }
         }
 
+        //Проверка пустого номера телефона
         private bool IsEmptyPhoneNumber(string phoneNumber)
         {
             if (string.IsNullOrWhiteSpace(phoneNumber))
@@ -558,6 +563,7 @@ namespace Kursovaya
             return digitsOnly.Length < 10;
         }
 
+        //Функция форматирования ФИО
         private string FormatFIO(string fullName)
         {
             if (string.IsNullOrWhiteSpace(fullName))
@@ -602,6 +608,7 @@ namespace Kursovaya
             return $"{lastName} {initials}".Trim();
         }
 
+        //Функция форматирования номера телефона
         private string FormatPhoneNumber(string phoneNumber)
         {
             if (string.IsNullOrWhiteSpace(phoneNumber))
@@ -621,6 +628,7 @@ namespace Kursovaya
             return phoneNumber;
         }
 
+        //Обработчик кнопки добавления клиента
         private void button1_Click(object sender, EventArgs e)
         {
             string nameUser = textBox1.Text.Trim();
@@ -687,6 +695,7 @@ namespace Kursovaya
             }
         }
 
+        //Обработчик кнопки обновления клиента
         private void button2_Click(object sender, EventArgs e)
         {
             if (dataGridView1.SelectedRows.Count == 0)
@@ -764,6 +773,7 @@ namespace Kursovaya
             }
         }
 
+        //Проверка существования клиента с другим ID
         private bool IsAnotherClientExists(string numberPhone, int currentClientId)
         {
             string query = "SELECT COUNT(*) FROM Clients WHERE NumberPhone = @numberPhone AND IDclient != @currentClientId;";
@@ -790,6 +800,7 @@ namespace Kursovaya
             }
         }
 
+        //Обработчик кнопки удаления клиента
         private void button3_Click(object sender, EventArgs e)
         {
             if (dataGridView1.SelectedRows.Count == 0)
@@ -801,7 +812,6 @@ namespace Kursovaya
 
             DataGridViewRow selectedRow = dataGridView1.SelectedRows[0];
             int selectedId = Convert.ToInt32(selectedRow.Cells["IDclient"].Value);
-            string clientNumber = selectedRow.Cells["NumberPhone"].Value.ToString();
 
             DialogResult result = MessageBox.Show(
                 $"Вы уверены, что хотите удалить клиента с телефоном \"{maskedTextBox1.Text}\"?",
@@ -852,18 +862,7 @@ namespace Kursovaya
             }
         }
 
-        private void textBox1_TextChanged(object sender, EventArgs e)
-        {
-            if (!isSearching)
-                UpdateButtonsState();
-        }
-
-        private void maskedTextBox1_TextChanged(object sender, EventArgs e)
-        {
-            if (!isSearching)
-                UpdateButtonsState();
-        }
-
+        //Обновление состояния кнопок
         void UpdateButtonsState()
         {
             string currentTextName = textBox1.Text.Trim();
@@ -900,6 +899,7 @@ namespace Kursovaya
             button5.Enabled = true;
         }
 
+        //Проверка использования клиента в других таблицах
         private bool IsClientInUse(int clientId)
         {
             string checkQuery = @"SELECT COUNT(*) FROM Orders WHERE IDclient = @clientId;";
@@ -925,6 +925,19 @@ namespace Kursovaya
             }
         }
 
+        private void textBox1_TextChanged(object sender, EventArgs e)
+        {
+            if (!isSearching)
+                UpdateButtonsState();
+        }
+
+        private void maskedTextBox1_TextChanged(object sender, EventArgs e)
+        {
+            if (!isSearching)
+                UpdateButtonsState();
+        }
+
+        //Обработчик изменения выделения в DataGridView
         private void dataGridView1_SelectionChanged(object sender, EventArgs e)
         {
             if (isSearching)
@@ -965,12 +978,14 @@ namespace Kursovaya
             UpdateButtonsState();
         }
 
+        //Обработчик загрузки формы
         private void CreatingAClient_Load(object sender, EventArgs e)
         {
             ClearAllFields();
             _lastInsertedClientId = null;
         }
 
+        //Поиск по номеру телефона
         void FillDataGridViewWithSearch(string searchDigits)
         {
             string SelectQuery = @"SELECT IDclient, Name, NumberPhone FROM Clients 
@@ -1042,6 +1057,7 @@ namespace Kursovaya
             }
         }
 
+        //Очистка полей без событий
         private void ClearDataFieldsWithoutEvents()
         {
             textBox1.TextChanged -= textBox1_TextChanged;
@@ -1056,6 +1072,7 @@ namespace Kursovaya
             maskedTextBox1.TextChanged += maskedTextBox1_TextChanged;
         }
 
+        //Очистка всех полей формы
         private void ClearAllFields()
         {
             ClearDataFieldsWithoutEvents();
@@ -1064,6 +1081,7 @@ namespace Kursovaya
             UpdateButtonsState();
         }
 
+        //Обработчик клика по ячейке DataGridView
         private void DataGridView1_CellClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex < 0)
@@ -1072,12 +1090,11 @@ namespace Kursovaya
             }
         }
 
+        //Установка русской раскладки при установке курсора в поле ФИО
         private void textBox1_Enter(object sender, EventArgs e)
         {
-            // Получаем доступный список языков и устанавливаем нужный
             foreach (InputLanguage lang in InputLanguage.InstalledInputLanguages)
             {
-                // Ищем русский язык
                 if (lang.Culture.TwoLetterISOLanguageName == "ru")
                 {
                     InputLanguage.CurrentInputLanguage = lang;

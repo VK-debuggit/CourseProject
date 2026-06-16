@@ -46,6 +46,7 @@ namespace Kursovaya
 
         private bool allowClose = false;
 
+        //Обработчик закрытия формы
         private void Roles_FormClosing(object sender, FormClosingEventArgs e)
         {
             if (e.CloseReason == CloseReason.ApplicationExitCall)
@@ -59,6 +60,7 @@ namespace Kursovaya
             }
         }
 
+        //Обработчик кнопки возврата в справочники
         private void button4_Click(object sender, EventArgs e)
         {
             allowClose = true;
@@ -68,6 +70,7 @@ namespace Kursovaya
             this.Close();
         }
 
+        //Загрузка данных ролей в DataGridView
         void FillDataGridView()
         {
             string SelectQuery = @"SELECT IDrole, `Role` FROM CafeActivities.Roles ORDER BY `Role` ASC;";
@@ -100,7 +103,6 @@ namespace Kursovaya
 
                     label5.Text = rowCount.ToString();
 
-                    // Показываем информацию о загруженных данных
                     if (rowCount == 0)
                     {
                         MessageBox.Show("Данные не найдены", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -109,155 +111,7 @@ namespace Kursovaya
             }
         }
 
-        private void textBox1_KeyPress(object sender, KeyPressEventArgs e)
-        {
-            TextBox tb = (TextBox)sender;
-
-            if (char.IsControl(e.KeyChar))
-                return;
-
-            if (tb.Text.Length > 0 && char.IsLower(tb.Text[0]))
-            {
-                int cursorPos = tb.SelectionStart;
-
-                // Делаем только первую букву заглавной
-                string newText = char.ToUpper(tb.Text[0]) + tb.Text.Substring(1);
-
-                if (tb.Text != newText)
-                {
-                    tb.Text = newText;
-                    tb.SelectionStart = cursorPos;
-                }
-            }
-
-            // Если вводится пробел
-            if (e.KeyChar == ' ')
-            {
-                // Запрещаем пробел в начале
-                if (tb.Text.Length == 0)
-                {
-                    e.Handled = true;
-                    return;
-                }
-
-                // Запрещаем пробел после пробела
-                if (tb.Text.Length > 0 && tb.Text[tb.Text.Length - 1] == ' ')
-                {
-                    e.Handled = true;
-                    return;
-                }
-
-                // Разрешаем пробел после буквы
-                return;
-            }
-
-            // Проверяем русские буквы
-            if ((e.KeyChar >= 'А' && e.KeyChar <= 'Я') ||
-                (e.KeyChar >= 'а' && e.KeyChar <= 'я') ||
-                e.KeyChar == 'Ё' || e.KeyChar == 'ё')
-                return;
-
-            e.Handled = true;
-        }
-
-        private bool IsRolesExists(string roleName)
-        {
-            string query = "SELECT COUNT(*) FROM Roles WHERE Role = @role;";
-
-            using (MySqlConnection con = new MySqlConnection(conString))
-            {
-                try
-                {
-                    con.Open();
-                    using (MySqlCommand cmd = new MySqlCommand(query, con))
-                    {
-                        cmd.Parameters.AddWithValue("@role", roleName.Trim());
-
-                        int count = Convert.ToInt32(cmd.ExecuteScalar());
-                        return count > 0;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Ошибка проверки роли: {ex.Message}", "Ошибка",
-                                  MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return true; 
-                }
-            }
-        }
-
-        private void button1_Click_1(object sender, EventArgs e)
-        {
-            // Добавление в базу данных
-            string query = "INSERT INTO Roles (Role) VALUES (@role)";
-
-            using (MySqlConnection con = new MySqlConnection(conString))
-            {
-                try
-                {
-                    con.Open();
-                    using (MySqlCommand cmd = new MySqlCommand(query, con))
-                    {
-                        int rowsAffected = cmd.ExecuteNonQuery();
-
-                        if (rowsAffected > 0)
-                        {
-                            MessageBox.Show("Роль успешно добавлена", "Успех",
-                                          MessageBoxButtons.OK, MessageBoxIcon.Information);
-                            FillDataGridView();
-                            ClearAllFields();
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Ошибка добавления роли: {ex.Message}", "Ошибка",
-                                  MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            }
-        }
-
-        private void button2_Click(object sender, EventArgs e)
-        {
-            if (dataGridView1.CurrentRow == null)
-            {
-                MessageBox.Show("Выберите роль для редактирования", "Ошибка",
-                              MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            int selectedId = Convert.ToInt32(dataGridView1.CurrentRow.Cells["IDrole"].Value);
-
-            // Обновление в базе данных
-            string query = "UPDATE Roles SET Role = @role WHERE IDrole = @selectedId";
-
-            using (MySqlConnection con = new MySqlConnection(conString))
-            {
-                try
-                {
-                    con.Open();
-                    using (MySqlCommand cmd = new MySqlCommand(query, con))
-                    {
-                        cmd.Parameters.AddWithValue("@selectedId", selectedId);
-                        int rowsAffected = cmd.ExecuteNonQuery();
-
-                        if (rowsAffected > 0)
-                        {
-                            MessageBox.Show("Роль успешно обновлена", "Успех",
-                                          MessageBoxButtons.OK, MessageBoxIcon.Information);
-                            FillDataGridView();
-                            ClearAllFields();
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Ошибка обновления роли: {ex.Message}", "Ошибка",
-                                  MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            }
-        }
-
+        //Проверка использования роли в других таблицах
         private bool IsRoleInUse(int statusId)
         {
             string checkQueries = @"SELECT COUNT(*) FROM Users WHERE IdRole = @roleId;";
@@ -289,13 +143,13 @@ namespace Kursovaya
             }
         }
 
+        //Обработчик изменения выделения в DataGridView
         private void dataGridView1_SelectionChanged(object sender, EventArgs e)
         {
             if (dataGridView1.CurrentRow != null && dataGridView1.CurrentRow.Index >= 0)
             {
                 try
                 {
-                    // Заполняем поля данными из выбранной строки
                     DataGridViewRow selectedRow = dataGridView1.CurrentRow;
                 }
                 catch (Exception ex)
@@ -305,6 +159,7 @@ namespace Kursovaya
             }
         }
 
+        //Обработчик кнопки удаления роли
         private void button3_Click(object sender, EventArgs e)
         {
             if (dataGridView1.CurrentRow == null)
@@ -317,7 +172,6 @@ namespace Kursovaya
             int selectedId = Convert.ToInt32(dataGridView1.CurrentRow.Cells["IDrole"].Value);
             string statusName = dataGridView1.CurrentRow.Cells["Role"].Value.ToString();
 
-            // Подтверждение удаления
             DialogResult result = MessageBox.Show(
                 $"Вы уверены, что хотите удалить роль \"{statusName}\"?",
                 "Подтверждение удаления",
@@ -327,7 +181,6 @@ namespace Kursovaya
             if (result != DialogResult.Yes)
                 return;
 
-            // Проверка на использование статуса в других таблицах (опционально)
             if (IsRoleInUse(selectedId))
             {
                 MessageBox.Show("Невозможно удалить роль, так как она используется в других таблицах",
@@ -335,7 +188,6 @@ namespace Kursovaya
                 return;
             }
 
-            // Удаление из базы данных
             string query = "DELETE FROM Roles WHERE IDrole = @roleId";
 
             using (MySqlConnection con = new MySqlConnection(conString))
@@ -365,15 +217,16 @@ namespace Kursovaya
             }
         }
 
+        //Очистка всех полей формы
         private void ClearAllFields()
         {
             dataGridView1.ClearSelection();
             dataGridView1.CurrentCell = null;
         }
 
+        //Обработчик загрузки формы
         private void Roles_Load(object sender, EventArgs e)
         {
-            // Очищаем все поля при загрузке формы
             ClearAllFields();
         }
     }

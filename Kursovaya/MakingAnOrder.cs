@@ -35,7 +35,6 @@ namespace Kursovaya
             FillFilterEvent();
             FillFilterCategory();
 
-            // Подключаем обновленную версию события
             dateTimePicker2.ValueChanged += dateTimePicker2_ValueChanged_AntiClick;
             FillFilterShedule();
 
@@ -96,24 +95,20 @@ namespace Kursovaya
             label1.Text = formattedname;
             label2.Text = Properties.Settings.Default.userRole;
 
-            // Заполняем label28 свободными датами на текущий месяц выбранной даты
             UpdateAvailableDatesLabel(dateTimePicker2.Value);
         }
 
-        // НОВЫЙ МЕТОД: Обновляет label28 со свободными датами на указанный месяц
+        //Обновление метки со свободными датами
         private void UpdateAvailableDatesLabel(DateTime date)
         {
-            // Определяем первый и последний день выбранного месяца
             DateTime firstDayOfMonth = new DateTime(date.Year, date.Month, 1);
             DateTime lastDayOfMonth = firstDayOfMonth.AddMonths(1).AddDays(-1);
 
-            // Ограничиваем максимальной датой из dateTimePicker2
             if (lastDayOfMonth > dateTimePicker2.MaxDate)
                 lastDayOfMonth = dateTimePicker2.MaxDate;
 
             List<int> availableDays = new List<int>();
 
-            // Проверяем каждую дату месяца
             for (DateTime currentDate = firstDayOfMonth; currentDate <= lastDayOfMonth; currentDate = currentDate.AddDays(1))
             {
                 if (currentDate >= dateTimePicker2.MinDate && IsDateAvailable(currentDate))
@@ -122,7 +117,6 @@ namespace Kursovaya
                 }
             }
 
-            // Обновляем label28
             if (availableDays.Count == 0)
             {
                 label28.Text = $"❌ В {GetMonthName(date.Month)} нет свободных дат для записи";
@@ -131,25 +125,29 @@ namespace Kursovaya
             }
 
             string datesText = FormatDaysForDisplay(availableDays);
-
-            label28.Text = $"📅 Свободные даты в {GetMonthName(date.Month)}: {datesText}";
+            label28.Text = $"📅 Свободные даты в {GetMonthName(date.Month)}:\n{datesText}";
             label28.ForeColor = System.Drawing.Color.Black;
         }
 
-        // Форматирует список дней для отображения
+        //Форматирование списка дней для отображения
         private string FormatDaysForDisplay(List<int> days)
         {
             if (days.Count == 0) return "нет";
-            if (days.Count <= 10)
+
+            int numbersPerLine = 15;
+
+            List<string> lines = new List<string>();
+
+            for (int i = 0; i < days.Count; i += numbersPerLine)
             {
-                return string.Join(", ", days);
+                var lineDays = days.Skip(i).Take(numbersPerLine);
+                lines.Add(string.Join(", ", lineDays));
             }
 
-            // Если много дат, показываем начало и конец
-            return $"{days.First()}, {days.First() + 1}, {days.First() + 2}...{days.Last() - 2}, {days.Last() - 1}, {days.Last()}";
+            return string.Join(Environment.NewLine, lines);
         }
 
-        // Возвращает название месяца в родительном падеже
+        //Получение названия месяца в родительном падеже
         private string GetMonthName(int month)
         {
             string[] monthNames = { "", "январе", "феврале", "марте", "апреле", "мае", "июне",
@@ -157,36 +155,30 @@ namespace Kursovaya
             return monthNames[month];
         }
 
+        //Обработчик изменения даты проведения
         private void dateTimePicker2_ValueChanged_AntiClick(object sender, EventArgs e)
         {
             DateTime selectedDate = dateTimePicker2.Value.Date;
 
-            // Проверяем, свободна ли выбранная пользователем дата
             if (!IsDateAvailable(selectedDate))
             {
-                // Вычисляем ближайший день, где есть свободные окошки
                 DateTime validDate = GetNearestAvailableDate(selectedDate);
 
-                // Временно отключаем событие, чтобы избежать рекурсии
                 dateTimePicker2.ValueChanged -= dateTimePicker2_ValueChanged_AntiClick;
                 dateTimePicker2.Value = validDate;
                 dateTimePicker2.ValueChanged += dateTimePicker2_ValueChanged_AntiClick;
 
-                // Обновляем выбранную дату для дальнейшего использования
                 selectedDate = validDate;
             }
 
-            // Обновляем label28 для месяца выбранной даты
             UpdateAvailableDatesLabel(selectedDate);
 
-            // Сюда управление дойдет ТОЛЬКО если дата имеет доступные окошки
             FillFilterShedule();
         }
 
-        // Проверка: есть ли хотя бы один свободный временной слот на дату
+        //Проверка наличия свободных слотов на дату
         private bool IsDateAvailable(DateTime date)
         {
-            // Проверяем, есть ли хотя бы один свободный временной слот на эту дату
             List<string> allTimeSlots = GetAllTimeSlots();
             if (allTimeSlots.Count == 0) return false;
 
@@ -207,13 +199,11 @@ namespace Kursovaya
             return availableSlots.Count > 0;
         }
 
-        // Поиск ближайшей доступной даты (вперед)
+        //Поиск ближайшей доступной даты
         private DateTime GetNearestAvailableDate(DateTime startDate)
         {
-            // Если сама выбранная дата доступна, возвращаем её
             if (IsDateAvailable(startDate)) return startDate;
 
-            // Если занята, проверяем следующие 60 дней
             for (int i = 1; i <= 60; i++)
             {
                 DateTime nextDate = startDate.AddDays(i);
@@ -222,7 +212,6 @@ namespace Kursovaya
                 if (IsDateAvailable(nextDate)) return nextDate;
             }
 
-            // Если не нашли вперед, пробуем искать назад (на случай если выбрали слишком далеко)
             for (int i = 1; i <= 14; i++)
             {
                 DateTime prevDate = startDate.AddDays(-i);
@@ -231,11 +220,10 @@ namespace Kursovaya
                 if (IsDateAvailable(prevDate)) return prevDate;
             }
 
-            // Если вообще всё занято, возвращаем текущую дату
             return startDate;
         }
 
-        // Получаем все временные слоты из БД (без проверки занятости)
+        //Получение всех временных слотов из расписания
         private List<string> GetAllTimeSlots()
         {
             List<string> allTimeSlots = new List<string>();
@@ -259,6 +247,7 @@ namespace Kursovaya
             return allTimeSlots;
         }
 
+        //Получение доступных временных слотов на дату
         private List<string> GetAvailableTimeSlotsForDate(DateTime date, List<string> allTimeSlots,
                                                           Dictionary<string, TimeSpan> startTimes,
                                                           Dictionary<string, TimeSpan> endTimes)
@@ -330,6 +319,7 @@ namespace Kursovaya
 
         private bool allowClose = false;
 
+        //Обработчик кнопки возврата в главное меню
         private void button4_Click(object sender, EventArgs e)
         {
             allowClose = true;
@@ -339,6 +329,7 @@ namespace Kursovaya
             this.Close();
         }
 
+        //Обработчик закрытия формы
         private void MakingAnOrder_FormClosing(object sender, FormClosingEventArgs e)
         {
             if (e.CloseReason == CloseReason.ApplicationExitCall)
@@ -352,6 +343,7 @@ namespace Kursovaya
             }
         }
 
+        //Обновление информации о клиенте
         private void UpdateClientInfo()
         {
             if (!string.IsNullOrEmpty(selectedClientPhone) && !string.IsNullOrEmpty(selectedClientName))
@@ -368,12 +360,14 @@ namespace Kursovaya
             UpdateButton5State();
         }
 
+        //Обновление состояния кнопки оформления заказа
         private void UpdateButton5State()
         {
             bool hasItemsInCart = dataView2 != null && dataView2.Rows.Count > 0;
             button5.Enabled = hasItemsInCart;
         }
 
+        //Обработчик кнопки оформления заказа
         private void button5_Click(object sender, EventArgs e)
         {
             List<string> missingFields = new List<string>();
@@ -456,6 +450,7 @@ namespace Kursovaya
             this.Close();
         }
 
+        //Получение ID мероприятия по названию
         private int GetEventId(string eventName)
         {
             using (MySqlConnection con = new MySqlConnection(conString))
@@ -479,6 +474,7 @@ namespace Kursovaya
             return -1;
         }
 
+        //Получение ID расписания по временному слоту
         private int GetScheduleId(string timeSlot)
         {
             string[] timeParts = timeSlot.Split(new[] { " - " }, StringSplitOptions.None);
@@ -510,11 +506,13 @@ namespace Kursovaya
             return -1;
         }
 
+        //Расчет предоплаты
         private int CalculatePrepayment(int totalAmount)
         {
             return (int)Math.Round(totalAmount * 0.10m);
         }
 
+        //Проверка доступности временного слота
         private bool IsTimeSlotAvailable(string timeSlot)
         {
             string selectedDate = dateTimePicker2.Value.ToString("yyyy-MM-dd");
@@ -563,6 +561,7 @@ namespace Kursovaya
             }
         }
 
+        //Обработчик кнопки выбора/создания клиента
         private void button1_Click(object sender, EventArgs e)
         {
             this.Visible = false;
@@ -588,6 +587,7 @@ namespace Kursovaya
             this.Visible = true;
         }
 
+        //Загрузка мероприятий в выпадающий список
         void FillFilterEvent()
         {
             MySqlConnection con = new MySqlConnection(conString);
@@ -609,6 +609,7 @@ namespace Kursovaya
             con.Close();
         }
 
+        //Загрузка категорий в выпадающий список
         void FillFilterCategory()
         {
             MySqlConnection con = new MySqlConnection(conString);
@@ -630,6 +631,7 @@ namespace Kursovaya
             con.Close();
         }
 
+        //Загрузка доступных временных слотов
         void FillFilterShedule()
         {
             using (MySqlConnection con = new MySqlConnection(conString))
@@ -667,6 +669,7 @@ namespace Kursovaya
             }
         }
 
+        //Преобразование строки времени
         private TimeSpan ParseTimeSpan(string timeString)
         {
             timeString = timeString.Trim();
@@ -688,11 +691,13 @@ namespace Kursovaya
             return TimeSpan.Zero;
         }
 
+        //Проверка пересечения временных слотов
         private bool DoTimeSlotsOverlap(TimeSpan start1, TimeSpan end1, TimeSpan start2, TimeSpan end2)
         {
             return (start1 < end2 && end1 > start2);
         }
 
+        //Ограничение ввода в поле поиска
         private void textBox1_KeyPress(object sender, KeyPressEventArgs e)
         {
             TextBox tb = (TextBox)sender;
@@ -738,6 +743,7 @@ namespace Kursovaya
             e.Handled = true;
         }
 
+        //Получение следующего номера заказа
         private int FindNumberOrder()
         {
             using (MySqlConnection con = new MySqlConnection(conString))
@@ -761,6 +767,7 @@ namespace Kursovaya
             }
         }
 
+        //Загрузка данных в таблицу ассортимента
         void FillDataGridView(string where = "")
         {
             string conStr = @"SELECT 
@@ -887,21 +894,23 @@ namespace Kursovaya
             button2.Enabled = false;
         }
 
+        //Обработчик изменения выбранной категории
         private void comboBox3_SelectedIndexChanged(object sender, EventArgs e)
         {
             FillDataGridView();
         }
 
+        //Обработчик изменения текста поиска
         private void textBox1_TextChanged(object sender, EventArgs e)
         {
             FillDataGridView(textBox1.Text);
         }
 
+        //Обработчик клика по ячейке таблицы ассортимента
         private void dataGridView1_CellClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex >= 0)
             {
-                // Сбрасываем цвет ВСЕХ строк в ассортименте
                 foreach (DataGridViewRow row in dataGridView1.Rows)
                 {
                     row.DefaultCellStyle.BackColor = Color.White;
@@ -909,7 +918,6 @@ namespace Kursovaya
 
                 currentSelectedProductRow = e.RowIndex;
 
-                // Выделяем новую строку цветом
                 dataGridView1.Rows[currentSelectedProductRow].DefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
                 dataGridView1.Rows[currentSelectedProductRow].DefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(217, 152, 22);
 
@@ -918,6 +926,7 @@ namespace Kursovaya
             }
         }
 
+        //Загрузка деталей товара
         private void LoadProductDetails(int rowIndex)
         {
             try
@@ -940,6 +949,7 @@ namespace Kursovaya
             }
         }
 
+        //Загрузка полной информации о товаре
         private void LoadFullProductInfo(string article)
         {
             string query = @"SELECT 
@@ -974,6 +984,7 @@ namespace Kursovaya
             }
         }
 
+        //Отображение деталей товара
         private void DisplayProductDetails(MySqlDataReader rdr)
         {
             try
@@ -992,6 +1003,7 @@ namespace Kursovaya
             }
         }
 
+        //Загрузка изображения товара
         private void LoadProductImage(string photoFileName)
         {
             try
@@ -1011,8 +1023,8 @@ namespace Kursovaya
                         pictureBox1.Image = Image.FromStream(fs);
                     }
                 }
-                else {
-                    // Заглушка, если нет фото или файл не найден
+                else
+                {
                     string placeholderPath = Path.Combine(imagesFolder, "picture.png");
                     if (File.Exists(placeholderPath))
                     {
@@ -1031,6 +1043,7 @@ namespace Kursovaya
             }
         }
 
+        //Обработчик кнопки добавления товара в корзину
         private void button2_Click(object sender, EventArgs e)
         {
             if (currentSelectedProductRow >= 0)
@@ -1041,7 +1054,6 @@ namespace Kursovaya
                 string name = selectedRow.Cells["Name"].Value.ToString();
                 decimal price = Convert.ToDecimal(selectedRow.Cells["Price"].Value);
 
-                // Проверяем, есть ли уже такой товар в корзине
                 DataRow[] existingRows = dataView2.Select($"Article = '{article}'");
 
                 if (existingRows.Length == 0)
@@ -1058,12 +1070,10 @@ namespace Kursovaya
                 }
                 else
                 {
-                    // Если товар уже есть, просто обновляем информацию (но НЕ выделяем)
                     MessageBox.Show("Товар уже добавлен в корзину", "Информация",
                                   MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
 
-                // Сбрасываем выделение в таблице ассортимента
                 if (currentSelectedProductRow >= 0 && currentSelectedProductRow < dataGridView1.Rows.Count)
                 {
                     dataGridView1.Rows[currentSelectedProductRow].DefaultCellStyle.BackColor = Color.White;
@@ -1072,17 +1082,12 @@ namespace Kursovaya
                 currentSelectedProductRow = -1;
                 button2.Enabled = false;
 
-                // Очищаем информацию о товаре
                 ClearProductDetails();
 
-                // Снимаем выделение в таблице ассортимента
                 dataGridView1.ClearSelection();
 
-                // НЕ ВЫДЕЛЯЕМ добавленный товар в корзине
-                // Просто обновляем корзину без выделения
                 dataGridView2.ClearSelection();
 
-                // Сбрасываем состояние корзины
                 currentSelectedCartRow = -1;
                 button3.Enabled = false;
                 numericUpDown1.Enabled = false;
@@ -1090,7 +1095,7 @@ namespace Kursovaya
             }
         }
 
-        // Метод для очистки информации о товаре
+        //Очистка информации о товаре
         private void ClearProductDetails()
         {
             label24.Text = "";
@@ -1100,6 +1105,7 @@ namespace Kursovaya
             pictureBox1.Image = null;
         }
 
+        //Обновление итогов корзины
         private void UpdateCartSummary()
         {
             decimal totalAmount = 0;
@@ -1115,6 +1121,7 @@ namespace Kursovaya
             UpdateButton5State();
         }
 
+        //Обработчик загрузки формы
         void MakingAnOrder_Load(object sender, EventArgs e)
         {
             InitializeDataGridView2();
@@ -1127,6 +1134,7 @@ namespace Kursovaya
             dataGridView2.ClearSelection();
         }
 
+        //Инициализация NumericUpDown
         private void InitializeNumericUpDown()
         {
             numericUpDown1.Minimum = 0;
@@ -1135,6 +1143,7 @@ namespace Kursovaya
             numericUpDown1.Enabled = false;
         }
 
+        //Инициализация таблицы корзины
         void InitializeDataGridView2()
         {
             dataView2 = new DataTable();
@@ -1146,26 +1155,24 @@ namespace Kursovaya
 
             dataGridView2.DataSource = dataView2;
 
-            // АВТОМАТИЧЕСКОЕ ЗАПОЛНЕНИЕ
             dataGridView2.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             dataGridView2.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
             dataGridView2.DefaultCellStyle.WrapMode = DataGridViewTriState.True;
 
-            // УСТАНАВЛИВАЕМ ПРОПОРЦИИ
             dataGridView2.Columns["Article"].HeaderText = "Артикул";
-            dataGridView2.Columns["Article"].FillWeight = 17;  // 17% ширины
+            dataGridView2.Columns["Article"].FillWeight = 17;
 
             dataGridView2.Columns["Name"].HeaderText = "Наименование";
-            dataGridView2.Columns["Name"].FillWeight = 40;     // 40% ширины
+            dataGridView2.Columns["Name"].FillWeight = 40;
 
             dataGridView2.Columns["Price"].HeaderText = "Цена";
-            dataGridView2.Columns["Price"].FillWeight = 12;    // 12% ширины
+            dataGridView2.Columns["Price"].FillWeight = 12;
 
             dataGridView2.Columns["Quantity"].HeaderText = "Кол-во";
-            dataGridView2.Columns["Quantity"].FillWeight = 14; // 14% ширины
+            dataGridView2.Columns["Quantity"].FillWeight = 14;
 
             dataGridView2.Columns["Total"].HeaderText = "Сумма";
-            dataGridView2.Columns["Total"].FillWeight = 14;    // 14% ширины
+            dataGridView2.Columns["Total"].FillWeight = 14;
 
             dataGridView2.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             dataGridView2.ClearSelection();
@@ -1179,29 +1186,24 @@ namespace Kursovaya
             numericUpDown1.Enabled = false;
         }
 
+        //Обработчик клика по ячейке корзины
         private void dataGridView2_CellClick(object sender, DataGridViewCellEventArgs e)
         {
-            // Проверяем, что клик был по существующей строке, а не по заголовку или пустой области
             if (e.RowIndex >= 0 && e.RowIndex < dataGridView2.Rows.Count)
             {
-                // Дополнительная проверка: строка не должна быть новой (пустой) строкой
                 if (dataGridView2.Rows[e.RowIndex].IsNewRow)
                     return;
 
-                // Сбрасываем цвет ВСЕХ строк в корзине
                 foreach (DataGridViewRow row in dataGridView2.Rows)
                 {
-                    if (row.Cells.Count > 0) // Проверяем, что строка не повреждена
+                    if (row.Cells.Count > 0)
                         row.DefaultCellStyle.BackColor = Color.White;
                 }
 
-                // Устанавливаем новую выделенную строку
                 currentSelectedCartRow = e.RowIndex;
 
-                // Выделяем новую строку цветом
                 dataGridView2.Rows[currentSelectedCartRow].DefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
 
-                // Получаем выбранную строку через DataTable (тоже с проверкой)
                 if (e.RowIndex < dataView2.Rows.Count)
                 {
                     DataRow selectedRow = dataView2.Rows[e.RowIndex];
@@ -1214,11 +1216,11 @@ namespace Kursovaya
             }
         }
 
+        //Обработчик изменения количества товара
         private void numericUpDown1_ValueChanged(object sender, EventArgs e)
         {
             if (currentSelectedCartRow >= 0 && currentSelectedCartRow < dataView2.Rows.Count)
             {
-                // Проверяем, что строка существует в dataGridView2
                 if (currentSelectedCartRow >= dataGridView2.Rows.Count)
                 {
                     currentSelectedCartRow = -1;
@@ -1232,10 +1234,8 @@ namespace Kursovaya
 
                 if (newQuantity == 0)
                 {
-                    // Удаляем строку
                     dataView2.Rows.Remove(selectedRow);
 
-                    // Сбрасываем цвет удаленной строки
                     if (currentSelectedCartRow < dataGridView2.Rows.Count && dataGridView2.Rows[currentSelectedCartRow].Cells.Count > 0)
                     {
                         dataGridView2.Rows[currentSelectedCartRow].DefaultCellStyle.BackColor = Color.White;
@@ -1246,22 +1246,18 @@ namespace Kursovaya
                     numericUpDown1.Value = 0;
                     button3.Enabled = false;
 
-                    // Очищаем выделение в DataGridView
                     dataGridView2.ClearSelection();
                 }
                 else
                 {
-                    // Обновляем количество и сумму
                     selectedRow["Quantity"] = newQuantity;
                     selectedRow["Total"] = newQuantity * price;
 
-                    // Обновляем отображение в DataGridView
                     if (currentSelectedCartRow < dataGridView2.Rows.Count && dataGridView2.Rows[currentSelectedCartRow].Cells.Count > 0)
                     {
                         dataGridView2.Rows[currentSelectedCartRow].Cells["Quantity"].Value = newQuantity;
                         dataGridView2.Rows[currentSelectedCartRow].Cells["Total"].Value = newQuantity * price;
 
-                        // Сохраняем выделение (цвет не меняем)
                         dataGridView2.Rows[currentSelectedCartRow].DefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
                     }
                 }
@@ -1270,26 +1266,23 @@ namespace Kursovaya
             }
         }
 
+        //Обработчик кнопки удаления товара из корзины
         private void button3_Click(object sender, EventArgs e)
         {
             if (currentSelectedCartRow >= 0 && currentSelectedCartRow < dataView2.Rows.Count)
             {
-                // Проверяем, что строка существует в dataGridView2
                 if (currentSelectedCartRow < dataGridView2.Rows.Count && dataGridView2.Rows[currentSelectedCartRow].Cells.Count > 0)
                 {
                     dataGridView2.Rows[currentSelectedCartRow].DefaultCellStyle.BackColor = Color.White;
                 }
 
-                // Удаляем строку из DataTable
                 dataView2.Rows.RemoveAt(currentSelectedCartRow);
 
-                // Сбрасываем выделение
                 currentSelectedCartRow = -1;
                 button3.Enabled = false;
                 numericUpDown1.Enabled = false;
                 numericUpDown1.Value = 0;
 
-                // Очищаем выделение в DataGridView
                 dataGridView2.ClearSelection();
 
                 UpdateCartSummary();
@@ -1301,6 +1294,7 @@ namespace Kursovaya
             }
         }
 
+        //Расчет общей суммы заказа
         private int CalculateTotalAmount()
         {
             if (dataView2 == null || dataView2.Rows.Count == 0)
@@ -1314,6 +1308,7 @@ namespace Kursovaya
             return total;
         }
 
+        //Обработчик изменения выбранного мероприятия
         private void comboBox5_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (comboBox5.SelectedIndex > 0)
@@ -1328,12 +1323,11 @@ namespace Kursovaya
             FillDataGridView(textBox1.Text);
         }
 
+        //Установка русской раскладки в поле поиска
         private void textBox1_Enter(object sender, EventArgs e)
         {
-            // Получаем доступный список языков и устанавливаем нужный
             foreach (InputLanguage lang in InputLanguage.InstalledInputLanguages)
             {
-                // Ищем русский язык
                 if (lang.Culture.TwoLetterISOLanguageName == "ru")
                 {
                     InputLanguage.CurrentInputLanguage = lang;

@@ -14,10 +14,9 @@ namespace Kursovaya
 {
     public partial class Users : Form
     {
-
         string conString = $"host={Properties.Settings.Default.host};uid={Properties.Settings.Default.uid};pwd={Properties.Settings.Default.pwd};database={Properties.Settings.Default.database};";
         private int rowCount = 0;
-        private int? _lastInsertedUserId = null; // Хранит ID последнего добавленного/измененного пользователя
+        private int? _lastInsertedUserId = null;
 
         public Users()
         {
@@ -67,6 +66,7 @@ namespace Kursovaya
 
         private bool allowClose = false;
 
+        //Обработчик кнопки возврата в главное меню
         private void button4_Click(object sender, EventArgs e)
         {
             allowClose = true;
@@ -76,6 +76,7 @@ namespace Kursovaya
             this.Close();
         }
 
+        //Обработчик закрытия формы
         private void Users_FormClosing(object sender, FormClosingEventArgs e)
         {
             if (e.CloseReason == CloseReason.ApplicationExitCall)
@@ -89,6 +90,7 @@ namespace Kursovaya
             }
         }
 
+        //Загрузка данных пользователей в DataGridView
         void FillDataGridView()
         {
             string SelectQuery = @"SELECT 
@@ -119,7 +121,6 @@ namespace Kursovaya
                     dataGridView1.Columns["Password"].Visible = false;
                     dataGridView1.Columns.Add("Role", "Роль");
 
-                    // Временный список для хранения всех записей
                     var users = new List<(int Id, string FullName, string Login, string Password, string Role)>();
                     rowCount = 0;
 
@@ -134,7 +135,6 @@ namespace Kursovaya
                         rowCount++;
                     }
 
-                    // Если есть новая/измененная запись, перемещаем её в начало
                     if (_lastInsertedUserId.HasValue)
                     {
                         var lastUser = users.FirstOrDefault(u => u.Id == _lastInsertedUserId.Value);
@@ -145,7 +145,6 @@ namespace Kursovaya
                         }
                     }
 
-                    // Добавляем в DataGridView
                     foreach (var user in users)
                     {
                         dataGridView1.Rows.Add(user.Id, user.FullName, user.Login, user.Password, user.Role);
@@ -158,12 +157,12 @@ namespace Kursovaya
                         MessageBox.Show("Данные не найдены", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
 
-                    // Сбрасываем ID после отображения
                     _lastInsertedUserId = null;
                 }
             }
         }
 
+        //Ограничение ввода в поле ФИО (только русские буквы)
         private void textBox1_KeyPress(object sender, KeyPressEventArgs e)
         {
             TextBox tb = (TextBox)sender;
@@ -171,35 +170,30 @@ namespace Kursovaya
             if (char.IsControl(e.KeyChar))
                 return;
 
-            // Запрещаем пробел в начале
             if (e.KeyChar == ' ' && tb.Text.Length == 0)
             {
                 e.Handled = true;
                 return;
             }
 
-            // Запрещаем дефис в начале
             if (e.KeyChar == '-' && tb.Text.Length == 0)
             {
                 e.Handled = true;
                 return;
             }
 
-            // Запрещаем двойные пробелы
             if (e.KeyChar == ' ' && tb.Text.Length > 0 && tb.Text[tb.Text.Length - 1] == ' ')
             {
                 e.Handled = true;
                 return;
             }
 
-            // Запрещаем двойные дефисы
             if (e.KeyChar == '-' && tb.Text.Length > 0 && tb.Text[tb.Text.Length - 1] == '-')
             {
                 e.Handled = true;
                 return;
             }
 
-            // Запрещаем пробел после дефиса и дефис после пробела
             if (tb.Text.Length > 0)
             {
                 char lastChar = tb.Text[tb.Text.Length - 1];
@@ -210,14 +204,12 @@ namespace Kursovaya
                 }
             }
 
-            // Разрешаем: русские буквы, пробел, дефис
             if (e.KeyChar == ' ' || e.KeyChar == '-')
             {
                 e.Handled = false;
                 return;
             }
 
-            // Разрешаем русские буквы (верхний и нижний регистр)
             if ((e.KeyChar >= 'А' && e.KeyChar <= 'Я') ||
                 (e.KeyChar >= 'а' && e.KeyChar <= 'я') ||
                 e.KeyChar == 'Ё' || e.KeyChar == 'ё')
@@ -226,10 +218,10 @@ namespace Kursovaya
                 return;
             }
 
-            // Все остальные символы запрещены
             e.Handled = true;
         }
 
+        //Загрузка ролей в выпадающий список
         void FillFilter()
         {
             MySqlConnection con = new MySqlConnection(conString);
@@ -240,7 +232,6 @@ namespace Kursovaya
 
             Filter.Items.Clear();
 
-            // Добавляем "Все роли" как первый элемент
             Filter.Items.Add("Все роли");
 
             while (rdr.Read())
@@ -248,12 +239,12 @@ namespace Kursovaya
                 Filter.Items.Add(rdr[1].ToString());
             }
 
-            // Устанавливаем "Все роли" по умолчанию
             Filter.SelectedIndex = 0;
 
             con.Close();
         }
 
+        //Ограничение ввода в поле логина
         private void textBox2_KeyPress(object sender, KeyPressEventArgs e)
         {
             TextBox tb = (TextBox)sender;
@@ -261,28 +252,24 @@ namespace Kursovaya
             if (char.IsControl(e.KeyChar))
                 return;
 
-            // Проверка максимальной длины (32 символа)
             if (tb.Text.Length >= 32 && !char.IsControl(e.KeyChar))
             {
                 e.Handled = true;
                 return;
             }
 
-            // Латинские буквы (верхний и нижний регистр)
             if ((e.KeyChar >= 'a' && e.KeyChar <= 'z') || (e.KeyChar >= 'A' && e.KeyChar <= 'Z'))
             {
                 e.Handled = false;
                 return;
             }
 
-            // Цифры
             if (char.IsDigit(e.KeyChar))
             {
                 e.Handled = false;
                 return;
             }
 
-            // Разрешенные специальные символы
             char[] allowedSpecialChars = { '!', '@', '#', '$', '%', '^', '&', '*', '(', ')',
                                   '-', '_', '=', '+', '[', ']', '{', '}', ';', ':',
                                   ',', '.', '<', '>', '/', '?', '|', '\\', '~', '`' };
@@ -293,25 +280,141 @@ namespace Kursovaya
                 return;
             }
 
-            // Все остальные символы запрещены
             e.Handled = true;
         }
 
-        private void textBox3_KeyPress(object sender, KeyPressEventArgs e)
+        //Функция хэширования пароля
+        private string GetHashPass(string password)
         {
-            TextBox tb = (TextBox)sender;
-
-            // Проверка максимальной длины (64 символа)
-            if (tb.Text.Length >= 64 && !char.IsControl(e.KeyChar))
+            using (var sh2 = SHA256.Create())
             {
-                e.Handled = true;
+                var sh2byte = sh2.ComputeHash(Encoding.UTF8.GetBytes(password));
+                return BitConverter.ToString(sh2byte).Replace("-", "").ToLower();
+            }
+        }
+
+        //Обработчик кнопки добавления пользователя
+        private void button1_Click(object sender, EventArgs e)
+        {
+            string userName = textBox1.Text.Trim();
+            string loginName = textBox2.Text.Trim();
+            string password = textBox3.Text.Trim();
+
+            bool hasError = false;
+            string errorMessage = "";
+
+            if (string.IsNullOrEmpty(userName))
+            {
+                errorMessage += "• Заполните поле ФИО\n";
+                hasError = true;
+            }
+
+            if (string.IsNullOrEmpty(loginName))
+            {
+                errorMessage += "• Заполните поле логина\n";
+                hasError = true;
+            }
+            else if (loginName.Length < 4)
+            {
+                errorMessage += "• Логин должен содержать минимум 4 символа\n";
+                hasError = true;
+            }
+
+            if (string.IsNullOrEmpty(password))
+            {
+                errorMessage += "• Заполните поле пароля\n";
+                hasError = true;
+            }
+            else if (password.Length < 8)
+            {
+                errorMessage += "• Пароль должен содержать минимум 8 символов\n";
+                hasError = true;
+            }
+
+            if (Filter.SelectedIndex <= 0)
+            {
+                errorMessage += "• Выберите конкретную роль пользователя\n";
+                hasError = true;
+            }
+
+            if (hasError)
+            {
+                MessageBox.Show(errorMessage, "Ошибка",
+                               MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
-            // Разрешаем любые символы (никаких ограничений)
-            e.Handled = false;
+            if (IsUserExists(loginName))
+            {
+                MessageBox.Show("Пользователь с таким логином уже существует", "Ошибка",
+                              MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            string hashPassword = GetHashPass(password);
+            string roleName = Filter.SelectedItem.ToString();
+            int roleId = GetRoleIdByName(roleName);
+
+            if (roleId <= 0)
+            {
+                MessageBox.Show("Ошибка получения ID роли", "Ошибка",
+                              MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            string query = @"INSERT INTO Users (FullName, Login, Password, IDRole) 
+                             VALUES (@fullName, @login, @password, @idrole);
+                             SELECT LAST_INSERT_ID();";
+
+            using (MySqlConnection con = new MySqlConnection(conString))
+            {
+                try
+                {
+                    con.Open();
+                    using (MySqlCommand cmd = new MySqlCommand(query, con))
+                    {
+                        cmd.Parameters.AddWithValue("@fullName", userName);
+                        cmd.Parameters.AddWithValue("@login", loginName);
+                        cmd.Parameters.AddWithValue("@password", hashPassword);
+                        cmd.Parameters.AddWithValue("@idrole", roleId);
+
+                        int newId = Convert.ToInt32(cmd.ExecuteScalar());
+
+                        _lastInsertedUserId = newId;
+
+                        MessageBox.Show("Пользователь успешно добавлен", "Успех",
+                                      MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                        dataGridView1.SelectionChanged -= dataGridView1_SelectionChanged;
+
+                        FillDataGridView();
+
+                        dataGridView1.ClearSelection();
+
+                        textBox1.Clear();
+                        textBox2.Clear();
+                        textBox3.Clear();
+
+                        if (Filter.Items.Count > 0)
+                        {
+                            Filter.SelectedIndex = 0;
+                        }
+
+                        dataGridView1.SelectionChanged += dataGridView1_SelectionChanged;
+                        UpdateButtonsState();
+                        ClearAllFields();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    dataGridView1.SelectionChanged += dataGridView1_SelectionChanged;
+                    MessageBox.Show($"Ошибка добавления пользователя: {ex.Message}", "Ошибка",
+                                  MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
         }
 
+        //Проверка существования пользователя
         private bool IsUserExists(string loginName)
         {
             string query = "SELECT COUNT(*) FROM Users WHERE Login = @login;";
@@ -338,142 +441,7 @@ namespace Kursovaya
             }
         }
 
-        private void button1_Click(object sender, EventArgs e)
-        {
-            string userName = textBox1.Text.Trim();
-            string loginName = textBox2.Text.Trim();
-            string password = textBox3.Text.Trim();
-
-            bool hasError = false;
-            string errorMessage = "";
-
-            if (string.IsNullOrEmpty(userName))
-            {
-                errorMessage += "• Заполните поле ФИО\n";
-                hasError = true;
-            }
-
-            if (string.IsNullOrEmpty(loginName))
-            {
-                errorMessage += "• Заполните поле логина\n";
-                hasError = true;
-            }
-            else if (loginName.Length < 4)  
-            {
-                errorMessage += "• Логин должен содержать минимум 4 символа\n";
-                hasError = true;
-            }
-
-            if (string.IsNullOrEmpty(password))
-            {
-                errorMessage += "• Заполните поле пароля\n";
-                hasError = true;
-            }
-            else if (password.Length < 8) 
-            {
-                errorMessage += "• Пароль должен содержать минимум 8 символов\n";
-                hasError = true;
-            }
-
-            // Проверка выбора роли - нельзя выбрать "Все роли"
-            if (Filter.SelectedIndex <= 0) // 0 - это "Все роли"
-            {
-                errorMessage += "• Выберите конкретную роль пользователя\n";
-                hasError = true;
-            }
-
-            if (hasError)
-            {
-                MessageBox.Show(errorMessage, "Ошибка",
-                               MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            if (IsUserExists(loginName))
-            {
-                MessageBox.Show("Пользователь с таким логином уже существует", "Ошибка",
-                              MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            string hashPassword = GetHashPass(password);
-
-            // Получаем имя выбранной роли
-            string roleName = Filter.SelectedItem.ToString();
-
-            // Получаем ID роли по имени
-            int roleId = GetRoleIdByName(roleName);
-            if (roleId <= 0)
-            {
-                MessageBox.Show("Ошибка получения ID роли", "Ошибка",
-                              MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
-            }
-
-            string query = @"INSERT INTO Users (FullName, Login, Password, IDRole) 
-                             VALUES (@fullName, @login, @password, @idrole);
-                             SELECT LAST_INSERT_ID();"; // Добавлено получение ID
-
-            using (MySqlConnection con = new MySqlConnection(conString))
-            {
-                try
-                {
-                    con.Open();
-                    using (MySqlCommand cmd = new MySqlCommand(query, con))
-                    {
-                        cmd.Parameters.AddWithValue("@fullName", userName);
-                        cmd.Parameters.AddWithValue("@login", loginName);
-                        cmd.Parameters.AddWithValue("@password", hashPassword);
-                        cmd.Parameters.AddWithValue("@idrole", roleId);
-
-                        // Получаем ID только что добавленного пользователя
-                        int newId = Convert.ToInt32(cmd.ExecuteScalar());
-
-                        // Сохраняем ID новой записи
-                        _lastInsertedUserId = newId;
-
-                        MessageBox.Show("Пользователь успешно добавлен", "Успех",
-                                      MessageBoxButtons.OK, MessageBoxIcon.Information);
-
-                        dataGridView1.SelectionChanged -= dataGridView1_SelectionChanged;
-
-                        FillDataGridView();
-
-                        dataGridView1.ClearSelection();
-
-                        textBox1.Clear();
-                        textBox2.Clear();
-                        textBox3.Clear();
-
-                        // Сбрасываем на "Все роли"
-                        if (Filter.Items.Count > 0)
-                        {
-                            Filter.SelectedIndex = 0;
-                        }
-
-                        dataGridView1.SelectionChanged += dataGridView1_SelectionChanged;
-                        UpdateButtonsState();
-                        ClearAllFields();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    dataGridView1.SelectionChanged += dataGridView1_SelectionChanged;
-                    MessageBox.Show($"Ошибка добавления пользователя: {ex.Message}", "Ошибка",
-                                  MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            }
-        }
-
-        private string GetHashPass(string password)
-        {
-            using (var sh2 = SHA256.Create())
-            {
-                var sh2byte = sh2.ComputeHash(Encoding.UTF8.GetBytes(password));
-                return BitConverter.ToString(sh2byte).Replace("-", "").ToLower();
-            }
-        }
-
+        //Обработчик изменения выделения в DataGridView
         private void dataGridView1_SelectionChanged(object sender, EventArgs e)
         {
             if (dataGridView1.CurrentRow != null && dataGridView1.CurrentRow.Index >= 0)
@@ -493,11 +461,11 @@ namespace Kursovaya
                         if (roleIndex >= 0)
                             Filter.SelectedIndex = roleIndex;
                         else
-                            Filter.SelectedIndex = 0; // "Все роли"
+                            Filter.SelectedIndex = 0;
                     }
                     else
                     {
-                        Filter.SelectedIndex = 0; // "Все роли"
+                        Filter.SelectedIndex = 0;
                     }
 
                     textBox3.Clear();
@@ -508,25 +476,20 @@ namespace Kursovaya
                 }
             }
 
-            // Обновляем состояние кнопок после изменения выбора
             UpdateButtonsState();
         }
 
+        //Обновление состояния кнопок
         void UpdateButtonsState()
         {
             string FIOText = textBox1.Text.Trim();
             string loginText = textBox2.Text.Trim();
             string passwordText = textBox3.Text.Trim();
 
-            // Проверка ФИО (не пустое)
             bool isFIOValid = !string.IsNullOrWhiteSpace(FIOText);
-
-            // Проверка длины логина (4-32 символа)
             bool isLoginValid = !string.IsNullOrWhiteSpace(loginText) &&
                                 loginText.Length >= 4 &&
                                 loginText.Length <= 32;
-
-            // Проверка длины пароля (8-64 символа)
             bool isPasswordValidForAdd = !string.IsNullOrWhiteSpace(passwordText) &&
                                           passwordText.Length >= 8 &&
                                           passwordText.Length <= 64;
@@ -534,10 +497,8 @@ namespace Kursovaya
             bool allTextFieldsFilled = (isFIOValid && isLoginValid && isPasswordValidForAdd);
             bool isRowSelected = (dataGridView1.CurrentRow != null && dataGridView1.CurrentRow.Index >= 0);
 
-            // Для добавления пользователя (все поля обязательны)
             button1.Enabled = allTextFieldsFilled && Filter.SelectedIndex > 0;
 
-            // Для редактирования пользователя
             if (isRowSelected && Filter.SelectedIndex > 0)
             {
                 string originalLogin = dataGridView1.CurrentRow.Cells["Login"].Value?.ToString() ?? "";
@@ -547,7 +508,6 @@ namespace Kursovaya
 
                 string selectedRole = Filter.SelectedItem?.ToString() ?? "";
 
-                // Проверяем изменения
                 bool fioChanged = FIOText != originalFIO && !string.IsNullOrEmpty(FIOText);
                 bool loginChanged = loginText != originalLogin &&
                                    !string.IsNullOrEmpty(loginText) &&
@@ -564,7 +524,6 @@ namespace Kursovaya
                     passwordChanged = hashedPassword != originalPasswordHash;
                 }
 
-                // Если есть хотя бы одно изменение - включаем кнопку
                 button2.Enabled = fioChanged || loginChanged || roleChanged || passwordChanged;
             }
             else
@@ -577,13 +536,11 @@ namespace Kursovaya
 
         private void textBox1_TextChanged(object sender, EventArgs e)
         {
-            // Отключаем событие, чтобы избежать рекурсии
             textBox1.TextChanged -= textBox1_TextChanged;
 
             string text = textBox1.Text;
             if (!string.IsNullOrEmpty(text))
             {
-                // Разбиваем на слова по пробелам и дефисам, сохраняя разделители
                 string[] words = text.Split(new char[] { ' ', '-' }, StringSplitOptions.None);
                 string result = "";
 
@@ -591,16 +548,13 @@ namespace Kursovaya
                 {
                     if (!string.IsNullOrEmpty(words[i]))
                     {
-                        // Делаем первую букву заглавной, остальные строчными
                         char firstChar = char.ToUpper(words[i][0]);
                         string rest = words[i].Length > 1 ? words[i].Substring(1).ToLower() : "";
                         result += firstChar + rest;
                     }
 
-                    // Добавляем разделитель (если не последний элемент)
                     if (i < words.Length - 1)
                     {
-                        // Определяем, какой разделитель был между словами
                         int separatorIndex = text.IndexOf(words[i], StringComparison.Ordinal) + words[i].Length;
                         if (separatorIndex < text.Length && separatorIndex >= 0)
                         {
@@ -620,7 +574,6 @@ namespace Kursovaya
                 }
             }
 
-            // Включаем событие обратно
             textBox1.TextChanged += textBox1_TextChanged;
 
             UpdateButtonsState();
@@ -628,7 +581,6 @@ namespace Kursovaya
 
         private void textBox2_TextChanged(object sender, EventArgs e)
         {
-            // Проверка максимальной длины (32 символа)
             if (textBox2.Text.Length > 32)
             {
                 textBox2.TextChanged -= textBox2_TextChanged;
@@ -642,7 +594,6 @@ namespace Kursovaya
 
         private void textBox3_TextChanged(object sender, EventArgs e)
         {
-            // Проверка максимальной длины (64 символа)
             if (textBox3.Text.Length > 64)
             {
                 textBox3.TextChanged -= textBox3_TextChanged;
@@ -659,6 +610,7 @@ namespace Kursovaya
             UpdateButtonsState();
         }
 
+        //Проверка существования другого пользователя
         private bool IsAnotherUserExists(string login, int currentUserId)
         {
             string query = @"SELECT COUNT(*) FROM Users 
@@ -688,36 +640,7 @@ namespace Kursovaya
             }
         }
 
-        // Метод для получения ID роли по индексу в ComboBox (без учета "Все роли")
-        private int GetRoleIdByIndex(int roleIndex)
-        {
-            if (roleIndex < 0)
-                return 0;
-
-            string query = "SELECT IDrole FROM Roles ORDER BY IDrole LIMIT 1 OFFSET @roleIndex";
-
-            using (MySqlConnection con = new MySqlConnection(conString))
-            {
-                try
-                {
-                    con.Open();
-                    using (MySqlCommand cmd = new MySqlCommand(query, con))
-                    {
-                        cmd.Parameters.AddWithValue("@roleIndex", roleIndex);
-                        object result = cmd.ExecuteScalar();
-                        return result != null ? Convert.ToInt32(result) : 0;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Ошибка получения ID роли: {ex.Message}", "Ошибка",
-                                  MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return 0;
-                }
-            }
-        }
-
-        // Метод для получения ID роли по имени
+        //Получение ID роли по имени
         private int GetRoleIdByName(string roleName)
         {
             if (string.IsNullOrEmpty(roleName))
@@ -748,6 +671,7 @@ namespace Kursovaya
             }
         }
 
+        //Обработчик кнопки обновления пользователя
         private void button2_Click(object sender, EventArgs e)
         {
             if (dataGridView1.CurrentRow == null)
@@ -771,14 +695,12 @@ namespace Kursovaya
             bool hasError = false;
             string errorMessage = "";
 
-            // Проверка ФИО
             if (string.IsNullOrEmpty(FIO))
             {
                 errorMessage += "• Введите ФИО пользователя\n";
                 hasError = true;
             }
 
-            // Проверка логина
             if (string.IsNullOrEmpty(login))
             {
                 errorMessage += "• Введите логин пользователя\n";
@@ -790,15 +712,12 @@ namespace Kursovaya
                 hasError = true;
             }
 
-            // Проверка пароля - НЕ ТРЕБУЕМ обязательный ввод!
-            // Только если пользователь ввел пароль, проверяем его длину
             if (!string.IsNullOrEmpty(password) && password.Length < 8)
             {
                 errorMessage += "• Пароль должен содержать минимум 8 символов\n";
                 hasError = true;
             }
 
-            // Проверка выбора роли - нельзя выбрать "Все роли"
             if (Filter.SelectedIndex <= 0)
             {
                 errorMessage += "• Выберите конкретную роль пользователя\n";
@@ -812,7 +731,6 @@ namespace Kursovaya
                 return;
             }
 
-            // Проверка уникальности логина (только если логин изменился)
             if (login != oldLogin && IsAnotherUserExists(login, selectedId))
             {
                 MessageBox.Show("Пользователь с таким логином уже существует", "Ошибка",
@@ -828,26 +746,22 @@ namespace Kursovaya
                 return;
             }
 
-            // Формируем SQL запрос динамически
             string query = "UPDATE Users SET ";
             List<string> setClauses = new List<string>();
             List<MySqlParameter> parameters = new List<MySqlParameter>();
 
-            // Проверяем, изменилось ли ФИО
             if (FIO != oldFullName)
             {
                 setClauses.Add("FullName = @fullName");
                 parameters.Add(new MySqlParameter("@fullName", FIO));
             }
 
-            // Проверяем, изменился ли логин
             if (login != oldLogin)
             {
                 setClauses.Add("Login = @login");
                 parameters.Add(new MySqlParameter("@login", login));
             }
 
-            // Проверяем, изменился ли пароль (только если поле не пустое)
             if (!string.IsNullOrEmpty(password))
             {
                 string hashedPassword = GetHashPass(password);
@@ -858,14 +772,12 @@ namespace Kursovaya
                 }
             }
 
-            // Проверяем, изменилась ли роль
             if (selectedRole != oldRole)
             {
                 setClauses.Add("IDrole = @idRole");
                 parameters.Add(new MySqlParameter("@idRole", roleId));
             }
 
-            // Если нет изменений - сообщаем об этом
             if (setClauses.Count == 0)
             {
                 MessageBox.Show("Нет изменений для сохранения", "Информация",
@@ -873,7 +785,6 @@ namespace Kursovaya
                 return;
             }
 
-            // Собираем финальный запрос
             query += string.Join(", ", setClauses);
             query += " WHERE IDuser = @selectedId";
             parameters.Add(new MySqlParameter("@selectedId", selectedId));
@@ -890,7 +801,6 @@ namespace Kursovaya
 
                         if (rowsAffected > 0)
                         {
-                            // Сохраняем ID отредактированной записи
                             _lastInsertedUserId = selectedId;
 
                             MessageBox.Show("Пользователь успешно обновлен", "Успех",
@@ -919,6 +829,7 @@ namespace Kursovaya
             }
         }
 
+        //Очистка всех полей формы
         private void ClearAllFields()
         {
             dataGridView1.ClearSelection();
@@ -926,31 +837,29 @@ namespace Kursovaya
             textBox1.Text = "";
             textBox2.Text = "";
             textBox3.Text = "";
-            // Устанавливаем "Все роли" по умолчанию
             if (Filter.Items.Count > 0)
             {
                 Filter.SelectedIndex = 0;
             }
             UpdateButtonsState();
-            _lastInsertedUserId = null; // Сброс ID при очистке полей
+            _lastInsertedUserId = null;
         }
 
+        //Обработчик загрузки формы
         private void Users_Load(object sender, EventArgs e)
         {
-            // Очищаем все поля при загрузке формы
             ClearAllFields();
-            _lastInsertedUserId = null; // Сброс ID при загрузке
+            _lastInsertedUserId = null;
 
-            // Для всех колонок, кроме последней
             for (int i = 0; i < dataGridView1.Columns.Count - 1; i++)
             {
                 dataGridView1.Columns[i].AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
             }
 
-            // Последняя колонка заполняет оставшееся пространство
             dataGridView1.Columns[dataGridView1.Columns.Count - 1].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
         }
 
+        //Обработчик кнопки удаления пользователя
         private void button3_Click(object sender, EventArgs e)
         {
             if (dataGridView1.CurrentRow == null)
@@ -1010,7 +919,6 @@ namespace Kursovaya
                             textBox2.Clear();
                             textBox3.Clear();
 
-                            // Сбрасываем на "Все роли"
                             if (Filter.Items.Count > 0)
                             {
                                 Filter.SelectedIndex = 0;
@@ -1031,6 +939,7 @@ namespace Kursovaya
             }
         }
 
+        //Проверка использования пользователя в других таблицах
         private bool IsUserInUse(int userId)
         {
             string checkQueries = @"SELECT COUNT(*) FROM Orders WHERE IdUser = @userId;";
@@ -1062,12 +971,11 @@ namespace Kursovaya
             }
         }
 
+        //Установка русской раскладки в поле ФИО
         private void textBox1_Enter(object sender, EventArgs e)
         {
-            // Получаем доступный список языков и устанавливаем нужный
             foreach (InputLanguage lang in InputLanguage.InstalledInputLanguages)
             {
-                // Ищем русский язык
                 if (lang.Culture.TwoLetterISOLanguageName == "ru")
                 {
                     InputLanguage.CurrentInputLanguage = lang;
@@ -1076,12 +984,11 @@ namespace Kursovaya
             }
         }
 
+        //Установка английской раскладки в поле логина
         private void textBox2_Enter(object sender, EventArgs e)
         {
-            // Получаем доступный список языков и устанавливаем нужный
             foreach (InputLanguage lang in InputLanguage.InstalledInputLanguages)
             {
-                // Ищем английский язык
                 if (lang.Culture.TwoLetterISOLanguageName == "en")
                 {
                     InputLanguage.CurrentInputLanguage = lang;
@@ -1090,12 +997,11 @@ namespace Kursovaya
             }
         }
 
+        //Установка английской раскладки в поле пароля
         private void textBox3_Enter(object sender, EventArgs e)
         {
-            // Получаем доступный список языков и устанавливаем нужный
             foreach (InputLanguage lang in InputLanguage.InstalledInputLanguages)
             {
-                // Ищем английский язык
                 if (lang.Culture.TwoLetterISOLanguageName == "en")
                 {
                     InputLanguage.CurrentInputLanguage = lang;

@@ -21,7 +21,6 @@ namespace Kursovaya
         private Timer inactivityTimer;
         private int inactivityTimeout;
 
-        // переменные для сохранения данных формы
         private int savedPage = 1;
         private string savedSearchText = "";
         private DateTime savedStartDate;
@@ -31,7 +30,6 @@ namespace Kursovaya
         private bool savedStatus2 = false;
         private bool savedStatus3 = false;
 
-        // Переменные для пагинации
         private int currentPage = 1;
         private int totalPages = 1;
 
@@ -56,7 +54,6 @@ namespace Kursovaya
             textBox1.BackColor = System.Drawing.Color.FromArgb(255, 221, 153);
             comboBox1.BackColor = System.Drawing.Color.FromArgb(255, 221, 153);
 
-            // Кнопка "Просмотр" изначально НЕДОСТУПНА
             button2.Enabled = false;
 
             SetupDateControls();
@@ -71,58 +68,7 @@ namespace Kursovaya
             Pagination();
         }
 
-        // ========== МЕТОДЫ ДЛЯ СОХРАНЕНИЯ/ВОССТАНОВЛЕНИЯ СОСТОЯНИЯ ==========
-
-        private void SaveFormState()
-        {
-            savedPage = this.currentPage;
-            savedSearchText = this.textBox1.Text;
-            savedStartDate = this.dateTimePicker1.Value;
-            savedEndDate = this.dateTimePicker2.Value;
-            savedSelectedUserIndex = this.comboBox1.SelectedIndex;
-            savedStatus1 = this.checkBox1.Checked;
-            savedStatus2 = this.checkBox2.Checked;
-            savedStatus3 = this.checkBox3.Checked;
-        }
-
-        private void RestoreFormState()
-        {
-            this.currentPage = savedPage;
-            this.textBox1.Text = savedSearchText;
-            this.dateTimePicker1.Value = savedStartDate;
-            this.dateTimePicker2.Value = savedEndDate;
-
-            if (savedSelectedUserIndex >= 0 && savedSelectedUserIndex < comboBox1.Items.Count)
-                this.comboBox1.SelectedIndex = savedSelectedUserIndex;
-
-            this.checkBox1.Checked = savedStatus1;
-            this.checkBox2.Checked = savedStatus2;
-            this.checkBox3.Checked = savedStatus3;
-
-            if (!string.IsNullOrEmpty(textBox1.Text))
-            {
-                LoadData();
-            }
-
-            Pagination();
-            ShowPage(currentPage);
-        }
-
-        private void UpdateCurrentUserInfo()
-        {
-            string fullname = Properties.Settings.Default.userName;
-            string formattedname = FormatFullName(fullname);
-            label1.Text = formattedname;
-            label2.Text = Properties.Settings.Default.userRole;
-        }
-
-        private void RefreshFormData()
-        {
-            LoadData();
-        }
-
-        // ========== МЕТОДЫ ФОРМАТИРОВАНИЯ (из AccountingForOrdersForAdmin) ==========
-
+        //Форматирование ФИО
         private string FormatFullName(string fullName)
         {
             if (string.IsNullOrEmpty(fullName))
@@ -147,6 +93,7 @@ namespace Kursovaya
             return fullName;
         }
 
+        //Маскирование номера телефона
         private string FormatPhoneNumber(string phoneNumber)
         {
             if (string.IsNullOrEmpty(phoneNumber) || phoneNumber.Length < 4)
@@ -159,11 +106,9 @@ namespace Kursovaya
             return $"{firstDigit}{stars}{lastFourDigits}";
         }
 
-        // ========== ПАГИНАЦИЯ ==========
-
+        //Создание элементов пагинации
         void Pagination()
         {
-            // удаляем старые элементы пагинации
             for (int j = this.Controls.Count - 1; j >= 0; j--)
             {
                 if (this.Controls[j].Name.StartsWith("page") ||
@@ -174,22 +119,18 @@ namespace Kursovaya
                 }
             }
 
-            // вычисляем количество страниц
             totalPages = dataGridView1.Rows.Count / 20;
             if (Convert.ToBoolean(dataGridView1.Rows.Count % 20)) totalPages += 1;
             if (totalPages == 0) totalPages = 1;
 
-            // ВАЖНО: Используем явное вычисление позиции, а не dataGridView1.Bottom
             int yPosition = dataGridView1.Location.Y + dataGridView1.Height + 10;
             int leftMargin = 13;
 
-            // Дополнительная проверка: если yPosition слишком мал, используем запасной вариант
             if (yPosition <= dataGridView1.Location.Y + 10)
             {
                 yPosition = dataGridView1.Location.Y + dataGridView1.Height + 10;
             }
 
-            // кнопка "Назад"
             Button btnPrev = new Button();
             btnPrev.Name = "btnPrev";
             btnPrev.Text = "◀";
@@ -202,7 +143,6 @@ namespace Kursovaya
             btnPrev.FlatAppearance.BorderSize = 0;
             this.Controls.Add(btnPrev);
 
-            // ссылки на страницы
             int x = leftMargin + 35;
             int step = 20;
 
@@ -234,7 +174,6 @@ namespace Kursovaya
                 x += step;
             }
 
-            // кнопка "Вперед"
             Button btnNext = new Button();
             btnNext.Name = "btnNext";
             btnNext.Text = "▶";
@@ -247,12 +186,12 @@ namespace Kursovaya
             btnNext.FlatAppearance.BorderSize = 0;
             this.Controls.Add(btnNext);
 
-            // показываем текущую страницу
             ShowPage(currentPage);
             UpdateNavigationButtons();
             UpdateRowCount();
         }
 
+        //Отображение выбранной страницы
         private void ShowPage(int pageNumber)
         {
             if (pageNumber < 1) pageNumber = 1;
@@ -275,43 +214,46 @@ namespace Kursovaya
             }
 
             UpdateRowCount();
-            //UpdateButtonState();
         }
 
+        //Обновление состояния кнопки просмотра
         private void UpdateButtonState()
         {
-            // Кнопка доступна только если есть выделенные строки
             button2.Enabled = dataGridView1.SelectedRows.Count > 0;
         }
 
+        //Обработчик кнопки "Назад"
         private void BtnPrev_Click(object sender, EventArgs e)
         {
             if (currentPage > 1)
             {
                 ShowPage(currentPage - 1);
-                Pagination(); // Пересоздаём пагинацию после смены страницы
+                Pagination();
             }
         }
 
+        //Обработчик кнопки "Вперед"
         private void BtnNext_Click(object sender, EventArgs e)
         {
             if (currentPage < totalPages)
             {
                 ShowPage(currentPage + 1);
-                Pagination(); // Пересоздаём пагинацию после смены страницы
+                Pagination();
             }
         }
 
+        //Обработчик клика по номеру страницы
         private void LinkLabel_Click(object sender, EventArgs e)
         {
             LinkLabel l = sender as LinkLabel;
             if (l != null && int.TryParse(l.Text, out int pageNumber))
             {
                 ShowPage(pageNumber);
-                Pagination(); // Пересоздаём пагинацию после смены страницы
+                Pagination();
             }
         }
 
+        //Обновление состояния кнопок навигации
         private void UpdateNavigationButtons()
         {
             Button btnPrev = this.Controls.Find("btnPrev", false).FirstOrDefault() as Button;
@@ -336,78 +278,25 @@ namespace Kursovaya
             }
         }
 
-        private void ViewingOrdersForMeneger_Resize(object sender, EventArgs e)
-        {
-            int savedPage = currentPage;
-            Pagination();
-            currentPage = savedPage;
-            ShowPage(currentPage);
-        }
-
-        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
-        {
-            if (keyData == Keys.Left || keyData == Keys.PageUp)
-            {
-                if (currentPage > 1)
-                {
-                    BtnPrev_Click(null, null);
-                    return true;
-                }
-            }
-            else if (keyData == Keys.Right || keyData == Keys.PageDown)
-            {
-                if (currentPage < totalPages)
-                {
-                    BtnNext_Click(null, null);
-                    return true;
-                }
-            }
-            else if (keyData == Keys.Home)
-            {
-                if (currentPage != 1)
-                {
-                    ShowPage(1);
-                    Pagination();
-                }
-                return true;
-            }
-            else if (keyData == Keys.End)
-            {
-                if (currentPage != totalPages)
-                {
-                    ShowPage(totalPages);
-                    Pagination();
-                }
-                return true;
-            }
-
-            return base.ProcessCmdKey(ref msg, keyData);
-        }
-
-        // ========== ТАЙМЕРЫ ==========
-
+        //Обработчик тиков таймера поиска
         private void SearchTimer_Tick(object sender, EventArgs e)
         {
             searchTimer.Stop();
             LoadData();
         }
 
-        // ========== НАСТРОЙКА ФОРМЫ ==========
-
+        //Настройка элементов выбора даты
         private void SetupDateControls()
         {
-            // Получаем границы из базы данных
-            DateTime minOrderDate = GetMinOrderDate();  // Самая ранняя дата оформления
-            DateTime maxEventDate = GetMaxEventDate();   // Самая поздняя дата проведения
+            DateTime minOrderDate = GetMinOrderDate();
+            DateTime maxEventDate = GetMaxEventDate();
 
-            // Устанавливаем ОДИНАКОВЫЙ диапазон для обоих календарей
             dateTimePicker1.MinDate = minOrderDate;
             dateTimePicker1.MaxDate = maxEventDate;
 
             dateTimePicker2.MinDate = minOrderDate;
             dateTimePicker2.MaxDate = maxEventDate;
 
-            // Значения по умолчанию - весь доступный диапазон
             defaultStartDate = minOrderDate;
             defaultEndDate = maxEventDate;
 
@@ -415,7 +304,7 @@ namespace Kursovaya
             dateTimePicker2.Value = defaultEndDate;
         }
 
-        // Самая ранняя дата оформления заказа
+        //Получение минимальной даты оформления заказа
         private DateTime GetMinOrderDate()
         {
             try
@@ -440,7 +329,7 @@ namespace Kursovaya
             return DateTime.Today.AddYears(-1);
         }
 
-        // Самая поздняя дата проведения мероприятия
+        //Получение максимальной даты проведения мероприятия
         private DateTime GetMaxEventDate()
         {
             try
@@ -465,6 +354,7 @@ namespace Kursovaya
             return DateTime.Today.AddMonths(6);
         }
 
+        //Настройка информации о пользователе
         private void SetupUserInfo()
         {
             string fullname = Properties.Settings.Default.userName;
@@ -473,6 +363,7 @@ namespace Kursovaya
             label2.Text = Properties.Settings.Default.userRole;
         }
 
+        //Загрузка сотрудников в выпадающий список
         void FillFilterUsers()
         {
             try
@@ -505,8 +396,7 @@ namespace Kursovaya
             }
         }
 
-        // ========== РАБОТА С ДАННЫМИ ==========
-
+        //Загрузка данных
         private void LoadData()
         {
             try
@@ -530,7 +420,6 @@ namespace Kursovaya
                 DisplayDataInDataGridView(dataTable);
                 currentPage = 1;
 
-                // После загрузки новых данных кнопка недоступна
                 button2.Enabled = false;
 
                 Pagination();
@@ -546,6 +435,7 @@ namespace Kursovaya
             }
         }
 
+        //Построение запроса для получения данных
         private string BuildQuery()
         {
             StringBuilder query = new StringBuilder();
@@ -572,7 +462,6 @@ namespace Kursovaya
 
             List<string> conditions = new List<string>();
 
-            // Фильтр по датам
             bool dateFilterApplied = (dateTimePicker1.Value != defaultStartDate) ||
                                    (dateTimePicker2.Value != defaultEndDate);
 
@@ -593,21 +482,17 @@ namespace Kursovaya
                 }
             }
 
-            // Фильтр по сотруднику
             if (comboBox1.SelectedIndex != 0 && comboBox1.SelectedItem != null)
             {
                 string selectedUser = comboBox1.SelectedItem.ToString();
 
-                // Если выбран "Все сотрудники" (индекс 0) - пропускаем
                 if (selectedUser != "Все сотрудники")
                 {
-                    // Нужно найти полное имя сотрудника в базе по отформатированному имени
                     string fullUserName = GetFullUserNameFromFormatted(selectedUser);
                     conditions.Add($"w.FullName = '{MySqlHelper.EscapeString(fullUserName)}'");
                 }
             }
 
-            // Фильтр по статусам
             List<string> statusConditions = new List<string>();
             if (checkBox1.Checked)
                 statusConditions.Add($"s.Status = '{MySqlHelper.EscapeString(checkBox1.Text)}'");
@@ -619,7 +504,6 @@ namespace Kursovaya
             if (statusConditions.Count > 0)
                 conditions.Add("(" + string.Join(" OR ", statusConditions) + ")");
 
-            // Фильтр по номеру заказа
             string searchText = textBox1.Text.Trim();
             if (!string.IsNullOrEmpty(searchText))
             {
@@ -637,7 +521,7 @@ namespace Kursovaya
             return query.ToString();
         }
 
-        // Вспомогательный метод для получения полного имени сотрудника из отформатированного
+        //Получение полного имени сотрудника из отформатированного
         private string GetFullUserNameFromFormatted(string formattedName)
         {
             try
@@ -646,8 +530,6 @@ namespace Kursovaya
                 {
                     con.Open();
 
-                    // Ищем сотрудника, у которого FullName начинается с фамилии из formattedName
-                    // formattedName имеет формат "Иванов И.И."
                     string[] parts = formattedName.Split(' ');
                     if (parts.Length > 0)
                     {
@@ -672,9 +554,10 @@ namespace Kursovaya
                 Console.WriteLine($"Ошибка получения полного имени: {ex.Message}");
             }
 
-            return formattedName; // Если не нашли, возвращаем как есть
+            return formattedName;
         }
 
+        //Отображение данных в DataGridView
         private void DisplayDataInDataGridView(DataTable tableToDisplay)
         {
             if (tableToDisplay == null) return;
@@ -739,13 +622,12 @@ namespace Kursovaya
                 }
             }
 
-            // Сбрасываем выделение после загрузки данных
             dataGridView1.ClearSelection();
         }
 
+        //Обновление счетчика строк
         private void UpdateRowCount()
         {
-            // Подсчитываем видимые строки на текущей странице
             int visibleCount = 0;
             int startIndex = (currentPage - 1) * 20;
             int endIndex = Math.Min(startIndex + 20, dataGridView1.Rows.Count);
@@ -758,7 +640,6 @@ namespace Kursovaya
                 }
             }
 
-            // Обновляем label
             if (dataGridView1.Rows.Count == 0)
             {
                 label4.Text = "0 из 0";
@@ -769,10 +650,9 @@ namespace Kursovaya
             }
         }
 
-        // ========== СОБЫТИЯ КНОПОК ==========
-
         private bool allowClose = false;
 
+        //Обработчик кнопки возврата в главное меню
         private void button1_Click(object sender, EventArgs e)
         {
             allowClose = true;
@@ -782,6 +662,7 @@ namespace Kursovaya
             this.Close();
         }
 
+        //Обработчик кнопки просмотра заказа
         private void button2_Click(object sender, EventArgs e)
         {
             if (dataGridView1.SelectedRows.Count == 0)
@@ -808,6 +689,7 @@ namespace Kursovaya
             this.Close();
         }
 
+        //Обработчик кнопки сброса фильтров
         private void button3_Click(object sender, EventArgs e)
         {
             try
@@ -829,8 +711,7 @@ namespace Kursovaya
             }
         }
 
-        // ========== СОБЫТИЯ ПОИСКА И ФИЛЬТРАЦИИ ==========
-
+        //Обработчик изменения текста в поле поиска
         private void textBox1_TextChanged(object sender, EventArgs e)
         {
             if (!string.IsNullOrEmpty(textBox1.Text))
@@ -847,20 +728,15 @@ namespace Kursovaya
             searchTimer.Start();
         }
 
-        private void textBox1_KeyPress(object sender, KeyPressEventArgs e)
-        {
-            if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar))
-                e.Handled = true;
-        }
-
+        //Обработчик изменения выбранного сотрудника
         private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
         {
             LoadData();
         }
 
+        //Обработчик изменения даты начала
         private void dateTimePicker1_ValueChanged(object sender, EventArgs e)
         {
-            // Если дата "С" стала больше даты "До" - корректируем дату "До"
             if (dateTimePicker1.Value > dateTimePicker2.Value)
             {
                 dateTimePicker2.Value = dateTimePicker1.Value;
@@ -868,9 +744,9 @@ namespace Kursovaya
             LoadData();
         }
 
+        //Обработчик изменения даты окончания
         private void dateTimePicker2_ValueChanged(object sender, EventArgs e)
         {
-            // Если дата "До" стала меньше даты "С" - корректируем дату "С"
             if (dateTimePicker2.Value < dateTimePicker1.Value)
             {
                 dateTimePicker1.Value = dateTimePicker2.Value;
@@ -878,6 +754,7 @@ namespace Kursovaya
             LoadData();
         }
 
+        //Обработчик изменения состояния чекбоксов статусов
         private void checkBox1_CheckedChanged(object sender, EventArgs e)
         {
             LoadData();
@@ -893,28 +770,26 @@ namespace Kursovaya
             LoadData();
         }
 
-        // ========== СОБЫТИЯ DataGridView ==========
-
+        //Обработчик клика по ячейке DataGridView
         private void dataGridView1_CellClick(object sender, DataGridViewCellEventArgs e)
         {
-            // При клике на ячейку проверяем, есть ли выделенные строки
             UpdateButtonState();
         }
 
+        //Обработчик изменения выделения в DataGridView
         private void dataGridView1_SelectionChanged(object sender, EventArgs e)
         {
-            // При изменении выделения обновляем состояние кнопки
             UpdateButtonState();
         }
 
+        //Обработчик двойного клика по ячейке DataGridView
         private void dataGridView1_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex >= 0)
                 button2.PerformClick();
         }
 
-        // ========== СОБЫТИЯ ФОРМЫ ==========
-
+        //Обработчик закрытия формы
         private void ViewingOrdersForMeneger_FormClosing(object sender, FormClosingEventArgs e)
         {
             if (e.CloseReason == CloseReason.ApplicationExitCall)

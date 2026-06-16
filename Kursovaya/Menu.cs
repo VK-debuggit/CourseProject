@@ -19,13 +19,11 @@ namespace Kursovaya
         private int rowCount = 0;
         private Image newProductImage;
         private string originalImageFilePath;
-        private string _lastInsertedDishId = null; // Хранит артикул последнего добавленного блюда (как строку)
+        private string _lastInsertedDishId = null;
 
-        // Переменные для пагинации 
         private int currentPage = 1;
         private int totalPages = 1;
 
-        // Поля для хранения исходных данных
         private DataGridViewRow selectedRowData = null;
         private string originalArticle = "";
         private string originalName = "";
@@ -76,8 +74,7 @@ namespace Kursovaya
             this.WindowState = FormWindowState.Maximized;
         }
 
-        // ========== ПАГИНАЦИЯ ==========
-
+        //Создание элементов пагинации
         void Pagination()
         {
             for (int j = 0, count = this.Controls.Count; j < count; ++j)
@@ -159,6 +156,7 @@ namespace Kursovaya
             UpdateRowCount();
         }
 
+        //Отображение выбранной страницы
         private void ShowPage(int pageNumber)
         {
             if (pageNumber < 1) pageNumber = 1;
@@ -183,6 +181,7 @@ namespace Kursovaya
             UpdateRowCount();
         }
 
+        //Обработчик кнопки "Назад"
         private void BtnPrev_Click(object sender, EventArgs e)
         {
             if (currentPage > 1)
@@ -192,6 +191,7 @@ namespace Kursovaya
             }
         }
 
+        //Обработчик кнопки "Вперед"
         private void BtnNext_Click(object sender, EventArgs e)
         {
             if (currentPage < totalPages)
@@ -201,6 +201,7 @@ namespace Kursovaya
             }
         }
 
+        //Обработчик клика по номеру страницы
         private void LinkLabel_Click(object sender, EventArgs e)
         {
             LinkLabel l = sender as LinkLabel;
@@ -211,6 +212,7 @@ namespace Kursovaya
             }
         }
 
+        //Обновление состояния кнопок навигации
         private void UpdateNavigationButtons()
         {
             Button btnPrev = this.Controls.Find("btnPrev", false).FirstOrDefault() as Button;
@@ -235,54 +237,7 @@ namespace Kursovaya
             }
         }
 
-        private void Menu_Resize(object sender, EventArgs e)
-        {
-            int savedPage = currentPage;
-            Pagination();
-            currentPage = savedPage;
-            ShowPage(currentPage);
-        }
-
-        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
-        {
-            if (keyData == Keys.Left || keyData == Keys.PageUp)
-            {
-                if (currentPage > 1)
-                {
-                    BtnPrev_Click(null, null);
-                    return true;
-                }
-            }
-            else if (keyData == Keys.Right || keyData == Keys.PageDown)
-            {
-                if (currentPage < totalPages)
-                {
-                    BtnNext_Click(null, null);
-                    return true;
-                }
-            }
-            else if (keyData == Keys.Home)
-            {
-                if (currentPage != 1)
-                {
-                    ShowPage(1);
-                    Pagination();
-                }
-                return true;
-            }
-            else if (keyData == Keys.End)
-            {
-                if (currentPage != totalPages)
-                {
-                    ShowPage(totalPages);
-                    Pagination();
-                }
-                return true;
-            }
-
-            return base.ProcessCmdKey(ref msg, keyData);
-        }
-
+        //Обновление счетчика строк
         private void UpdateRowCount()
         {
             int totalCount = dataGridView1.Rows.Count;
@@ -308,6 +263,7 @@ namespace Kursovaya
 
         private bool allowClose = false;
 
+        //Обработчик кнопки возврата в главное меню
         private void button4_Click(object sender, EventArgs e)
         {
             allowClose = true;
@@ -317,6 +273,7 @@ namespace Kursovaya
             this.Close();
         }
 
+        //Обработчик закрытия формы
         private void Menu_FormClosing(object sender, FormClosingEventArgs e)
         {
             if (e.CloseReason == CloseReason.ApplicationExitCall)
@@ -330,11 +287,9 @@ namespace Kursovaya
             }
         }
 
-        // ========== ЗАГРУЗКА ДАННЫХ ==========
-
+        //Загрузка данных в DataGridView
         void FillDataGridView()
         {
-            // Сортировка по наименованию в алфавитном порядке (Name ASC)
             string SelectQuery = @"SELECT 
 	                                p.Article, 
                                     c.Event as Event, 
@@ -367,7 +322,6 @@ namespace Kursovaya
                         imageColumn.ImageLayout = DataGridViewImageCellLayout.Zoom;
                         imageColumn.Width = 80;
 
-                        // Порядок колонок
                         dataGridView1.Columns.Add("Article", "Артикул");
                         dataGridView1.Columns.Add("Name", "Название");
                         dataGridView1.Columns["Name"].DefaultCellStyle.WrapMode = DataGridViewTriState.True;
@@ -379,7 +333,6 @@ namespace Kursovaya
                         dataGridView1.Columns.Add("Price", "Цена");
                         dataGridView1.Columns.Add(imageColumn);
 
-                        // Временный список для хранения всех записей
                         var dishes = new List<(string Article, string Event, string Category, string Name, string Compound, string Weight, string Price, Image Photo, string PhotoFileName)>();
                         rowCount = 0;
 
@@ -407,7 +360,6 @@ namespace Kursovaya
                             }
                             else
                             {
-                                // Загружаем картику-заглушку
                                 string placeholderPath = Path.Combine(imagesFolder, "picture.png");
                                 if (File.Exists(placeholderPath))
                                 {
@@ -422,7 +374,6 @@ namespace Kursovaya
                             rowCount++;
                         }
 
-                        // Если есть новая запись, перемещаем её в начало
                         if (!string.IsNullOrEmpty(_lastInsertedDishId))
                         {
                             var newDish = dishes.FirstOrDefault(d => d.Article == _lastInsertedDishId);
@@ -431,11 +382,9 @@ namespace Kursovaya
                                 dishes.Remove(newDish);
                                 dishes.Insert(0, newDish);
                             }
-                            // Сбрасываем ID после использования
                             _lastInsertedDishId = null;
                         }
 
-                        // Добавляем в DataGridView
                         foreach (var dish in dishes)
                         {
                             dataGridView1.Rows.Add(
@@ -468,6 +417,7 @@ namespace Kursovaya
             Pagination();
         }
 
+        //Загрузка категорий в выпадающий список
         void FillFilterCategory()
         {
             using (MySqlConnection con = new MySqlConnection(conString))
@@ -485,6 +435,7 @@ namespace Kursovaya
             }
         }
 
+        //Загрузка мероприятий в выпадающий список
         void FillFilterEvent()
         {
             using (MySqlConnection con = new MySqlConnection(conString))
@@ -502,6 +453,7 @@ namespace Kursovaya
             }
         }
 
+        //Ограничение ввода в поле названия
         private void textBox4_KeyPress(object sender, KeyPressEventArgs e)
         {
             TextBox tb = (TextBox)sender;
@@ -553,6 +505,7 @@ namespace Kursovaya
             e.Handled = true;
         }
 
+        //Ограничение ввода в поле артикула
         private void textBox1_KeyPress(object sender, KeyPressEventArgs e)
         {
             if (char.IsControl(e.KeyChar))
@@ -562,29 +515,25 @@ namespace Kursovaya
             e.Handled = true;
         }
 
+        //Ограничение ввода в поле цены
         private void textBox3_KeyPress(object sender, KeyPressEventArgs e)
         {
             TextBox tb = (TextBox)sender;
 
-            // Разрешаем управляющие клавиши
             if (char.IsControl(e.KeyChar))
                 return;
 
-            // Запрещаем точку
             if (e.KeyChar == '.')
             {
                 e.Handled = true;
                 return;
             }
 
-            // Разрешаем только цифры
             if (char.IsDigit(e.KeyChar))
             {
-                // Проверяем длину целого числа (максимум 7 цифр)
                 string currentText = tb.Text.Substring(0, tb.SelectionStart) +
                                      tb.Text.Substring(tb.SelectionStart + tb.SelectionLength);
 
-                // Если вставляем цифру и общая длина превысит 7 - запрещаем
                 if (currentText.Length + 1 > 7)
                 {
                     e.Handled = true;
@@ -595,33 +544,28 @@ namespace Kursovaya
                 return;
             }
 
-            // Запрещаем все остальные символы
             e.Handled = true;
         }
 
+        //Ограничение ввода в поле веса
         private void textBox2_KeyPress(object sender, KeyPressEventArgs e)
         {
             TextBox tb = (TextBox)sender;
 
-            // Разрешаем управляющие клавиши (Backspace, Delete, Enter и т.д.)
             if (char.IsControl(e.KeyChar))
                 return;
 
-            // Запрещаем точку
             if (e.KeyChar == '.')
             {
                 e.Handled = true;
                 return;
             }
 
-            // Разрешаем только цифры
             if (char.IsDigit(e.KeyChar))
             {
-                // Проверяем длину целого числа (максимум 4 цифры)
                 string currentText = tb.Text.Substring(0, tb.SelectionStart) +
                                      tb.Text.Substring(tb.SelectionStart + tb.SelectionLength);
 
-                // Если вставляем цифру и общая длина превысит 4 - запрещаем
                 if (currentText.Length + 1 > 4)
                 {
                     e.Handled = true;
@@ -632,10 +576,10 @@ namespace Kursovaya
                 return;
             }
 
-            // Запрещаем все остальные символы
             e.Handled = true;
         }
 
+        //Ограничение ввода в поле состава
         private void textBox5_KeyPress(object sender, KeyPressEventArgs e)
         {
             TextBox tb = (TextBox)sender;
@@ -691,6 +635,7 @@ namespace Kursovaya
             e.Handled = true;
         }
 
+        //Обработчик кнопки выбора изображения
         private void button1_Click(object sender, EventArgs e)
         {
             using (OpenFileDialog openFileDialog = new OpenFileDialog())
@@ -749,6 +694,7 @@ namespace Kursovaya
             }
         }
 
+        //Проверка типа файла
         private bool IsFileTypeValid(string filePath)
         {
             string[] allowedExtensions = {
@@ -760,6 +706,7 @@ namespace Kursovaya
             return allowedExtensions.Contains(fileExtension);
         }
 
+        //Проверка существования файла
         private bool IsFileSizeValid(string filePath)
         {
             try
@@ -772,6 +719,7 @@ namespace Kursovaya
             }
         }
 
+        //Функция сжатия изображения
         private Image CompressImage(Image sourceImage, long targetSizeBytes = 3 * 1024 * 1024)
         {
             if (sourceImage == null) return null;
@@ -801,6 +749,7 @@ namespace Kursovaya
             return resultImage;
         }
 
+        //Сохранение JPEG с заданным качеством
         private void SaveJpegWithQuality(Image image, Stream stream, int quality)
         {
             ImageCodecInfo jpegCodec = GetEncoderInfo("image/jpeg");
@@ -818,12 +767,14 @@ namespace Kursovaya
             }
         }
 
+        //Получение кодека изображения
         private ImageCodecInfo GetEncoderInfo(string mimeType)
         {
             ImageCodecInfo[] codecs = ImageCodecInfo.GetImageEncoders();
             return codecs.FirstOrDefault(codec => codec.MimeType == mimeType);
         }
 
+        //Сохранение изображения в папку Resources
         private string SaveImageToFolder(Image image)
         {
             try
@@ -869,6 +820,7 @@ namespace Kursovaya
             }
         }
 
+        //Проверка существования артикула
         private bool IsArticleExists(string article)
         {
             string query = "SELECT COUNT(*) FROM Dishes WHERE Article = @article";
@@ -894,6 +846,7 @@ namespace Kursovaya
             }
         }
 
+        //Проверка существования блюда
         private bool IsDishExists(string nameDish, string compound, int idCategory, int idEvent)
         {
             string query = @"SELECT COUNT(*) FROM Dishes 
@@ -927,6 +880,7 @@ namespace Kursovaya
             }
         }
 
+        //Проверка существования другого блюда при редактировании
         private bool IsAnotherDishExistsForEdit(string nameDish, string compound, int idCategory, int idEvent, int currentArticle)
         {
             string query = @"SELECT COUNT(*) FROM Dishes 
@@ -962,6 +916,7 @@ namespace Kursovaya
             }
         }
 
+        //Обработчик кнопки добавления блюда
         private void button2_Click(object sender, EventArgs e)
         {
             string article = textBox1.Text.Trim();
@@ -981,7 +936,7 @@ namespace Kursovaya
             if (string.IsNullOrEmpty(compound)) errors.Add("• Состав блюда");
             if (string.IsNullOrEmpty(weight)) errors.Add("• Вес блюда");
             if (string.IsNullOrEmpty(price)) errors.Add("• Цена блюда");
-            if (string.IsNullOrEmpty(article)) errors.Add("• Артикул блюда");
+            if (string.IsNullOrEmpty(article) || article.Length != 6) errors.Add("• Артикул блюда (должен содержать ровно 6 цифр)");
             if (comboBox1.SelectedIndex < 0) errors.Add("• Мероприятие (не выбрано)");
             if (comboBox2.SelectedIndex < 0) errors.Add("• Категория (не выбрана)");
 
@@ -1050,7 +1005,6 @@ namespace Kursovaya
 
                         if (rowsAffected > 0)
                         {
-                            // Сохраняем артикул новой записи
                             _lastInsertedDishId = article;
 
                             MessageBox.Show("Блюдо успешно добавлено", "Успех",
@@ -1089,6 +1043,7 @@ namespace Kursovaya
             }
         }
 
+        //Обработчик кнопки обновления блюда
         private void button3_Click(object sender, EventArgs e)
         {
             if (dataGridView1.CurrentRow == null)
@@ -1220,7 +1175,6 @@ namespace Kursovaya
 
                         if (rowsAffected > 0)
                         {
-                            // Сбрасываем ID последнего добавленного блюда при редактировании
                             _lastInsertedDishId = null;
 
                             MessageBox.Show("Блюдо успешно обновлено", "Успех",
@@ -1246,6 +1200,7 @@ namespace Kursovaya
             }
         }
 
+        //Обработчик кнопки удаления блюда
         private void button5_Click(object sender, EventArgs e)
         {
             if (dataGridView1.CurrentRow == null)
@@ -1288,7 +1243,6 @@ namespace Kursovaya
 
                         if (rowsAffected > 0)
                         {
-                            // Сбрасываем ID последнего добавленного блюда при удалении
                             _lastInsertedDishId = null;
 
                             MessageBox.Show("Блюдо успешно удалено", "Успех",
@@ -1308,6 +1262,7 @@ namespace Kursovaya
             }
         }
 
+        //Удаление старого изображения если не используется
         private void DeleteOldImageIfNotUsed(string imageFileName, int currentDishId)
         {
             try
@@ -1342,6 +1297,7 @@ namespace Kursovaya
             }
         }
 
+        //Получение ID мероприятия по названию
         private int GetEventIdFromName(string eventName)
         {
             if (string.IsNullOrEmpty(eventName)) return 0;
@@ -1367,6 +1323,7 @@ namespace Kursovaya
             }
         }
 
+        //Получение ID категории по названию
         private int GetCategoryIdFromName(string categoryName)
         {
             if (string.IsNullOrEmpty(categoryName)) return 0;
@@ -1392,6 +1349,7 @@ namespace Kursovaya
             }
         }
 
+        //Получение пути к текущему фото
         private string GetCurrentPhotoPath(int dishId)
         {
             string query = "SELECT Photo FROM Dishes WHERE Article = @dishId";
@@ -1415,6 +1373,7 @@ namespace Kursovaya
             }
         }
 
+        //Проверка изменения данных
         private bool HasDataChanged()
         {
             if (selectedRowData == null)
@@ -1455,6 +1414,7 @@ namespace Kursovaya
             return textChanged || imageChanged;
         }
 
+        //Сохранение исходных данных
         private void SaveOriginalData()
         {
             if (selectedRowData != null)
@@ -1469,6 +1429,7 @@ namespace Kursovaya
             }
         }
 
+        //Обновление состояния кнопок
         void UpdateButtonsState()
         {
             string currentName = textBox4.Text.Trim();
@@ -1489,6 +1450,7 @@ namespace Kursovaya
             button5.Enabled = (dataGridView1.CurrentRow != null);
         }
 
+        //Обработчик изменения выделения в DataGridView
         private void dataGridView1_SelectionChanged(object sender, EventArgs e)
         {
             if (dataGridView1.CurrentRow != null && dataGridView1.CurrentRow.Index >= 0)
@@ -1538,6 +1500,7 @@ namespace Kursovaya
             }
         }
 
+        //Загрузка изображения в PictureBox
         private void LoadImageToPictureBox(string photoFileName)
         {
             try
@@ -1569,6 +1532,7 @@ namespace Kursovaya
             }
         }
 
+        //Очистка формы
         private void ClearForm()
         {
             textBox1.Clear();
@@ -1592,6 +1556,7 @@ namespace Kursovaya
             originalCategory = "";
         }
 
+        //Очистка всех полей формы
         private void ClearAllFields()
         {
             dataGridView1.ClearSelection();
@@ -1607,12 +1572,14 @@ namespace Kursovaya
             UpdateButtonsState();
         }
 
+        //Обработчик загрузки формы
         private void Menu_Load(object sender, EventArgs e)
         {
             ClearAllFields();
             Pagination();
         }
 
+        //Проверка использования блюда в других таблицах
         private bool IsDishInUse(int dishId)
         {
             string checkQueries = @"SELECT COUNT(*) FROM OrderComposition WHERE IdDish = @dishId;";
@@ -1636,6 +1603,7 @@ namespace Kursovaya
             }
         }
 
+        //Обновление состояния кнопок при изменении полей
         private void textBox2_TextChanged(object sender, EventArgs e) => UpdateButtonsState();
         private void textBox3_TextChanged(object sender, EventArgs e) => UpdateButtonsState();
         private void textBox4_TextChanged(object sender, EventArgs e) => UpdateButtonsState();
@@ -1644,12 +1612,11 @@ namespace Kursovaya
         private void comboBox1_SelectedIndexChanged(object sender, EventArgs e) => UpdateButtonsState();
         private void comboBox2_SelectedIndexChanged(object sender, EventArgs e) => UpdateButtonsState();
 
+        //Установка русской раскладки в поле названия
         private void textBox4_Enter(object sender, EventArgs e)
         {
-            // Получаем доступный список языков и устанавливаем нужный
             foreach (InputLanguage lang in InputLanguage.InstalledInputLanguages)
             {
-                // Ищем русский язык
                 if (lang.Culture.TwoLetterISOLanguageName == "ru")
                 {
                     InputLanguage.CurrentInputLanguage = lang;
@@ -1658,12 +1625,11 @@ namespace Kursovaya
             }
         }
 
+        //Установка русской раскладки в поле состава
         private void textBox5_Enter(object sender, EventArgs e)
         {
-            // Получаем доступный список языков и устанавливаем нужный
             foreach (InputLanguage lang in InputLanguage.InstalledInputLanguages)
             {
-                // Ищем русский язык
                 if (lang.Culture.TwoLetterISOLanguageName == "ru")
                 {
                     InputLanguage.CurrentInputLanguage = lang;

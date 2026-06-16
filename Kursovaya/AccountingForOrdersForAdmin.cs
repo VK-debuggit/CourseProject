@@ -26,7 +26,6 @@ namespace Kursovaya
         private int currentPage = 1;
         private int totalPages = 1;
 
-        // Для сохранения состояния
         private int savedPage = 1;
         private string savedSearchText = "";
         private bool allowClose = false;
@@ -73,51 +72,7 @@ namespace Kursovaya
             dataGridView1.BackgroundColor = System.Drawing.Color.FromArgb(255, 221, 153);
         }
 
-        private void SaveFormState()
-        {
-            savedPage = this.currentPage;
-            savedSearchText = this.textBox1.Text;
-        }
-
-        private void RestoreFormState()
-        {
-            this.currentPage = savedPage;
-            this.textBox1.Text = savedSearchText;
-
-            if (!string.IsNullOrEmpty(textBox1.Text))
-            {
-                FilterDataGridView();
-            }
-
-            Pagination();
-            ShowPage(currentPage);
-        }
-
-        private void UpdateCurrentUserInfo()
-        {
-            string fullname = Properties.Settings.Default.userName;
-            string formattedname = fullname;
-
-            string[] parts = fullname.Split(' ');
-
-            if (parts.Length == 3)
-            {
-                string lastname = parts[0];
-                string firstname = parts[1].Substring(0, 1);
-                string middle = parts[2].Substring(0, 1);
-                formattedname = $"{lastname} {firstname}.{middle}.";
-            }
-            label1.Text = formattedname;
-            label2.Text = Properties.Settings.Default.userRole;
-        }
-
-        private void RefreshFormData()
-        {
-            FillDataGridView();
-            FillStatusComboBox();
-            ResetStatusChangeControls();
-        }
-
+        //Функция форматирования ФИО
         private string FormatFullName(string fullName)
         {
             if (string.IsNullOrEmpty(fullName))
@@ -142,6 +97,7 @@ namespace Kursovaya
             return fullName;
         }
 
+        //Функция маскирования номера телефона
         private string FormatPhoneNumber(string phoneNumber)
         {
             if (string.IsNullOrEmpty(phoneNumber) || phoneNumber.Length < 4)
@@ -154,12 +110,14 @@ namespace Kursovaya
             return $"{firstDigit}{stars}{lastFourDigits}";
         }
 
+        //Обработчик тиков таймера поиска
         private void SearchTimer_Tick(object sender, EventArgs e)
         {
             searchTimer.Stop();
             FilterDataGridView();
         }
 
+        //Фильтрация данных в DataGridView
         private void FilterDataGridView()
         {
             if (dataTable == null) return;
@@ -205,13 +163,7 @@ namespace Kursovaya
             Pagination();
         }
 
-        private void ResetInactivityTimer(object sender, EventArgs e)
-        {
-            inactivityTimer.Stop();
-            inactivityTimer.Interval = Properties.Settings.Default.InactivityTimeout * 1000;
-            inactivityTimer.Start();
-        }
-
+        //Обработчик кнопки возврата в главное меню
         private void button1_Click(object sender, EventArgs e)
         {
             allowClose = true;
@@ -221,6 +173,7 @@ namespace Kursovaya
             this.Close();
         }
 
+        //Обработчик закрытия формы
         private void AccountingForOrdersForAdmin_FormClosing(object sender, FormClosingEventArgs e)
         {
             if (e.CloseReason == CloseReason.ApplicationExitCall)
@@ -234,6 +187,7 @@ namespace Kursovaya
             }
         }
 
+        //Загрузка данных в DataGridView
         void FillDataGridView()
         {
             FillStatusMap();
@@ -344,6 +298,7 @@ namespace Kursovaya
             Pagination();
         }
 
+        //Создание элементов пагинации
         void Pagination()
         {
             for (int j = 0, count = this.Controls.Count; j < count; ++j)
@@ -424,6 +379,7 @@ namespace Kursovaya
             UpdateNavigationButtons();
         }
 
+        //Отображение выбранной страницы
         private void ShowPage(int pageNumber)
         {
             if (pageNumber < 1) pageNumber = 1;
@@ -446,26 +402,27 @@ namespace Kursovaya
             }
         }
 
+        //Обработчик кнопки "Назад"
         private void BtnPrev_Click(object sender, EventArgs e)
         {
             if (currentPage > 1)
             {
                 ShowPage(currentPage - 1);
                 Pagination();
-                ResetInactivityTimer(sender, e);
             }
         }
 
+        //Обработчик кнопки "Вперед"
         private void BtnNext_Click(object sender, EventArgs e)
         {
             if (currentPage < totalPages)
             {
                 ShowPage(currentPage + 1);
                 Pagination();
-                ResetInactivityTimer(sender, e);
             }
         }
 
+        //Обработчик клика по номеру страницы
         private void LinkLabel_Click(object sender, EventArgs e)
         {
             LinkLabel l = sender as LinkLabel;
@@ -473,10 +430,10 @@ namespace Kursovaya
             {
                 ShowPage(pageNumber);
                 Pagination();
-                ResetInactivityTimer(sender, e);
             }
         }
 
+        //Обновление состояния кнопок навигации
         private void UpdateNavigationButtons()
         {
             Button btnPrev = this.Controls.Find("btnPrev", false).FirstOrDefault() as Button;
@@ -501,56 +458,7 @@ namespace Kursovaya
             }
         }
 
-        private void AccountingForOrdersForAdmin_Resize(object sender, EventArgs e)
-        {
-            int savedPage = currentPage;
-            Pagination();
-            currentPage = savedPage;
-            ShowPage(currentPage);
-        }
-
-        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
-        {
-            if (keyData == Keys.Left || keyData == Keys.PageUp)
-            {
-                if (currentPage > 1)
-                {
-                    BtnPrev_Click(null, null);
-                    return true;
-                }
-            }
-            else if (keyData == Keys.Right || keyData == Keys.PageDown)
-            {
-                if (currentPage < totalPages)
-                {
-                    BtnNext_Click(null, null);
-                    return true;
-                }
-            }
-            else if (keyData == Keys.Home)
-            {
-                if (currentPage != 1)
-                {
-                    ShowPage(1);
-                    Pagination();
-                    ResetInactivityTimer(null, null);
-                }
-                return true;
-            }
-            else if (keyData == Keys.End)
-            {
-                if (currentPage != totalPages)
-                {
-                    ShowPage(totalPages);
-                    Pagination();
-                    ResetInactivityTimer(null, null);
-                }
-                return true;
-            }
-
-            return base.ProcessCmdKey(ref msg, keyData);
-        }
-
+        //Заполнение выпадающего списка статусов
         private void FillStatusComboBox()
         {
             comboBox1.Items.Clear();
@@ -560,6 +468,7 @@ namespace Kursovaya
             }
         }
 
+        //Обработчик клика по ячейке DataGridView
         private void dataGridView1_CellClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex >= 0)
@@ -581,6 +490,7 @@ namespace Kursovaya
             }
         }
 
+        //Обработчик изменения выбранного статуса
         private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (comboBox1.SelectedItem != null)
@@ -600,6 +510,7 @@ namespace Kursovaya
             }
         }
 
+        //Обработчик кнопки обновления статуса
         private void button2_Click(object sender, EventArgs e)
         {
             if (comboBox1.SelectedItem == null || !isStatusChanged)
@@ -624,6 +535,7 @@ namespace Kursovaya
             }
         }
 
+        //Обновление статуса в базе данных
         private void UpdateStatusInDatabase(int orderNumber, string newStatusName)
         {
             try
@@ -670,6 +582,7 @@ namespace Kursovaya
             }
         }
 
+        //Обновление статуса в DataGridView
         private void UpdateDataGridViewStatus(int orderNumber, string newStatusName, string newStatusId)
         {
             foreach (DataGridViewRow row in dataGridView1.Rows)
@@ -683,6 +596,7 @@ namespace Kursovaya
             }
         }
 
+        //Обновление статуса в DataTable
         private void UpdateDataTableStatus(int orderNumber, string newStatusName, string newStatusId)
         {
             if (dataTable != null)
@@ -698,6 +612,7 @@ namespace Kursovaya
             }
         }
 
+        //Заполнение словаря статусов
         private void FillStatusMap()
         {
             try
@@ -725,16 +640,19 @@ namespace Kursovaya
             }
         }
 
+        //Получение названия статуса по идентификатору
         private string GetStatusNameById(string statusId)
         {
             return statusMap.ContainsKey(statusId) ? statusMap[statusId] : "Неизвестно";
         }
 
+        //Получение идентификатора статуса по названию
         private string GetStatusIdByName(string statusName)
         {
             return statusMap.FirstOrDefault(x => x.Value == statusName).Key;
         }
 
+        //Сброс элементов управления изменением статуса
         private void ResetStatusChangeControls()
         {
             button2.Enabled = false;
@@ -747,6 +665,7 @@ namespace Kursovaya
             dataGridView1.ClearSelection();
         }
 
+        //Очистка всех полей формы
         private void ClearAllFields()
         {
             button2.Enabled = false;
@@ -759,12 +678,14 @@ namespace Kursovaya
             dataGridView1.ClearSelection();
         }
 
+        //Обработчик загрузки формы
         private void AccountingForOrdersForAdmin_Load(object sender, EventArgs e)
         {
             ClearAllFields();
             Pagination();
         }
 
+        //Обработчик изменения выделения в DataGridView
         private void dataGridView1_SelectionChanged(object sender, EventArgs e)
         {
             if (dataGridView1.SelectedRows.Count == 0)
@@ -773,6 +694,7 @@ namespace Kursovaya
             }
         }
 
+        //Обработчик изменения текста в поле поиска
         private void textBox1_TextChanged(object sender, EventArgs e)
         {
             if (!string.IsNullOrEmpty(textBox1.Text))
@@ -789,6 +711,7 @@ namespace Kursovaya
             searchTimer.Start();
         }
 
+        //Ограничение ввода в поле поиска
         private void textBox1_KeyPress(object sender, KeyPressEventArgs e)
         {
             if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar))

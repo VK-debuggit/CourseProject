@@ -25,7 +25,6 @@ namespace Kursovaya
             InitializeComponent();
             this.orderId = orderId;
 
-            // Загружаем данные заказа
             LoadOrderData();
 
             button1.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
@@ -50,6 +49,7 @@ namespace Kursovaya
             label18.Text = rowCount.ToString();
         }
 
+        //Класс данных заказа
         public class OrderData
         {
             public string NumberOrder { get; set; }
@@ -64,9 +64,10 @@ namespace Kursovaya
             public decimal FinalAmount { get; set; }
             public decimal Prepayment { get; set; }
             public string Status { get; set; }
-            public string NameUser { get; set; } // Добавляем это свойство
+            public string NameUser { get; set; }
         }
 
+        //Загрузка данных заказа
         private void LoadOrderData()
         {
             try
@@ -107,14 +108,12 @@ namespace Kursovaya
                         {
                             if (reader.Read())
                             {
-                                // Правильное чтение TimeSpan
                                 string startTime = reader["StartTime"] != DBNull.Value ?
                                     ((TimeSpan)reader["StartTime"]).ToString(@"hh\:mm") : "";
                                 string endTime = reader["EndTime"] != DBNull.Value ?
                                     ((TimeSpan)reader["EndTime"]).ToString(@"hh\:mm") : "";
                                 string timeRange = $"{startTime} - {endTime}";
 
-                                // Создаем объект OrderData
                                 orderData = new OrderData
                                 {
                                     NumberOrder = reader["NumberOrder"].ToString(),
@@ -132,7 +131,6 @@ namespace Kursovaya
                                     Status = reader["OrderStatus"].ToString()
                                 };
 
-                                // Заполняем Label на форме
                                 DisplayOrderInfo();
                             }
                             else
@@ -145,7 +143,6 @@ namespace Kursovaya
                         }
                     }
 
-                    // Загружаем состав заказа
                     LoadOrderComposition(con);
                 }
             }
@@ -156,6 +153,7 @@ namespace Kursovaya
             }
         }
 
+        //Загрузка состава заказа
         private void LoadOrderComposition(MySqlConnection con)
         {
             string compositionQuery = @"
@@ -176,15 +174,14 @@ namespace Kursovaya
                 adapter.Fill(orderItems);
             }
 
-            // Настраиваем DataGridView
             SetupOrderItemsDataGridView();
         }
 
+        //Отображение информации о заказе
         private void DisplayOrderInfo()
         {
             if (orderData == null) return;
 
-            // Заполняем Label на форме
             label4.Text = orderData.NumberOrder;
             label12.Text = orderData.DateOrder;
             label14.Text = orderData.Date;
@@ -193,15 +190,14 @@ namespace Kursovaya
             label8.Text = orderData.NameClient;
             label10.Text = orderData.NumberPhone;
 
-            // Рассчитываем суммы с учетом дополнительных расходов
             CalculateTotalWithAdditionalExpenses();
         }
 
+        //Расчет суммы с учетом дополнительных расходов
         private void CalculateTotalWithAdditionalExpenses()
         {
             if (orderData == null) return;
 
-            // Показываем исходные суммы без учета дополнительных расходов
             label20.Text = ((int)orderData.Prepayment).ToString("C0");
             label22.Text = ((int)orderData.DiscountAmount).ToString("C0");
 
@@ -209,25 +205,22 @@ namespace Kursovaya
             label24.Text = ((int)finalAmount).ToString("C0");
             return;
 
-            // Получаем базовую сумму заказа (без дополнительных расходов)
             decimal baseTotalAmount = orderData.TotalAmount;
             decimal baseDiscountAmount = orderData.DiscountAmount;
             decimal baseFinalAmount = orderData.FinalAmount > 0 ? orderData.FinalAmount : baseTotalAmount - baseDiscountAmount;
             decimal basePrepayment = orderData.Prepayment;
 
-            // Предоплата может быть пересчитана пропорционально или оставлена как есть
             decimal newPrepayment = basePrepayment;
 
-            // Отображаем суммы
             label20.Text = newPrepayment.ToString("C");
             label22.Text = baseDiscountAmount.ToString("C");
         }
 
+        //Настройка таблицы состава заказа
         private void SetupOrderItemsDataGridView()
         {
             dataGridView1.DataSource = orderItems;
 
-            // Настройка колонок
             if (orderItems.Columns.Contains("Article"))
                 dataGridView1.Columns["Article"].HeaderText = "Артикул";
             if (orderItems.Columns.Contains("Name"))
@@ -241,10 +234,10 @@ namespace Kursovaya
 
             dataGridView1.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
 
-            // Обновляем количество записей
             UpdateRowCount();
         }
 
+        //Обновление количества записей
         private void UpdateRowCount()
         {
             if (orderItems != null && orderItems.Rows.Count > 0)
@@ -260,71 +253,7 @@ namespace Kursovaya
 
         private bool allowClose = false;
 
-        private void button3_Click(object sender, EventArgs e)
-        {
-            allowClose = true;
-            this.Visible = false;
-            ViewingOrdersForMeneger viewingOrdersForMeneger = new ViewingOrdersForMeneger();
-            viewingOrdersForMeneger.ShowDialog();
-            this.Close();
-        }
-
-        private void ViewingAnOrder_FormClosing(object sender, FormClosingEventArgs e)
-        {
-            if (e.CloseReason == CloseReason.ApplicationExitCall)
-            {
-                return;
-            }
-
-            if (!allowClose)
-            {
-                e.Cancel = true;
-            }
-        }
-
-        private string GetTemplatePath()
-        {
-            string[] possiblePaths = {
-                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "secondblank.docx"),
-                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "secondblank.docx"),
-                Path.Combine(Directory.GetCurrentDirectory(), "Resources", "secondblank.docx"),
-                @"Resources\secondblank.docx",
-                @"..\Resources\secondblank.docx"
-            };
-
-            foreach (string path in possiblePaths)
-            {
-                if (File.Exists(path))
-                {
-                    return Path.GetFullPath(path);
-                }
-            }
-
-            throw new FileNotFoundException("Шаблон secondblank.docx не найден. Проверьте наличие файла в папке Resources");
-        }
-
-        private void FillBookmark(Microsoft.Office.Interop.Word.Document doc, string bookmarkName, string value)
-        {
-            try
-            {
-                if (doc.Bookmarks.Exists(bookmarkName))
-                {
-                    Microsoft.Office.Interop.Word.Bookmark bookmark = doc.Bookmarks[bookmarkName];
-                    Microsoft.Office.Interop.Word.Range range = bookmark.Range;
-                    range.Text = value;
-                    doc.Bookmarks[bookmarkName].Delete();
-                }
-                else
-                {
-                    Console.WriteLine($"Закладка '{bookmarkName}' не найдена");
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Ошибка при заполнении закладки '{bookmarkName}': {ex.Message}");
-            }
-        }
-
+        //Обработчик кнопки возврата в учет заказов
         private void button1_Click(object sender, EventArgs e)
         {
             allowClose = true;
@@ -332,6 +261,15 @@ namespace Kursovaya
             ViewingOrderAccounting viewingOrderAccounting = new ViewingOrderAccounting();
             viewingOrderAccounting.ShowDialog();
             this.Close();
+        }
+
+        private void ViewingOrderForDirector_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            if (e.CloseReason == CloseReason.ApplicationExitCall)
+                return;
+
+            if (!allowClose)
+                e.Cancel = true;
         }
     }
 }

@@ -15,11 +15,11 @@ using Microsoft.Win32;
 
 namespace Kursovaya
 {
-    // Перечисление типов документов
+    //Перечисление типов документов
     public enum DocumentType
     {
-        Preliminary,  // Предварительный документ (firstblank.docx)
-        Final        // Окончательный документ (secondblank.docx)
+        Preliminary,
+        Final
     }
 
     public partial class SelectFormPrint : Form
@@ -33,9 +33,9 @@ namespace Kursovaya
         private decimal _additionalExpenses;
         private Form _previousForm;
 
-        private bool _isClosingProgrammatically = false; // Флаг программного закрытия
+        private bool _isClosingProgrammatically = false;
 
-        // Конструктор для предварительного документа (из ViewingAnOrderForMeneger)
+        //Конструктор для предварительного документа
         public SelectFormPrint(System.Data.DataTable cartItems, OrderData orderData, decimal discountAmountValue, DocumentType type, Form previousForm = null)
         {
             InitializeComponent();
@@ -45,13 +45,13 @@ namespace Kursovaya
             this._documentType = type;
             this._viewingAnOrderForm = null;
             this._previousForm = previousForm;
-            this._shouldOpenMakingAnOrder = true; // Для первичного - открываем MakingAnOrder
+            this._shouldOpenMakingAnOrder = true;
             button1.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button2.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button3.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
         }
 
-        // Конструктор для окончательного документа (из ViewingAnOrder)
+        //Конструктор для окончательного документа
         public SelectFormPrint(OrderData orderData, System.Data.DataTable orderItems, DocumentType type, ViewingAnOrder parentForm, decimal additionalExpenses, Form previousForm = null)
         {
             InitializeComponent();
@@ -67,8 +67,7 @@ namespace Kursovaya
             button3.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
         }
 
-        // ========== КНОПКИ НАВИГАЦИИ ==========
-
+        //Обработчик кнопки возврата
         private void button3_Click(object sender, EventArgs e)
         {
             _isClosingProgrammatically = true;
@@ -81,6 +80,7 @@ namespace Kursovaya
             this.Close();
         }
 
+        //Обработчик закрытия формы
         private void SelectFormPrint_FormClosing(object sender, FormClosingEventArgs e)
         {
             if (_isClosingProgrammatically)
@@ -89,6 +89,7 @@ namespace Kursovaya
             e.Cancel = true;
         }
 
+        //Обработчик кнопки создания Word документа
         private void button2_Click(object sender, EventArgs e)
         {
             _isClosingProgrammatically = true;
@@ -116,28 +117,7 @@ namespace Kursovaya
             }
         }
 
-        // Получение базовой папки CafeManagement (в папке с программой)
-        private static string GetCafeManagementPath()
-        {
-            string exeDirectory = Path.GetDirectoryName(System.Windows.Forms.Application.ExecutablePath);
-            string cafePath = Path.Combine(exeDirectory, "CafeManagement");
-
-            if (!Directory.Exists(cafePath))
-            {
-                Directory.CreateDirectory(cafePath);
-            }
-
-            return cafePath;
-        }
-
-        //// Получение папки для документов
-        //private static string GetDocumentsPath()
-        //{
-        //    string docsPath = Path.Combine(GetCafeManagementPath(), "Documents");
-        //    if (!Directory.Exists(docsPath)) Directory.CreateDirectory(docsPath);
-        //    return docsPath;
-        //}
-
+        //Обработчик кнопки создания PDF документа
         private void button1_Click(object sender, EventArgs e)
         {
             _isClosingProgrammatically = true;
@@ -165,14 +145,11 @@ namespace Kursovaya
             }
         }
 
-        // ========== ГЕНЕРАЦИЯ PDF С АВТОСОХРАНЕНИЕМ ==========
-
-        // Генерация PDF предварительного документа с автосохранением
+        //Генерация PDF предварительного документа
         private void GeneratePreliminaryPDFTicket()
         {
             try
             {
-                // Получаем папку для документов
                 string documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
                 string docsFolder = Path.Combine(documentsPath, "CafeManagement", "Documents");
 
@@ -206,12 +183,11 @@ namespace Kursovaya
             }
         }
 
-        // Генерация PDF итогового документа с автосохранением
+        //Генерация PDF итогового документа
         private void GenerateFinalPDFTicket()
         {
             try
             {
-                // Получаем папку для документов
                 string documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
                 string docsFolder = Path.Combine(documentsPath, "CafeManagement", "Documents");
 
@@ -247,7 +223,7 @@ namespace Kursovaya
             }
         }
 
-        // Основной метод создания PDF документа
+        //Создание PDF документа
         private void CreatePDFDocument(string filePath, decimal totalAmount, decimal discountAmount,
             decimal discountPercent, decimal prepayment, decimal finalAmount, bool isPreliminary)
         {
@@ -273,8 +249,6 @@ namespace Kursovaya
                     float rightColumnX = pageWidth - 200;
                     float rowHeight = 22;
 
-                    // ========== ЗАГОЛОВОК ==========
-                    // Если заказ отменен - сначала рисуем красную надпись "ЗАКАЗ ОТМЕНЕН"
                     if (!string.IsNullOrEmpty(_orderData.Status) && _orderData.Status == "Отменен")
                     {
                         string cancelledText = "ЗАКАЗ ОТМЕНЕН";
@@ -286,18 +260,13 @@ namespace Kursovaya
                         yPosition += 35;
                     }
 
-                    // Затем рисуем "БЛАНК ЗАКАЗА" по центру
                     string titleText = "БЛАНК ЗАКАЗА";
                     XSize titleSize = gfx.MeasureString(titleText, titleFont);
                     float titleX = (float)((pageWidth - titleSize.Width) / 2);
                     gfx.DrawString(titleText, titleFont, XBrushes.Black,
                         new XRect(titleX, yPosition, titleSize.Width, 30), XStringFormats.TopLeft);
                     yPosition += 40;
-                    // =================================
 
-                    // ========== ДВУХКОЛОНОЧНАЯ ШАПКА ==========
-
-                    // Строка 1: Номер заказа | Клиент
                     gfx.DrawString("Номер заказа:", labelFont, XBrushes.Black,
                         new XRect(leftColumnX, yPosition, 100, rowHeight), XStringFormats.TopLeft);
                     gfx.DrawString(_orderData.NumberOrder.ToString(), regularFont, XBrushes.Black,
@@ -309,7 +278,6 @@ namespace Kursovaya
                         new XRect(rightColumnX + 55, yPosition, 140, rowHeight), XStringFormats.TopLeft);
                     yPosition += rowHeight;
 
-                    // Строка 2: Дата создания | Телефон
                     gfx.DrawString("Дата создания:", labelFont, XBrushes.Black,
                         new XRect(leftColumnX, yPosition, 100, rowHeight), XStringFormats.TopLeft);
                     gfx.DrawString(_orderData.DateOrder, regularFont, XBrushes.Black,
@@ -321,7 +289,6 @@ namespace Kursovaya
                         new XRect(rightColumnX + 60, yPosition, 140, rowHeight), XStringFormats.TopLeft);
                     yPosition += rowHeight;
 
-                    // Строка 3: Мероприятие | Дата проведения
                     gfx.DrawString("Мероприятие:", labelFont, XBrushes.Black,
                         new XRect(leftColumnX, yPosition, 100, rowHeight), XStringFormats.TopLeft);
 
@@ -359,14 +326,12 @@ namespace Kursovaya
                         new XRect(rightColumnX + 115, yPosition, 85, rowHeight), XStringFormats.TopLeft);
                     yPosition += rowHeight;
 
-                    // Строка 4: (пусто) | Время
                     gfx.DrawString("Время:", labelFont, XBrushes.Black,
                         new XRect(rightColumnX, yPosition, 55, rowHeight), XStringFormats.TopLeft);
                     gfx.DrawString(_orderData.Time, regularFont, XBrushes.Black,
                         new XRect(rightColumnX + 55, yPosition, 140, rowHeight), XStringFormats.TopLeft);
                     yPosition += rowHeight + 20;
 
-                    // Заголовок "СОСТАВ ЗАКАЗА"
                     XSize headerSize = gfx.MeasureString("СОСТАВ ЗАКАЗА", subtitleFont);
                     float headerX = (float)((pageWidth - headerSize.Width) / 2);
                     gfx.DrawString("СОСТАВ ЗАКАЗА", subtitleFont, XBrushes.Black,
@@ -374,11 +339,9 @@ namespace Kursovaya
 
                     yPosition += 35;
 
-                    // Рисуем таблицу
                     float tableBottomY = DrawOrderTable(gfx, _cartItems, page, yPosition);
                     yPosition = tableBottomY + 20;
 
-                    // Финансовая информация
                     float rightEdge = pageWidth - 50;
 
                     gfx.DrawString("СУММА ЗАКАЗА", regularFont, XBrushes.Black,
@@ -416,12 +379,10 @@ namespace Kursovaya
 
                     yPosition += 20;
 
-                    // ========== РАЗДЕЛИТЕЛЬНАЯ ЛИНИЯ ==========
                     XPen linePen = new XPen(XColors.LightGray, 0.5);
                     gfx.DrawLine(linePen, 50, yPosition, pageWidth - 50, yPosition);
                     yPosition += 15;
 
-                    // Предупреждение о невозврате предоплаты (только для предварительного документа)
                     if (isPreliminary)
                     {
                         XFont warningFont = new XFont("Arial", 10, XFontStyle.Bold | XFontStyle.Italic);
@@ -434,7 +395,6 @@ namespace Kursovaya
                         yPosition += 20;
                     }
 
-                    // Служебная информация (по центру)
                     string fullname = Properties.Settings.Default.userName;
                     string formattedname = FormatFullName(fullname);
 
@@ -464,17 +424,15 @@ namespace Kursovaya
             }
         }
 
-        // Рисование таблицы с товарами (возвращает Y-координату низа таблицы)
+        //Рисование таблицы с товарами
         private float DrawOrderTable(XGraphics gfx, System.Data.DataTable items, PdfPage page, float startY)
         {
             if (items == null || items.Rows.Count == 0)
                 return startY;
 
-            // Настройки таблицы
             float[] columnWidths = { 30, 200, 80, 50, 80 };
             float rowHeight = 22;
 
-            // Вычисляем общую ширину таблицы и стартовую позицию X для центрирования
             float totalTableWidth = columnWidths.Sum();
             float startX = (float)((page.Width - totalTableWidth) / 2);
 
@@ -482,7 +440,6 @@ namespace Kursovaya
             XFont cellFont = new XFont("Arial", 8, XFontStyle.Regular);
             XPen pen = new XPen(XColors.Black, 0.5);
 
-            // Заголовки столбцов
             string[] headers = { "№", "Наименование", "Цена", "Кол-во", "Сумма" };
             float currentX = startX;
 
@@ -497,7 +454,6 @@ namespace Kursovaya
 
             float currentY = startY + rowHeight;
 
-            // Заполняем строки таблицы
             for (int i = 0; i < items.Rows.Count; i++)
             {
                 DataRow row = items.Rows[i];
@@ -516,32 +472,27 @@ namespace Kursovaya
 
                 currentX = startX;
 
-                // Номер
                 XRect rect1 = new XRect(currentX, currentY, columnWidths[0], rowHeight);
                 gfx.DrawRectangle(pen, rect1);
                 gfx.DrawString((i + 1).ToString(), cellFont, XBrushes.Black, rect1, XStringFormats.Center);
                 currentX += columnWidths[0];
 
-                // Наименование
                 XRect rect2 = new XRect(currentX, currentY, columnWidths[1], rowHeight);
                 gfx.DrawRectangle(pen, rect2);
                 string displayName = name.Length > 30 ? name.Substring(0, 27) + "..." : name;
                 gfx.DrawString(displayName, cellFont, XBrushes.Black, rect2, XStringFormats.CenterLeft);
                 currentX += columnWidths[1];
 
-                // Цена
                 XRect rect3 = new XRect(currentX, currentY, columnWidths[2], rowHeight);
                 gfx.DrawRectangle(pen, rect3);
                 gfx.DrawString(price.ToString("C2"), cellFont, XBrushes.Black, rect3, XStringFormats.Center);
                 currentX += columnWidths[2];
 
-                // Количество
                 XRect rect4 = new XRect(currentX, currentY, columnWidths[3], rowHeight);
                 gfx.DrawRectangle(pen, rect4);
                 gfx.DrawString(quantity.ToString(), cellFont, XBrushes.Black, rect4, XStringFormats.Center);
                 currentX += columnWidths[3];
 
-                // Сумма
                 XRect rect5 = new XRect(currentX, currentY, columnWidths[4], rowHeight);
                 gfx.DrawRectangle(pen, rect5);
                 gfx.DrawString(total.ToString("C2"), cellFont, XBrushes.Black, rect5, XStringFormats.Center);
@@ -549,24 +500,19 @@ namespace Kursovaya
                 currentY += rowHeight;
             }
 
-            // Возвращаем Y-координату низа таблицы
             return currentY;
         }
 
-        // ========== МЕТОДЫ ДЛЯ ОТКРЫТИЯ PDF ==========
-
-        // Основной метод открытия PDF с приоритетом Adobe Acrobat
+        //Открытие PDF файла
         private void OpenPDFFile(string filePath)
         {
-            // Сначала пробуем открыть в Adobe Acrobat
             if (OpenWithAdobeAcrobat(filePath))
                 return;
 
-            // Если не получилось, показываем форму выбора браузера
             ShowBrowserChoice(filePath);
         }
 
-        // Открытие в Adobe Acrobat (универсальный поиск)
+        //Открытие в Adobe Acrobat
         private bool OpenWithAdobeAcrobat(string filePath)
         {
             try
@@ -590,7 +536,7 @@ namespace Kursovaya
             }
         }
 
-        // Показ выбора браузера
+        //Показ выбора браузера
         private void ShowBrowserChoice(string filePath)
         {
             Form choiceForm = new Form();
@@ -603,7 +549,6 @@ namespace Kursovaya
             choiceForm.BackColor = Color.FloralWhite;
             choiceForm.Icon = new Icon("Иконка.ico");
 
-            // Запрещаем закрытие по крестику
             choiceForm.ControlBox = true;
             choiceForm.FormClosing += (s, e) => {
                 if (e.CloseReason == CloseReason.UserClosing)
@@ -625,7 +570,6 @@ namespace Kursovaya
 
             int yPos = 110;
 
-            // Microsoft Edge
             Button edgeButton = CreateChoiceButton("Microsoft Edge", yPos);
             edgeButton.Click += (s, e) => {
                 OpenWithEdge(filePath);
@@ -634,7 +578,6 @@ namespace Kursovaya
             choiceForm.Controls.Add(edgeButton);
             yPos += 50;
 
-            // Google Chrome
             Button chromeButton = CreateChoiceButton("Google Chrome", yPos);
             chromeButton.Click += (s, e) => {
                 OpenWithChrome(filePath);
@@ -643,7 +586,6 @@ namespace Kursovaya
             choiceForm.Controls.Add(chromeButton);
             yPos += 50;
 
-            // Mozilla Firefox
             Button firefoxButton = CreateChoiceButton("Mozilla Firefox", yPos);
             firefoxButton.Click += (s, e) => {
                 OpenWithFirefox(filePath);
@@ -652,7 +594,6 @@ namespace Kursovaya
             choiceForm.Controls.Add(firefoxButton);
             yPos += 50;
 
-            // Открыть папку с файлом
             Button folderButton = CreateChoiceButton("Открыть папку с файлом", yPos);
             folderButton.Click += (s, e) => {
                 string arguments = $"/select, \"{filePath}\"";
@@ -664,6 +605,7 @@ namespace Kursovaya
             choiceForm.ShowDialog();
         }
 
+        //Создание кнопки выбора
         private Button CreateChoiceButton(string text, int yPos)
         {
             Button button = new Button();
@@ -680,7 +622,7 @@ namespace Kursovaya
             return button;
         }
 
-        // Открытие через Microsoft Edge (универсальный поиск)
+        //Открытие через Microsoft Edge
         private void OpenWithEdge(string filePath)
         {
             try
@@ -705,7 +647,7 @@ namespace Kursovaya
             }
         }
 
-        // Открытие через Google Chrome (универсальный поиск)
+        //Открытие через Google Chrome
         private void OpenWithChrome(string filePath)
         {
             try
@@ -730,7 +672,7 @@ namespace Kursovaya
             }
         }
 
-        // Открытие через Mozilla Firefox (универсальный поиск)
+        //Открытие через Mozilla Firefox
         private void OpenWithFirefox(string filePath)
         {
             try
@@ -755,7 +697,7 @@ namespace Kursovaya
             }
         }
 
-        // Открытие через программу по умолчанию
+        //Открытие программой по умолчанию
         private void OpenWithDefaultProgram(string filePath)
         {
             try
@@ -771,9 +713,7 @@ namespace Kursovaya
             }
         }
 
-        // ========== УНИВЕРСАЛЬНЫЙ ПОИСК ПРОГРАММ В СИСТЕМЕ ==========
-
-        // Универсальный метод для поиска программы в системе
+        //Поиск программы в системе
         private string FindProgramInSystem(string programName)
         {
             string registryPath = FindProgramInRegistry(programName);
@@ -815,7 +755,7 @@ namespace Kursovaya
             return null;
         }
 
-        // Поиск программы в реестре Windows
+        //Поиск программы в реестре
         private string FindProgramInRegistry(string programExeName)
         {
             try
@@ -852,7 +792,7 @@ namespace Kursovaya
             return null;
         }
 
-        // Рекурсивный поиск файла с ограничением глубины
+        //Рекурсивный поиск файла
         private string SearchFileRecursive(string directory, string fileName, int maxDepth = 3, int currentDepth = 0)
         {
             if (currentDepth > maxDepth)
@@ -884,11 +824,7 @@ namespace Kursovaya
             return null;
         }
 
-        // ========== РАБОТА С WORD ==========
-
-        /// <summary>
-        /// Заменяет все вхождения плейсхолдера в документе без изменения форматирования.
-        /// </summary>
+        //Замена текста в документе Word
         private void ReplaceTextInDocument(Microsoft.Office.Interop.Word.Document doc, string placeholder, string value)
         {
             try
@@ -907,28 +843,7 @@ namespace Kursovaya
             }
         }
 
-        /// <summary>
-        /// Делает заданный текст жирным (первое вхождение). Используется для итоговой суммы.
-        /// </summary>
-        private void MakeBold(Microsoft.Office.Interop.Word.Document doc, string textToBold)
-        {
-            try
-            {
-                Microsoft.Office.Interop.Word.Range range = doc.Content;
-                range.Find.ClearFormatting();
-                range.Find.Text = textToBold;
-                if (range.Find.Execute())
-                {
-                    range.Font.Bold = 1;
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Ошибка при утолщении шрифта: {ex.Message}");
-            }
-        }
-
-        // ИСПРАВЛЕННЫЙ МЕТОД - Предварительный документ (без автосохранения)
+        //Генерация предварительного Word документа
         private void GeneratePreliminaryWordTicket()
         {
             Microsoft.Office.Interop.Word.Application wordApp = null;
@@ -954,7 +869,6 @@ namespace Kursovaya
                 (decimal discountAmount, decimal discountPercent, decimal prepayment) = CalculateDiscountValues(totalAmount);
                 decimal finalAmount = totalAmount - discountAmount;
 
-                // Заполнение документа
                 ReplaceTextInDocument(doc, "{NumberOrder}", _orderData.NumberOrder.ToString());
                 ReplaceTextInDocument(doc, "{DateOrder}", _orderData.DateOrder);
                 ReplaceTextInDocument(doc, "{NameClient}", _orderData.NameClient);
@@ -984,11 +898,6 @@ namespace Kursovaya
 
                 AddServiceInfoToPreliminaryWord(doc);
 
-                // НЕ СОХРАНЯЕМ АВТОМАТИЧЕСКИ! Просто показываем документ пользователю
-                // Пользователь сам решит, сохранять его или нет
-                // doc.Save() - УБИРАЕМ
-                // doc.SaveAs2 - НЕ ИСПОЛЬЗУЕМ
-
                 MessageBox.Show("Предварительный документ заказа создан.\n\n" +
                                "После просмотра документа вы можете сохранить его в нужное место.\n" +
                                "Закройте документ Word для продолжения работы.",
@@ -1012,6 +921,7 @@ namespace Kursovaya
             }
         }
 
+        //Генерация итогового Word документа
         private void GenerateFinalWordTicket()
         {
             Microsoft.Office.Interop.Word.Application wordApp = null;
@@ -1033,10 +943,8 @@ namespace Kursovaya
                 doc = wordApp.Documents.Open(templatePath, ReadOnly: false);
                 doc.Activate();
 
-                // ========== ДОБАВЛЯЕМ НАДПИСЬ "ЗАКАЗ ОТМЕНЕН" ПЕРЕД ЗАГОЛОВКОМ ==========
                 if (_orderData.Status == "Отменен")
                 {
-                    // Вставляем текст в начало документа перед существующим заголовком
                     Microsoft.Office.Interop.Word.Range startRange = doc.Range(0, 0);
                     startRange.Text = "ЗАКАЗ ОТМЕНЕН\n";
                     startRange.Font.Bold = 1;
@@ -1044,7 +952,6 @@ namespace Kursovaya
                     startRange.Font.Color = Microsoft.Office.Interop.Word.WdColor.wdColorRed;
                     startRange.ParagraphFormat.Alignment = Microsoft.Office.Interop.Word.WdParagraphAlignment.wdAlignParagraphCenter;
                 }
-                // ====================================================
 
                 decimal totalAmount = _orderData.TotalAmount + _additionalExpenses;
                 decimal discountAmount = _orderData.DiscountAmount;
@@ -1052,7 +959,6 @@ namespace Kursovaya
                 decimal prepayment = _orderData.Prepayment;
                 decimal discountPercent = totalAmount > 0 ? (discountAmount / totalAmount) * 100 : 0;
 
-                // 1. Глобальная замена
                 ReplaceTextInDocument(doc, "{NumberOrder}", _orderData.NumberOrder.ToString());
                 ReplaceTextInDocument(doc, "{DateOrder}", _orderData.DateOrder);
                 ReplaceTextInDocument(doc, "{NameClient}", _orderData.NameClient);
@@ -1067,10 +973,8 @@ namespace Kursovaya
                 ReplaceTextInDocument(doc, "{AddExpenses}", _additionalExpenses.ToString("C2"));
                 ReplaceTextInDocument(doc, "{Discount}", discountPercent.ToString("F0"));
 
-                // 2. Заменяем таблицу 2
                 ReplaceTable2WithOrderItems(doc, wordApp, _cartItems);
 
-                // 3. НАХОДИМ ТАБЛИЦУ С ИТОГАМИ и заменяем
                 Microsoft.Office.Interop.Word.Table totalsTable = FindTableByText(doc, "ИТОГ");
                 if (totalsTable != null)
                 {
@@ -1085,7 +989,6 @@ namespace Kursovaya
                     MakeBoldInTable(totalsTable, finalAmount.ToString("C2"));
                 }
 
-                // 4. Служебная информация
                 AddServiceInfoToFinalWord(doc, _orderData.NameUser ?? "Не указан");
 
                 MessageBox.Show("Окончательный документ заказа создан.\n\n" +
@@ -1111,9 +1014,7 @@ namespace Kursovaya
             }
         }
 
-        /// <summary>
-        /// Заменяет плейсхолдер в заданном диапазоне (например, в таблице).
-        /// </summary>
+        //Замена текста в диапазоне Word
         private void ReplaceTextInRange(Microsoft.Office.Interop.Word.Range range, string placeholder, string value)
         {
             try
@@ -1131,9 +1032,7 @@ namespace Kursovaya
             }
         }
 
-        /// <summary>
-        /// Находит первую таблицу, содержащую указанный текст в любой ячейке.
-        /// </summary>
+        //Поиск таблицы по тексту в Word
         private Microsoft.Office.Interop.Word.Table FindTableByText(Microsoft.Office.Interop.Word.Document doc, string searchText)
         {
             try
@@ -1141,7 +1040,6 @@ namespace Kursovaya
                 foreach (Microsoft.Office.Interop.Word.Table table in doc.Tables)
                 {
                     Microsoft.Office.Interop.Word.Range tableRange = table.Range;
-                    // Ищем текст в таблице
                     tableRange.Find.ClearFormatting();
                     tableRange.Find.Text = searchText;
                     if (tableRange.Find.Execute())
@@ -1157,9 +1055,7 @@ namespace Kursovaya
             return null;
         }
 
-        /// <summary>
-        /// Находит в таблице ячейку с точным текстом и делает её жирной.
-        /// </summary>
+        //Утолщение шрифта в таблице Word
         private void MakeBoldInTable(Microsoft.Office.Interop.Word.Table table, string textToBold)
         {
             try
@@ -1169,7 +1065,6 @@ namespace Kursovaya
                     foreach (Microsoft.Office.Interop.Word.Cell cell in row.Cells)
                     {
                         string cellText = cell.Range.Text.Trim();
-                        // Убираем служебные символы
                         cellText = cellText.Replace("\r", "").Replace("\a", "").Replace("\x0007", "");
                         if (cellText.Equals(textToBold, StringComparison.OrdinalIgnoreCase))
                         {
@@ -1185,17 +1080,13 @@ namespace Kursovaya
             }
         }
 
-        /// <summary>
-        /// Удаляет старую таблицу 2 (состав заказа) и вставляет новую с актуальными данными,
-        /// сохраняя форматирование: серый заголовок, ширины колонок, границы.
-        /// </summary>
+        //Замена таблицы с товарами в Word
         private void ReplaceTable2WithOrderItems(Microsoft.Office.Interop.Word.Document doc, Microsoft.Office.Interop.Word.Application wordApp, System.Data.DataTable items)
         {
             try
             {
                 if (doc.Tables.Count < 2)
                 {
-                    // Нет таблицы 2 — возможно, шаблон повреждён. Вставляем новую в конец.
                     InsertOrderTableAtEnd(doc, wordApp, items);
                     return;
                 }
@@ -1205,7 +1096,6 @@ namespace Kursovaya
                 position.Collapse(Microsoft.Office.Interop.Word.WdCollapseDirection.wdCollapseStart);
                 oldTable.Delete();
 
-                // Если нет товаров, выводим сообщение
                 if (items == null || items.Rows.Count == 0)
                 {
                     position.Text = "Заказ не содержит товаров";
@@ -1213,21 +1103,17 @@ namespace Kursovaya
                     return;
                 }
 
-                // Создаём новую таблицу на месте старой
                 Microsoft.Office.Interop.Word.Table table = doc.Tables.Add(position, items.Rows.Count + 1, 5);
                 FormatOrderTable(table, wordApp, items);
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Ошибка замены таблицы 2: {ex.Message}");
-                // Запасной вариант — вставить таблицу в конец
                 InsertOrderTableAtEnd(doc, wordApp, items);
             }
         }
 
-        /// <summary>
-        /// Вставляет таблицу с товарами в конец документа (если нет таблицы 2).
-        /// </summary>
+        //Вставка таблицы с товарами в конец документа
         private void InsertOrderTableAtEnd(Microsoft.Office.Interop.Word.Document doc, Microsoft.Office.Interop.Word.Application wordApp, System.Data.DataTable items)
         {
             if (items == null || items.Rows.Count == 0) return;
@@ -1237,29 +1123,24 @@ namespace Kursovaya
             FormatOrderTable(table, wordApp, items);
         }
 
-        /// <summary>
-        /// Применяет форматирование к таблице: ширина, заголовок, границы, шрифты.
-        /// </summary>
+        //Форматирование таблицы в Word
         private void FormatOrderTable(Microsoft.Office.Interop.Word.Table table, Microsoft.Office.Interop.Word.Application wordApp, System.Data.DataTable items)
         {
-            // Настройка ширины таблицы и колонок
             table.PreferredWidth = wordApp.CentimetersToPoints(16);
             table.AllowAutoFit = true;
 
-            table.Columns[1].PreferredWidth = wordApp.CentimetersToPoints(1);   // №
-            table.Columns[2].PreferredWidth = wordApp.CentimetersToPoints(8);   // Наименование
-            table.Columns[3].PreferredWidth = wordApp.CentimetersToPoints(2.5f); // Цена
-            table.Columns[4].PreferredWidth = wordApp.CentimetersToPoints(2);   // Кол-во
-            table.Columns[5].PreferredWidth = wordApp.CentimetersToPoints(2.5f); // Сумма
+            table.Columns[1].PreferredWidth = wordApp.CentimetersToPoints(1);
+            table.Columns[2].PreferredWidth = wordApp.CentimetersToPoints(8);
+            table.Columns[3].PreferredWidth = wordApp.CentimetersToPoints(2.5f);
+            table.Columns[4].PreferredWidth = wordApp.CentimetersToPoints(2);
+            table.Columns[5].PreferredWidth = wordApp.CentimetersToPoints(2.5f);
 
-            // Заголовки столбцов
             table.Cell(1, 1).Range.Text = "№";
             table.Cell(1, 2).Range.Text = "Наименование";
             table.Cell(1, 3).Range.Text = "Цена";
             table.Cell(1, 4).Range.Text = "Кол-во";
             table.Cell(1, 5).Range.Text = "Сумма";
 
-            // Стиль строки заголовка
             table.Rows[1].Range.Font.Bold = 1;
             table.Rows[1].Range.Font.Size = 10;
             table.Rows[1].Range.Font.Name = "Arial";
@@ -1271,7 +1152,6 @@ namespace Kursovaya
                 table.Cell(1, col).VerticalAlignment = Microsoft.Office.Interop.Word.WdCellVerticalAlignment.wdCellAlignVerticalCenter;
             }
 
-            // Заполнение данными
             for (int i = 0; i < items.Rows.Count; i++)
             {
                 DataRow row = items.Rows[i];
@@ -1294,7 +1174,6 @@ namespace Kursovaya
                 table.Cell(rowIdx, 4).Range.Text = quantity.ToString();
                 table.Cell(rowIdx, 5).Range.Text = total.ToString("C2");
 
-                // Выравнивание
                 table.Cell(rowIdx, 1).Range.ParagraphFormat.Alignment = Microsoft.Office.Interop.Word.WdParagraphAlignment.wdAlignParagraphCenter;
                 table.Cell(rowIdx, 2).Range.ParagraphFormat.Alignment = Microsoft.Office.Interop.Word.WdParagraphAlignment.wdAlignParagraphLeft;
                 table.Cell(rowIdx, 3).Range.ParagraphFormat.Alignment = Microsoft.Office.Interop.Word.WdParagraphAlignment.wdAlignParagraphCenter;
@@ -1309,14 +1188,12 @@ namespace Kursovaya
                 }
             }
 
-            // Границы таблицы
             table.Borders.Enable = 1;
             table.Borders.InsideLineStyle = Microsoft.Office.Interop.Word.WdLineStyle.wdLineStyleSingle;
             table.Borders.OutsideLineStyle = Microsoft.Office.Interop.Word.WdLineStyle.wdLineStyleSingle;
             table.Borders.InsideLineWidth = Microsoft.Office.Interop.Word.WdLineWidth.wdLineWidth050pt;
             table.Borders.OutsideLineWidth = Microsoft.Office.Interop.Word.WdLineWidth.wdLineWidth050pt;
 
-            // Шрифт заголовка
             for (int col = 1; col <= 5; col++)
             {
                 table.Cell(1, col).Range.Font.Size = 10;
@@ -1324,6 +1201,7 @@ namespace Kursovaya
             }
         }
 
+        //Получение пути к шаблону
         private string GetTemplatePath(string templateName)
         {
             string[] possiblePaths = {
@@ -1345,18 +1223,17 @@ namespace Kursovaya
             throw new FileNotFoundException($"Шаблон {templateName} не найден. Проверьте наличие файла в папке Resources");
         }
 
+        //Добавление служебной информации в предварительный документ
         private void AddServiceInfoToPreliminaryWord(Microsoft.Office.Interop.Word.Document doc)
         {
             Microsoft.Office.Interop.Word.Range range = doc.Range(doc.Content.End - 1, doc.Content.End - 1);
             range.InsertParagraphAfter();
 
-            // Разделительная линия
             range.Text = new string('_', 80);
             range.Font.Size = 8;
             range.Font.Color = Microsoft.Office.Interop.Word.WdColor.wdColorGray50;
             range.InsertParagraphAfter();
 
-            // Предупреждение о невозврате предоплаты
             range = doc.Range(doc.Content.End - 1, doc.Content.End - 1);
             range.Text = "ВНИМАНИЕ: Предоплата в случае отмены заказа НЕ ВОЗВРАЩАЕТСЯ!";
             range.Font.Size = 12;
@@ -1366,7 +1243,6 @@ namespace Kursovaya
             range.ParagraphFormat.Alignment = Microsoft.Office.Interop.Word.WdParagraphAlignment.wdAlignParagraphCenter;
             range.InsertParagraphAfter();
 
-            // Служебная информация
             string fullname = Properties.Settings.Default.userName;
             string formattedname = FormatFullName(fullname);
 
@@ -1379,6 +1255,7 @@ namespace Kursovaya
             range.ParagraphFormat.Alignment = Microsoft.Office.Interop.Word.WdParagraphAlignment.wdAlignParagraphCenter;
         }
 
+        //Добавление служебной информации в итоговый документ
         private void AddServiceInfoToFinalWord(Microsoft.Office.Interop.Word.Document doc, string orderCreatorName)
         {
             Microsoft.Office.Interop.Word.Range range = doc.Range(doc.Content.End - 1, doc.Content.End - 1);
@@ -1394,6 +1271,7 @@ namespace Kursovaya
             range.Font.Italic = 1;
         }
 
+        //Форматирование ФИО
         private string FormatFullName(string fullname)
         {
             if (string.IsNullOrEmpty(fullname)) return fullname;
@@ -1409,6 +1287,7 @@ namespace Kursovaya
             return fullname;
         }
 
+        //Расчет скидки
         private (decimal discountAmount, decimal discountPercent, decimal prepayment) CalculateDiscountValues(decimal totalAmount)
         {
             decimal discountAmount = 0;
@@ -1426,6 +1305,7 @@ namespace Kursovaya
             return (discountAmount, discountPercent, prepayment);
         }
 
+        //Расчет общей суммы
         private decimal CalculateTotalAmount(System.Data.DataTable items)
         {
             if (items == null || items.Rows.Count == 0)

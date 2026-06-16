@@ -303,7 +303,7 @@ namespace Kursovaya
             // label24
             // 
             this.label24.AutoSize = true;
-            this.label24.Location = new System.Drawing.Point(364, 508);
+            this.label24.Location = new System.Drawing.Point(371, 508);
             this.label24.Name = "label24";
             this.label24.Size = new System.Drawing.Size(145, 28);
             this.label24.TabIndex = 25;
@@ -311,7 +311,7 @@ namespace Kursovaya
             // 
             // textBox1
             // 
-            this.textBox1.Location = new System.Drawing.Point(515, 505);
+            this.textBox1.Location = new System.Drawing.Point(522, 505);
             this.textBox1.MaxLength = 7;
             this.textBox1.Name = "textBox1";
             this.textBox1.Size = new System.Drawing.Size(171, 35);
@@ -324,7 +324,7 @@ namespace Kursovaya
             // label25
             // 
             this.label25.AutoSize = true;
-            this.label25.Location = new System.Drawing.Point(693, 508);
+            this.label25.Location = new System.Drawing.Point(699, 508);
             this.label25.Name = "label25";
             this.label25.Size = new System.Drawing.Size(48, 28);
             this.label25.TabIndex = 27;

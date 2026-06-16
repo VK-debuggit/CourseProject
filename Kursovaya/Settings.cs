@@ -18,11 +18,24 @@ namespace Kursovaya
         string filePathForImport;
         string filePathForExport;
 
+        //Получение пути к папке с бэкапами
+        private string GetBackupsPath()
+        {
+            string exeDirectory = Path.GetDirectoryName(Application.ExecutablePath);
+            return Path.Combine(exeDirectory, "CafeManagement", "Backups");
+        }
+
+        //Получение пути к папке с экспортами
+        private string GetExportsPath()
+        {
+            string exeDirectory = Path.GetDirectoryName(Application.ExecutablePath);
+            return Path.Combine(exeDirectory, "CafeManagement", "Exports");
+        }
+
         public Settings()
         {
             InitializeComponent();
 
-            // Подписываемся на событие выбора таблицы для экспорта
             comboBox2.SelectedIndexChanged += ComboBox2_SelectedIndexChanged;
 
             button1.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
@@ -56,15 +69,13 @@ namespace Kursovaya
             comboBox2.SelectedIndex = -1;
         }
 
-        // МЕТОД ДЛЯ ВОССТАНОВЛЕНИЯ БАЗЫ ДАННЫХ
+        //Восстановление базы данных из SQL файла
         private void RestoreDatabaseFromSqlFile()
         {
             try
             {
-                // Путь к SQL файлу в папке Resources программы
                 string sqlFilePath = Path.Combine(Application.StartupPath, "Resources", "cafeoptionsStructure.sql");
 
-                // Проверяем существование файла
                 if (!File.Exists(sqlFilePath))
                 {
                     MessageBox.Show($"Файл для восстановления БД не найден по пути:\n{sqlFilePath}\n\n" +
@@ -73,13 +84,9 @@ namespace Kursovaya
                     return;
                 }
 
-                // Читаем SQL файл
                 string sqlScript = File.ReadAllText(sqlFilePath, Encoding.UTF8);
-
-                // Имя базы данных из настроек
                 string databaseName = Properties.Settings.Default.database;
 
-                // Проверяем, не пустое ли имя БД
                 if (string.IsNullOrEmpty(databaseName))
                 {
                     MessageBox.Show("Имя базы данных не указано в настройках",
@@ -89,39 +96,33 @@ namespace Kursovaya
 
                 Cursor = Cursors.WaitCursor;
 
-                // Создаем подключение к серверу MySQL (без указания базы данных)
                 using (MySqlConnection connection = new MySqlConnection(serverConnectionString))
                 {
                     connection.Open();
 
-                    // Шаг 1: Удаляем базу данных, если она существует
                     string dropDatabaseQuery = $"DROP DATABASE IF EXISTS `{databaseName}`;";
                     using (MySqlCommand dropCmd = new MySqlCommand(dropDatabaseQuery, connection))
                     {
                         dropCmd.ExecuteNonQuery();
                     }
 
-                    // Шаг 2: Создаем новую базу данных
                     string createDatabaseQuery = $"CREATE DATABASE `{databaseName}` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;";
                     using (MySqlCommand createCmd = new MySqlCommand(createDatabaseQuery, connection))
                     {
                         createCmd.ExecuteNonQuery();
                     }
 
-                    // Шаг 3: Выбираем созданную базу данных
                     string useDatabaseQuery = $"USE `{databaseName}`;";
                     using (MySqlCommand useCmd = new MySqlCommand(useDatabaseQuery, connection))
                     {
                         useCmd.ExecuteNonQuery();
                     }
 
-                    // Шаг 4: Отключаем проверку внешних ключей
                     using (MySqlCommand disableFK = new MySqlCommand("SET FOREIGN_KEY_CHECKS = 0;", connection))
                     {
                         disableFK.ExecuteNonQuery();
                     }
 
-                    // Шаг 5: Разбиваем SQL скрипт на отдельные команды и выполняем их
                     string[] lines = sqlScript.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
                     StringBuilder currentCommand = new StringBuilder();
                     int executedCount = 0;
@@ -133,13 +134,11 @@ namespace Kursovaya
                     {
                         string trimmedLine = line.Trim();
 
-                        // Пропускаем комментарии и пустые строки
                         if (string.IsNullOrEmpty(trimmedLine) || trimmedLine.StartsWith("--") || trimmedLine.StartsWith("/*"))
                             continue;
 
                         currentCommand.Append(line);
 
-                        // Если строка заканчивается на ;, выполняем команду
                         if (trimmedLine.EndsWith(";"))
                         {
                             string command = currentCommand.ToString().Trim();
@@ -154,7 +153,6 @@ namespace Kursovaya
                                         cmd.ExecuteNonQuery();
                                         executedCount++;
 
-                                        // Запоминаем созданные таблицы
                                         if (command.ToUpper().Contains("CREATE TABLE"))
                                         {
                                             string tableName = ExtractTableName(command);
@@ -172,13 +170,11 @@ namespace Kursovaya
                         }
                     }
 
-                    // Шаг 6: Включаем обратно проверку внешних ключей
                     using (MySqlCommand enableFK = new MySqlCommand("SET FOREIGN_KEY_CHECKS = 1;", connection))
                     {
                         enableFK.ExecuteNonQuery();
                     }
 
-                    // Формируем сообщение о результате
                     string resultMessage = $"Восстановление базы данных завершено!";
 
                     if (errorMessages.Count > 0)
@@ -193,10 +189,7 @@ namespace Kursovaya
                                    MessageBoxButtons.OK,
                                    errorCount > 0 ? MessageBoxIcon.Warning : MessageBoxIcon.Information);
 
-                    // Обновляем строку подключения
                     conString = $"host={Properties.Settings.Default.host};uid={Properties.Settings.Default.uid};pwd={Properties.Settings.Default.pwd};database={databaseName};";
-
-                    // Обновляем список таблиц после восстановления БД
                     SelectAllTablesFromDB();
                 }
             }
@@ -211,12 +204,11 @@ namespace Kursovaya
             }
         }
 
-        // Вспомогательный метод для извлечения имени таблицы из CREATE TABLE команды
+        //Извлечение имени таблицы из команды CREATE TABLE
         private string ExtractTableName(string createCommand)
         {
             try
             {
-                // Ищем имя таблицы после CREATE TABLE
                 int startIndex = createCommand.ToUpper().IndexOf("CREATE TABLE");
                 if (startIndex == -1) return "";
 
@@ -233,125 +225,7 @@ namespace Kursovaya
             return "";
         }
 
-        // МЕТОД ДЛЯ РАЗДЕЛЕНИЯ SQL СКРИПТА НА ОТДЕЛЬНЫЕ КОМАНДЫ
-        private string[] SplitSqlScript(string sqlScript)
-        {
-            List<string> commands = new List<string>();
-            StringBuilder currentCommand = new StringBuilder();
-            bool inString = false;
-            bool inComment = false;
-            char stringDelimiter = '\0';
-
-            for (int i = 0; i < sqlScript.Length; i++)
-            {
-                char c = sqlScript[i];
-                char nextChar = i + 1 < sqlScript.Length ? sqlScript[i + 1] : '\0';
-
-                // Проверка на начало многострочного комментария /*
-                if (!inString && !inComment && c == '/' && nextChar == '*')
-                {
-                    inComment = true;
-                    i++;
-                    continue;
-                }
-
-                // Проверка на конец многострочного комментария */
-                if (inComment && c == '*' && nextChar == '/')
-                {
-                    inComment = false;
-                    i++;
-                    continue;
-                }
-
-                // Проверка на начало однострочного комментария --
-                if (!inString && !inComment && c == '-' && nextChar == '-')
-                {
-                    while (i < sqlScript.Length && sqlScript[i] != '\n')
-                    {
-                        i++;
-                    }
-                    continue;
-                }
-
-                // Проверка на начало строки в кавычках
-                if (!inComment && (c == '\'' || c == '"') && !inString)
-                {
-                    inString = true;
-                    stringDelimiter = c;
-                    currentCommand.Append(c);
-                    continue;
-                }
-
-                // Проверка на конец строки в кавычках
-                if (inString && c == stringDelimiter)
-                {
-                    inString = false;
-                    currentCommand.Append(c);
-                    continue;
-                }
-
-                // Пропускаем содержимое комментариев
-                if (inComment)
-                {
-                    continue;
-                }
-
-                // Проверка на разделитель команд (;)
-                if (!inString && c == ';')
-                {
-                    string command = currentCommand.ToString().Trim();
-                    if (!string.IsNullOrWhiteSpace(command))
-                    {
-                        commands.Add(command);
-                    }
-                    currentCommand.Clear();
-                    continue;
-                }
-
-                if (!inComment)
-                {
-                    currentCommand.Append(c);
-                }
-            }
-
-            // Добавляем последнюю команду, если нет точки с запятой
-            string lastCommand = currentCommand.ToString().Trim();
-            if (!string.IsNullOrWhiteSpace(lastCommand))
-            {
-                commands.Add(lastCommand);
-            }
-
-            return commands.ToArray();
-        }
-
-        private string GetAutoIncrementColumn(MySqlConnection connection, string tableName)
-        {
-            try
-            {
-                string query = $@"
-            SELECT COLUMN_NAME 
-            FROM INFORMATION_SCHEMA.COLUMNS 
-            WHERE TABLE_SCHEMA = @databaseName 
-              AND TABLE_NAME = @tableName 
-              AND EXTRA LIKE '%auto_increment%'
-            LIMIT 1";
-
-                using (var cmd = new MySqlCommand(query, connection))
-                {
-                    cmd.Parameters.AddWithValue("@databaseName", Properties.Settings.Default.database);
-                    cmd.Parameters.AddWithValue("@tableName", tableName);
-
-                    object result = cmd.ExecuteScalar();
-                    return result?.ToString() ?? "";
-                }
-            }
-            catch
-            {
-                return "";
-            }
-        }
-
-        // Автоматическое формирование пути при выборе таблицы для экспорта
+        //Автоматическое формирование пути при выборе таблицы для экспорта
         private void ComboBox2_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (comboBox2.SelectedItem != null)
@@ -361,9 +235,7 @@ namespace Kursovaya
 
                 string defaultFileName = $"Export_{tableName}_{DateTime.Now:yyyyMMdd_HHmmss}.csv";
 
-                // Используем папку в директории программы
-                string exeDirectory = Path.GetDirectoryName(Application.ExecutablePath);
-                string exportFolder = Path.Combine(exeDirectory, "CafeManagement", "Exports");
+                string exportFolder = GetExportsPath();
 
                 if (!Directory.Exists(exportFolder))
                 {
@@ -375,12 +247,11 @@ namespace Kursovaya
             }
         }
 
-        // Получение списка всех таблиц (прописаны все таблицы вручную + проверка подключения)
+        //Получение списка всех таблиц
         void SelectAllTablesFromDB()
         {
             try
             {
-                // Основной список всех таблиц
                 List<string> allTables = new List<string>
                 {
                     "Roles",
@@ -395,13 +266,10 @@ namespace Kursovaya
                     "OrderComposition"
                 };
 
-                // Фильтруем таблицы в зависимости от пользователя
                 List<string> filteredTables = new List<string>();
 
-                // Проверяем, если пользователь "По умолчанию"
                 if (label1.Text == "По умолчанию")
                 {
-                    // Только таблица Roles (Роли)
                     if (allTables.Contains("Roles"))
                     {
                         filteredTables.Add("Roles");
@@ -409,15 +277,12 @@ namespace Kursovaya
                 }
                 else
                 {
-                    // Все таблицы, кроме Roles
                     filteredTables = allTables.Where(t => t != "Roles").ToList();
                 }
 
-                // Очищаем комбобоксы
                 comboBox1.Items.Clear();
                 comboBox2.Items.Clear();
 
-                // Добавляем в комбобоксы с русскими названиями
                 foreach (string englishName in filteredTables)
                 {
                     string russianName = GetRussianTableName(englishName);
@@ -432,7 +297,6 @@ namespace Kursovaya
             }
             catch (Exception ex)
             {
-                // В случае ошибки - резервный хардкод
                 comboBox1.Items.Clear();
                 comboBox2.Items.Clear();
 
@@ -459,7 +323,7 @@ namespace Kursovaya
             }
         }
 
-        // Метод для получения русских названий таблиц
+        //Получение русского названия таблицы
         private string GetRussianTableName(string englishTableName)
         {
             Dictionary<string, string> tableNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -482,7 +346,7 @@ namespace Kursovaya
             return englishTableName;
         }
 
-        // Метод для получения английского названия таблицы по русскому
+        //Получение английского названия таблицы по русскому
         private string GetEnglishTableName(string russianTableName)
         {
             Dictionary<string, string> tableNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -505,7 +369,7 @@ namespace Kursovaya
             return russianTableName;
         }
 
-        // Получение информации о столбцах таблицы
+        //Получение схемы таблицы
         private List<Dictionary<string, object>> GetTableSchema(MySqlConnection connection, string tableName)
         {
             var schema = new List<Dictionary<string, object>>();
@@ -539,7 +403,7 @@ namespace Kursovaya
             return schema;
         }
 
-        // Получение первичного ключа таблицы
+        //Получение первичного ключа таблицы
         private string GetPrimaryKey(MySqlConnection connection, string tableName)
         {
             try
@@ -567,7 +431,7 @@ namespace Kursovaya
             }
         }
 
-        // Определение кодировки файла
+        //Определение кодировки файла
         private Encoding DetectFileEncoding(string filePath)
         {
             try
@@ -599,8 +463,7 @@ namespace Kursovaya
             }
         }
 
-        // Парсинг CSV строки с учетом кавычек
-        // Парсинг CSV строки с учетом кавычек (разделитель ";")
+        //Парсинг CSV строки
         private string[] ParseCSVLine(string line)
         {
             List<string> result = new List<string>();
@@ -638,7 +501,7 @@ namespace Kursovaya
             return result.ToArray();
         }
 
-        // Получение значения из CSV с учетом типа данных
+        //Получение значения из CSV с учетом типа данных
         private object GetValueFromCSV(string[] dataRow, int csvIndex, List<Dictionary<string, object>> tableSchema, string columnName)
         {
             if (csvIndex >= dataRow.Length)
@@ -693,13 +556,24 @@ namespace Kursovaya
             return value;
         }
 
-        // Кнопка для выбора файла импорта
+        //Выбор файла для импорта
         private void button2_Click(object sender, EventArgs e)
         {
             using (OpenFileDialog openFileDialog = new OpenFileDialog())
             {
                 openFileDialog.Filter = "CSV files (*.csv)|*.csv";
                 openFileDialog.Title = "Выберите CSV файл для импорта";
+
+                string exportsPath = GetExportsPath();
+                if (Directory.Exists(exportsPath))
+                {
+                    openFileDialog.InitialDirectory = exportsPath;
+                }
+                else
+                {
+                    Directory.CreateDirectory(exportsPath);
+                    openFileDialog.InitialDirectory = exportsPath;
+                }
 
                 if (openFileDialog.ShowDialog() == DialogResult.OK)
                 {
@@ -709,7 +583,7 @@ namespace Kursovaya
             }
         }
 
-        // Кнопка для выполнения импорта (с сохранением ID из CSV)
+        //Импорт данных в таблицу
         private void button3_Click(object sender, EventArgs e)
         {
             if (comboBox1.SelectedItem == null)
@@ -718,7 +592,6 @@ namespace Kursovaya
                 return;
             }
 
-            // Получаем русское название и преобразуем в английское
             string russianTableName = comboBox1.SelectedItem.ToString();
             string tableName = GetEnglishTableName(russianTableName);
 
@@ -736,7 +609,6 @@ namespace Kursovaya
                 {
                     connection.Open();
 
-                    // Получаем схему таблицы
                     var tableSchema = GetTableSchema(connection, tableName);
                     if (tableSchema.Count == 0)
                     {
@@ -753,7 +625,6 @@ namespace Kursovaya
                         return;
                     }
 
-                    // Читаем CSV файл
                     Encoding fileEncoding = DetectFileEncoding(filePathForImport);
                     var allLines = File.ReadAllLines(filePathForImport, fileEncoding);
 
@@ -763,10 +634,8 @@ namespace Kursovaya
                         return;
                     }
 
-                    // Получаем заголовки CSV
                     string[] csvHeaders = ParseCSVLine(allLines[0]);
 
-                    // Сопоставление столбцов
                     Dictionary<string, int> csvColumnMapping = new Dictionary<string, int>();
                     List<string> allDbColumns = tableSchema.Select(s => s["ColumnName"].ToString()).ToList();
 
@@ -782,7 +651,6 @@ namespace Kursovaya
                         }
                     }
 
-                    // Проверяем, что первичный ключ найден в CSV
                     if (!csvColumnMapping.ContainsKey(primaryKey))
                     {
                         MessageBox.Show($"В CSV файле не найден столбец первичного ключа '{primaryKey}'. Импорт невозможен.",
@@ -790,7 +658,6 @@ namespace Kursovaya
                         return;
                     }
 
-                    // Читаем данные из CSV
                     List<Dictionary<string, object>> csvData = new List<Dictionary<string, object>>();
 
                     for (int lineIndex = 1; lineIndex < allLines.Length; lineIndex++)
@@ -826,20 +693,17 @@ namespace Kursovaya
 
                     using (var transaction = connection.BeginTransaction())
                     {
-                        // 1. Отключаем проверку внешних ключей
                         using (MySqlCommand cmd = new MySqlCommand("SET FOREIGN_KEY_CHECKS = 0", connection, transaction))
                         {
                             cmd.ExecuteNonQuery();
                         }
 
-                        // 2. Очищаем таблицу
                         string truncateQuery = $"TRUNCATE TABLE `{tableName}`";
                         using (MySqlCommand cmd = new MySqlCommand(truncateQuery, connection, transaction))
                         {
                             cmd.ExecuteNonQuery();
                         }
 
-                        // 3. Вставляем данные с сохранением ID из CSV
                         string insertSql = BuildInsertQuery(tableName, allDbColumns);
                         int insertedCount = 0;
 
@@ -858,7 +722,6 @@ namespace Kursovaya
                             }
                         }
 
-                        // 4. Включаем обратно проверку внешних ключей
                         using (MySqlCommand cmd = new MySqlCommand("SET FOREIGN_KEY_CHECKS = 1", connection, transaction))
                         {
                             cmd.ExecuteNonQuery();
@@ -886,20 +749,7 @@ namespace Kursovaya
             }
         }
 
-        private string BuildUpdateQuery(string tableName, List<string> columns, string primaryKey)
-        {
-            var setClauses = new List<string>();
-            foreach (var column in columns)
-            {
-                if (!string.Equals(column, primaryKey, StringComparison.OrdinalIgnoreCase))
-                {
-                    setClauses.Add($"`{column}` = @{column}");
-                }
-            }
-            string setClause = string.Join(", ", setClauses);
-            return $"UPDATE `{tableName}` SET {setClause} WHERE `{primaryKey}` = @{primaryKey}";
-        }
-
+        //Построение запроса INSERT
         private string BuildInsertQuery(string tableName, List<string> columns)
         {
             string columnsList = string.Join(", ", columns.Select(c => $"`{c}`"));
@@ -907,7 +757,7 @@ namespace Kursovaya
             return $"INSERT INTO `{tableName}` ({columnsList}) VALUES ({parametersList})";
         }
 
-        // Кнопка для выполнения экспорта
+        //Экспорт данных из таблицы
         private void button5_Click(object sender, EventArgs e)
         {
             if (comboBox2.SelectedItem == null)
@@ -916,7 +766,6 @@ namespace Kursovaya
                 return;
             }
 
-            // Получаем русское название и преобразуем в английское
             string russianTableName = comboBox2.SelectedItem.ToString();
             string tableName = GetEnglishTableName(russianTableName);
 
@@ -930,14 +779,12 @@ namespace Kursovaya
             {
                 Cursor = Cursors.WaitCursor;
 
-                // Создаем DataTable для данных
                 DataTable dataTable = new DataTable();
 
                 using (MySqlConnection connection = new MySqlConnection(conString))
                 {
                     connection.Open();
 
-                    // Получаем данные
                     string query = $"SELECT * FROM `{tableName}`";
                     using (MySqlDataAdapter adapter = new MySqlDataAdapter(query, connection))
                     {
@@ -947,7 +794,6 @@ namespace Kursovaya
                     connection.Close();
                 }
 
-                // Проверяем, есть ли данные
                 if (dataTable.Rows.Count == 0)
                 {
                     MessageBox.Show($"В таблице '{tableName}' нет данных для экспорта.",
@@ -955,17 +801,14 @@ namespace Kursovaya
                     return;
                 }
 
-                // Создаем директорию для сохранения
                 string directory = Path.GetDirectoryName(filePathForExport);
                 if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
                 {
                     Directory.CreateDirectory(directory);
                 }
 
-                // Записываем в CSV с разделителем ";" и кодировкой UTF-8
                 using (StreamWriter writer = new StreamWriter(filePathForExport, false, Encoding.UTF8))
                 {
-                    // Записываем заголовки (с разделителем ";")
                     for (int i = 0; i < dataTable.Columns.Count; i++)
                     {
                         writer.Write(dataTable.Columns[i].ColumnName);
@@ -974,7 +817,6 @@ namespace Kursovaya
                     }
                     writer.WriteLine();
 
-                    // Записываем данные
                     for (int rowIndex = 0; rowIndex < dataTable.Rows.Count; rowIndex++)
                     {
                         DataRow row = dataTable.Rows[rowIndex];
@@ -989,7 +831,6 @@ namespace Kursovaya
                             }
                             else if (value is DateTime dateValue)
                             {
-                                // ФОРМАТИРУЕМ ДАТУ В ПРАВИЛЬНЫЙ ФОРМАТ
                                 strValue = dateValue.ToString("yyyy-MM-dd");
                             }
                             else
@@ -997,7 +838,6 @@ namespace Kursovaya
                                 strValue = value.ToString();
                             }
 
-                            // Экранируем специальные символы (разделитель ";")
                             if (strValue.Contains(";") || strValue.Contains("\"") || strValue.Contains("\n") || strValue.Contains("\r"))
                             {
                                 strValue = "\"" + strValue.Replace("\"", "\"\"") + "\"";
@@ -1030,24 +870,22 @@ namespace Kursovaya
             }
         }
 
-        // Кнопка для восстановления базы данных из SQL файла
+        //Восстановление базы данных
         private void button1_Click(object sender, EventArgs e)
         {
             if (label1.Text == "По умолчанию")
             {
                 RestoreDatabaseFromSqlFile();
             }
-            else 
+            else
             {
-                // Полное восстановление из выбранного SQL файла
                 RestoreFullDatabaseFromFile();
             }
         }
 
-        // МЕТОД ДЛЯ ПРЕОБРАЗОВАНИЯ ДАТЫ ИЗ ФОРМАТА "12.08.2025" В "2025-08-12"
+        //Преобразование формата даты
         private string FixDateFormat(string sqlScript)
         {
-            // Регулярное выражение для поиска дат в формате 'DD.MM.YYYY' или 'DD.MM.YYYY HH:MM:SS'
             Regex dateRegex = new Regex(@"'(\d{2})\.(\d{2})\.(\d{4})(?:\s+\d{1,2}:\d{2}:\d{2})?'");
 
             string fixedScript = dateRegex.Replace(sqlScript, match =>
@@ -1061,29 +899,35 @@ namespace Kursovaya
             return fixedScript;
         }
 
-        // МЕТОД ДЛЯ ПОЛНОГО ВОССТАНОВЛЕНИЯ БД ИЗ ВЫБРАННОГО SQL ФАЙЛА (ПОСТРОЧНОЕ ВЫПОЛНЕНИЕ)
+        //Полное восстановление базы данных из файла
         private void RestoreFullDatabaseFromFile()
         {
             try
             {
-                // Диалог выбора SQL файла
                 using (OpenFileDialog openFileDialog = new OpenFileDialog())
                 {
                     openFileDialog.Filter = "SQL files (*.sql)|*.sql|All files (*.*)|*.*";
                     openFileDialog.Title = "Выберите файл резервной копии для восстановления";
-                    openFileDialog.InitialDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "CafeBackup");
+
+                    string backupsPath = GetBackupsPath();
+                    if (Directory.Exists(backupsPath))
+                    {
+                        openFileDialog.InitialDirectory = backupsPath;
+                    }
+                    else
+                    {
+                        Directory.CreateDirectory(backupsPath);
+                        openFileDialog.InitialDirectory = backupsPath;
+                    }
 
                     if (openFileDialog.ShowDialog() != DialogResult.OK)
                         return;
 
                     string sqlFilePath = openFileDialog.FileName;
 
-                    // Читаем SQL файл
                     string sqlScript = File.ReadAllText(sqlFilePath, Encoding.UTF8);
-
                     sqlScript = FixDateFormat(sqlScript);
 
-                    // Имя базы данных из настроек
                     string databaseName = Properties.Settings.Default.database;
 
                     Cursor = Cursors.WaitCursor;
@@ -1092,7 +936,6 @@ namespace Kursovaya
                     {
                         connection.Open();
 
-                        // Удаляем и создаем БД
                         using (MySqlCommand cmd = new MySqlCommand($"DROP DATABASE IF EXISTS `{databaseName}`;", connection))
                             cmd.ExecuteNonQuery();
 
@@ -1102,11 +945,9 @@ namespace Kursovaya
                         using (MySqlCommand cmd = new MySqlCommand($"USE `{databaseName}`;", connection))
                             cmd.ExecuteNonQuery();
 
-                        // Отключаем проверку внешних ключей
                         using (MySqlCommand cmd = new MySqlCommand("SET FOREIGN_KEY_CHECKS = 0;", connection))
                             cmd.ExecuteNonQuery();
 
-                        // ПОСТРОЧНОЕ ВЫПОЛНЕНИЕ (как в RestoreDatabaseFromSqlFile)
                         string[] lines = sqlScript.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
                         StringBuilder currentCommand = new StringBuilder();
                         int executedCount = 0;
@@ -1118,13 +959,11 @@ namespace Kursovaya
                         {
                             string trimmedLine = line.Trim();
 
-                            // Пропускаем комментарии и пустые строки
                             if (string.IsNullOrEmpty(trimmedLine) || trimmedLine.StartsWith("--") || trimmedLine.StartsWith("/*"))
                                 continue;
 
                             currentCommand.Append(line);
 
-                            // Если строка заканчивается на ;, выполняем команду
                             if (trimmedLine.EndsWith(";"))
                             {
                                 string command = currentCommand.ToString().Trim();
@@ -1139,7 +978,6 @@ namespace Kursovaya
                                             cmd.ExecuteNonQuery();
                                             executedCount++;
 
-                                            // Запоминаем созданные таблицы
                                             if (command.ToUpper().Contains("CREATE TABLE"))
                                             {
                                                 string tableName = ExtractTableName(command);
@@ -1157,11 +995,9 @@ namespace Kursovaya
                             }
                         }
 
-                        // Включаем проверку внешних ключей
                         using (MySqlCommand cmd = new MySqlCommand("SET FOREIGN_KEY_CHECKS = 1;", connection))
                             cmd.ExecuteNonQuery();
 
-                        // Формируем сообщение о результате
                         string resultMessage = $"Восстановление базы данных завершено!\n" +
                                                $"Ошибок: {errorCount}\n" +
                                                $"Создано таблиц: {successfulTables.Count}\n";
@@ -1178,7 +1014,6 @@ namespace Kursovaya
                                        MessageBoxButtons.OK,
                                        errorCount > 0 ? MessageBoxIcon.Warning : MessageBoxIcon.Information);
 
-                        // Обновляем подключение
                         conString = $"host={Properties.Settings.Default.host};uid={Properties.Settings.Default.uid};pwd={Properties.Settings.Default.pwd};database={databaseName};";
                         SelectAllTablesFromDB();
                     }
@@ -1194,7 +1029,7 @@ namespace Kursovaya
             }
         }
 
-        // Кнопка возврата в главное меню
+        //Возврат в главное меню
         private void button6_Click(object sender, EventArgs e)
         {
             this.Visible = false;
@@ -1203,6 +1038,7 @@ namespace Kursovaya
             this.Close();
         }
 
+        //Обработчик загрузки формы
         private void Settings_Load(object sender, EventArgs e)
         {
             if (label1.Text == "По умолчанию")
@@ -1221,30 +1057,27 @@ namespace Kursovaya
                 button2.Location = new Point(button2.Location.X, button2.Location.Y - 54);
                 button3.Location = new Point(button3.Location.X, button3.Location.Y - 54);
 
-                // Принудительно устанавливаем таблицу для пользователя "По умолчанию"
                 comboBox1.Items.Clear();
                 comboBox1.Items.Add("Роли");
                 comboBox1.SelectedIndex = -1;
             }
         }
 
+        //Создание резервной копии
         private void button4_Click(object sender, EventArgs e)
         {
             try
             {
-                // Проверяем, есть ли доступ к базе данных
                 using (MySqlConnection testCon = new MySqlConnection(conString))
                 {
                     testCon.Open();
                     testCon.Close();
                 }
 
-                // Используем стандартную папку для бэкапов
-                string backupBasePath = BackupManager.GetBackupsBasePath();
+                string backupBasePath = GetBackupsPath();
                 string timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
                 string backupFolder = Path.Combine(backupBasePath, $"Manual_Backup_{timestamp}");
 
-                // Создаем бэкап
                 bool success = BackupManager.CreateManualBackupToFolder(backupFolder);
 
                 if (success)

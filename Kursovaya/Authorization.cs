@@ -16,14 +16,13 @@ namespace Kursovaya
 {
     public partial class Authorization : Form
     {
-        int failedAttempts = 0; // Счетчик НЕУДАЧНЫХ попыток (0 или 1)
-        string conString = $"host={Properties.Settings.Default.host};uid={Properties.Settings.Default.uid};pwd={Properties.Settings.Default.pwd};database={Properties.Settings.Default.database};";
+        private int failedAttempts = 0;
+        private string conString = $"host={Properties.Settings.Default.host};uid={Properties.Settings.Default.uid};pwd={Properties.Settings.Default.pwd};database={Properties.Settings.Default.database};";
         private string currentCaptcha = "";
         private bool isBlocked = false;
         private System.Windows.Forms.Timer blockTimer;
         private int remainingSeconds;
 
-        // поля для возврата
         private bool _isReturnFromInactivity = false;
         private string _expectedUserName = "";
         private string _expectedUserRole = "";
@@ -33,6 +32,15 @@ namespace Kursovaya
         public Authorization()
         {
             InitializeComponent();
+            InitializeFormAppearance();
+            SetupCaptchaPanel();
+            SetupBlockTimer();
+            SubscribeEvents();
+        }
+
+        //Настройка внешнего вида формы и расположения элементов
+        private void InitializeFormAppearance()
+        {
             auth.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             close.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button1.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
@@ -42,50 +50,52 @@ namespace Kursovaya
             textBox3.BackColor = System.Drawing.Color.FromArgb(255, 221, 153);
             pictureBox2.BackColor = System.Drawing.Color.FromArgb(255, 221, 153);
 
-            //Изначальное положение элементов
             label1.Location = new Point(126, label1.Location.Y);
             textBox1.Location = new Point(126, textBox1.Location.Y);
             label2.Location = new Point(126, label2.Location.Y);
             textBox2.Location = new Point(126, textBox2.Location.Y);
             auth.Location = new Point(126, auth.Location.Y);
             close.Location = new Point(126, close.Location.Y);
+        }
 
-            // Настройка PictureBox для капчи
+        //Настройка панели капчи
+        private void SetupCaptchaPanel()
+        {
             pictureBox2.SizeMode = PictureBoxSizeMode.Zoom;
             pictureBox2.Width = 350;
             pictureBox2.Height = 100;
-
-            // Настройка ProgressBar
             progressBar1.Visible = false;
             progressBar1.Maximum = 100;
             progressBar1.Value = 0;
             labelTimer.Visible = false;
-
-            // Настройка таймера
-            blockTimer = new System.Windows.Forms.Timer();
-            blockTimer.Interval = 1000;
-            blockTimer.Tick += BlockTimer_Tick;
-
-            // Изначально панель с капчей СКРЫТА
             panel1.Visible = false;
-
-            // Подписываемся на события
-            textBox1.TextChanged += CheckFieldsForValidation;
-            textBox2.TextChanged += CheckFieldsForValidation;
-            textBox3.TextChanged += CheckFieldsForValidation;
-
-            // Генерируем капчу (но она пока не видна)
             GenerateNewCaptcha();
         }
 
-        // ========== ГЕНЕРАЦИЯ КАПЧИ ==========
+        //Настройка таймера блокировки
+        private void SetupBlockTimer()
+        {
+            blockTimer = new System.Windows.Forms.Timer();
+            blockTimer.Interval = 1000;
+            blockTimer.Tick += BlockTimer_Tick;
+        }
 
+        //Подписка на события текстовых полей
+        private void SubscribeEvents()
+        {
+            textBox1.TextChanged += CheckFieldsForValidation;
+            textBox2.TextChanged += CheckFieldsForValidation;
+            textBox3.TextChanged += CheckFieldsForValidation;
+        }
+
+        //Генерация новой капчи
         private void GenerateNewCaptcha()
         {
             currentCaptcha = GenerateCaptchaText(5);
             pictureBox2.Image = GenerateCaptchaImage(currentCaptcha, 350, 100);
         }
 
+        //Функция генерации случайного текста для капчи
         private string GenerateCaptchaText(int length = 5)
         {
             const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
@@ -100,16 +110,17 @@ namespace Kursovaya
             return new string(stringChars);
         }
 
+        //Функция генерации графического изображения капчи
         private Image GenerateCaptchaImage(string captchaText, int width = 350, int height = 100)
         {
             Random random = new Random();
             Bitmap bitmap = new Bitmap(width, height);
+
             using (Graphics g = Graphics.FromImage(bitmap))
             {
                 g.SmoothingMode = SmoothingMode.AntiAlias;
                 g.Clear(Color.White);
 
-                // Рисуем шум (случайные линии)
                 for (int i = 0; i < 15; i++)
                 {
                     int x1 = random.Next(width);
@@ -119,7 +130,6 @@ namespace Kursovaya
                     g.DrawLine(new Pen(Color.FromArgb(200, 200, 200), 2), x1, y1, x2, y2);
                 }
 
-                // Рисуем текст капчи
                 Font font = new Font("Arial", 26, FontStyle.Bold | FontStyle.Italic);
                 int startX = 20;
                 int step = 40;
@@ -144,7 +154,6 @@ namespace Kursovaya
                     }
                 }
 
-                // Добавляем точки-шум
                 for (int i = 0; i < 300; i++)
                 {
                     bitmap.SetPixel(random.Next(width), random.Next(height), Color.FromArgb(100, 100, 100));
@@ -154,43 +163,33 @@ namespace Kursovaya
             return bitmap;
         }
 
-        // ========== ТАЙМЕР БЛОКИРОВКИ ==========
-
+        //Обработчик тиков таймера блокировки
         private void BlockTimer_Tick(object sender, EventArgs e)
         {
             remainingSeconds--;
 
             if (remainingSeconds <= 0)
             {
-                // Завершаем блокировку
                 blockTimer.Stop();
                 progressBar1.Visible = false;
                 labelTimer.Visible = false;
                 isBlocked = false;
-
-                // ВОССТАНАВЛИВАЕМ СОСТОЯНИЕ ПОСЛЕ БЛОКИРОВКИ:
-                // 1. Сбрасываем счетчик попыток
                 failedAttempts = 0;
-                // 2. Скрываем панель с капчей
                 panel1.Visible = false;
-                // 3. Очищаем поля
                 textBox1.Text = "";
                 textBox2.Text = "";
                 textBox3.Text = "";
-                // 4. Разблокируем поля
                 textBox1.Enabled = true;
                 textBox2.Enabled = true;
                 textBox3.Enabled = true;
                 button1.Enabled = true;
                 auth.Enabled = false;
-                // 5. Возвращаем поля в исходное положение
                 label1.Location = new Point(126, label1.Location.Y);
                 textBox1.Location = new Point(126, textBox1.Location.Y);
                 label2.Location = new Point(126, label2.Location.Y);
                 textBox2.Location = new Point(126, textBox2.Location.Y);
                 auth.Location = new Point(126, auth.Location.Y);
                 close.Location = new Point(126, close.Location.Y);
-                // 6. Генерируем новую капчу (но она не видна)
                 GenerateNewCaptcha();
 
                 MessageBox.Show("Блокировка снята. Вы можете продолжить работу.",
@@ -204,8 +203,7 @@ namespace Kursovaya
             }
         }
 
-        // ========== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ==========
-
+        //Функция хэширования пароля
         private string GetHashPass(string password)
         {
             using (var sh2 = SHA256.Create())
@@ -215,6 +213,7 @@ namespace Kursovaya
             }
         }
 
+        //Проверка заполнения полей для активации кнопки авторизации
         private void CheckFieldsForValidation(object sender, EventArgs e)
         {
             if (isBlocked)
@@ -237,42 +236,9 @@ namespace Kursovaya
             }
         }
 
-        private void ResetFormFields()
-        {
-            textBox1.Text = "";
-            textBox2.Text = "";
-            textBox3.Text = "";
-            auth.Enabled = false;
-        }
-
-        private void StartBlocking()
-        {
-            isBlocked = true;
-            remainingSeconds = 10;
-
-            // Блокируем все поля
-            textBox1.Enabled = false;
-            textBox2.Enabled = false;
-            textBox3.Enabled = false;
-            button1.Enabled = false;
-            auth.Enabled = false;
-
-            // Показываем прогресс
-            progressBar1.Visible = true;
-            progressBar1.Value = 0;
-            labelTimer.Visible = true;
-            labelTimer.Text = $"Блокировка: {remainingSeconds} сек.";
-
-            MessageBox.Show("Введены неверные данные! Система заблокирована на 10 секунд.",
-                          "Блокировка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-
-            blockTimer.Start();
-        }
-
-        // ========== ОБРАБОТЧИКИ СОБЫТИЙ ==========
-
         private bool allowClose = false;
 
+        //Обработчик закрытия формы
         private void Authorization_FormClosing(object sender, FormClosingEventArgs e)
         {
             if (e.CloseReason == CloseReason.ApplicationExitCall)
@@ -286,6 +252,7 @@ namespace Kursovaya
             }
         }
 
+        //Ограничение ввода в поле логина
         private void textBox1_KeyPress(object sender, KeyPressEventArgs e)
         {
             if (char.IsControl(e.KeyChar))
@@ -307,6 +274,7 @@ namespace Kursovaya
             e.Handled = true;
         }
 
+        //Ограничение ввода в поле пароля
         private void textBox2_KeyPress(object sender, KeyPressEventArgs e)
         {
             if (char.IsControl(e.KeyChar))
@@ -331,6 +299,7 @@ namespace Kursovaya
             e.Handled = true;
         }
 
+        //Обработчик кнопки закрытия приложения
         private void close_Click(object sender, EventArgs e)
         {
             DialogResult result = MessageBox.Show("Вы действительно хотите закрыть приложение?", "Сообщение", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
@@ -343,7 +312,7 @@ namespace Kursovaya
             }
         }
 
-        // Кнопка обновления капчи
+        //Обработчик кнопки обновления капчи
         private void button1_Click(object sender, EventArgs e)
         {
             if (!isBlocked && panel1.Visible)
@@ -353,7 +322,7 @@ namespace Kursovaya
             }
         }
 
-        // Кнопка авторизации
+        //Обработчик кнопки авторизации
         private void auth_Click(object sender, EventArgs e)
         {
             if (isBlocked)
@@ -367,7 +336,7 @@ namespace Kursovaya
             string hashPassword = GetHashPass(textBox2.Text);
             bool loginSuccess = false;
 
-            // Проверка дефолтного админа
+            //Проверка авторизации через учетную запись "По умолчанию"
             if (textBox1.Text == Properties.Settings.Default.userAdmin &&
                 textBox2.Text == Properties.Settings.Default.passwordAdmin)
             {
@@ -375,7 +344,6 @@ namespace Kursovaya
                 Properties.Settings.Default.userName = "По умолчанию";
                 Properties.Settings.Default.Save();
 
-                // проверка для возращения на предыдущую форму после разблокировки (админ по умолчанию)
                 if (_isReturnFromInactivity)
                 {
                     HandleReturnAfterInactivity("По умолчанию", "Администратор");
@@ -390,6 +358,7 @@ namespace Kursovaya
                 return;
             }
 
+            //Проверка авторизации через базу данных
             try
             {
                 using (MySqlConnection con = new MySqlConnection(conString))
@@ -421,7 +390,6 @@ namespace Kursovaya
                                     Properties.Settings.Default.userName = reader["FullName"].ToString();
                                     Properties.Settings.Default.Save();
 
-                                    // проверка для возращения на предыдущую форму после разблокировки (пользователь из бд)
                                     if (_isReturnFromInactivity)
                                     {
                                         HandleReturnAfterInactivity(Properties.Settings.Default.userName, role);
@@ -470,36 +438,30 @@ namespace Kursovaya
                               MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
 
-            // ========== НЕУДАЧНАЯ ПОПЫТКА АВТОРИЗАЦИИ ==========
-
-            // Если капча видна - проверяем ВСЕ поля
+            //Обработка неудачных попыток авторизации
             if (panel1.Visible)
             {
-                // Проверяем капчу
                 if (textBox3.Text != currentCaptcha)
                 {
-                    StartBlocking(); // БЛОКИРУЕМ
+                    StartBlocking();
                     return;
                 }
-                // Проверяем логин/пароль
                 else if (!loginSuccess)
                 {
                     MessageBox.Show("Введен неправильный логин или пароль!", "Ошибка авторизации",
                                   MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    StartBlocking(); // БЛОКИРУЕМ
+                    StartBlocking();
                     return;
                 }
             }
-            else // Капча НЕ видна - это первая попытка
+            else
             {
                 if (!loginSuccess)
                 {
-                    // Первая неудачная попытка - показываем капчу
                     failedAttempts = 1;
                     MessageBox.Show("Введен неправильный логин или пароль.",
                                   "Ошибка авторизации", MessageBoxButtons.OK, MessageBoxIcon.Error);
 
-                    // ПОКАЗЫВАЕМ КАПЧУ
                     panel1.Visible = true;
 
                     label1.Location = new Point(16, label1.Location.Y);
@@ -511,12 +473,38 @@ namespace Kursovaya
 
                     GenerateNewCaptcha();
                     textBox3.Clear();
-                    ResetFormFields();
+                    textBox1.Text = "";
+                    textBox2.Text = "";
+                    auth.Enabled = false;
                     return;
                 }
             }
         }
 
+        //Функция запуска блокировки системы
+        private void StartBlocking()
+        {
+            isBlocked = true;
+            remainingSeconds = 10;
+
+            textBox1.Enabled = false;
+            textBox2.Enabled = false;
+            textBox3.Enabled = false;
+            button1.Enabled = false;
+            auth.Enabled = false;
+
+            progressBar1.Visible = true;
+            progressBar1.Value = 0;
+            labelTimer.Visible = true;
+            labelTimer.Text = $"Блокировка: {remainingSeconds} сек.";
+
+            MessageBox.Show("Введены неверные данные! Система заблокирована на 10 секунд.",
+                          "Блокировка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+
+            blockTimer.Start();
+        }
+
+        //Установка флага возврата после неактивности
         public void SetReturnAfterInactivity(Form returnForm, string expectedUserName, string expectedUserRole)
         {
             _isReturnFromInactivity = true;
@@ -525,12 +513,13 @@ namespace Kursovaya
             _expectedUserRole = expectedUserRole;
         }
 
+        //Проверка успешности авторизации при возврате
         public bool IsAuthorizedAsExpected()
         {
             return _authorizedAsExpected;
         }
 
-        // методы для успешной авторизации 
+        //Обработка возврата после периода неактивности
         private void HandleReturnAfterInactivity(string currentUserName, string currentUserRole)
         {
             _authorizedAsExpected = (currentUserName == _expectedUserName &&
@@ -540,13 +529,11 @@ namespace Kursovaya
 
             if (_authorizedAsExpected)
             {
-                // Тот же пользователь - возвращаемся
                 this.DialogResult = DialogResult.OK;
                 this.Close();
             }
             else
             {
-                // Другой пользователь
                 MessageBox.Show(
                     $"Вы вошли как {currentUserName} ({currentUserRole}).\n" +
                     "Предыдущая форма будет закрыта.",
@@ -555,18 +542,16 @@ namespace Kursovaya
                     MessageBoxIcon.Information
                 );
 
-                // Закрываем форму возврата
                 if (_returnForm != null && !_returnForm.IsDisposed)
                 {
                     _returnForm.Close();
                 }
                 this.DialogResult = DialogResult.OK;
-
-                // Открываем главную форму для нового пользователя
                 OpenMainFormByRole(currentUserRole);
             }
         }
 
+        //Открытие главной формы в зависимости от роли пользователя
         private void OpenMainFormByRole(string role)
         {
             if (role == "Администратор")
@@ -592,12 +577,11 @@ namespace Kursovaya
             }
         }
 
+        //Установка английской раскладки при установке курсора в поле логина
         private void textBox1_Enter(object sender, EventArgs e)
         {
-            // Получаем доступный список языков и устанавливаем нужный
             foreach (InputLanguage lang in InputLanguage.InstalledInputLanguages)
             {
-                // Ищем русский язык
                 if (lang.Culture.TwoLetterISOLanguageName == "en")
                 {
                     InputLanguage.CurrentInputLanguage = lang;
@@ -606,12 +590,11 @@ namespace Kursovaya
             }
         }
 
+        //Установка английской раскладки при установке курсора в поле капчи
         private void textBox3_Enter(object sender, EventArgs e)
         {
-            // Получаем доступный список языков и устанавливаем нужный
             foreach (InputLanguage lang in InputLanguage.InstalledInputLanguages)
             {
-                // Ищем русский язык
                 if (lang.Culture.TwoLetterISOLanguageName == "en")
                 {
                     InputLanguage.CurrentInputLanguage = lang;

@@ -21,7 +21,6 @@ namespace Kursovaya
         private Timer inactivityTimer;
         private int inactivityTimeout;
 
-        // Переменные для пагинации
         private int currentPage = 1;
         private int totalPages = 1;
 
@@ -49,10 +48,11 @@ namespace Kursovaya
             SetupDateControls();
             SetupUserInfo();
             FillFilterUsers();
+
+            LoadData();
         }
 
-        // ========== МЕТОДЫ ФОРМАТИРОВАНИЯ ==========
-
+        //Форматирование ФИО
         private string FormatFullName(string fullName)
         {
             if (string.IsNullOrEmpty(fullName))
@@ -77,13 +77,12 @@ namespace Kursovaya
             return fullName;
         }
 
+        //Обработчик кнопки перехода к статистике
         private void button5_Click(object sender, EventArgs e)
         {
-            // Собираем параметры фильтрации
             DateTime startDate = dateTimePicker1.Value;
             DateTime endDate = dateTimePicker2.Value;
 
-            // Получаем номер заказа для поиска
             string searchOrderNumber = textBox1.Text.Trim();
 
             string selectedEmployee = "Все сотрудники";
@@ -97,7 +96,6 @@ namespace Kursovaya
             if (checkBox2.Checked) selectedStatuses.Add(checkBox2.Text);
             if (checkBox3.Checked) selectedStatuses.Add(checkBox3.Text);
 
-            // Проверка с учетом ВСЕХ фильтров
             if (!HasDataForStatistics(startDate, endDate, selectedEmployee, selectedStatuses))
             {
                 MessageBox.Show("Данных для статистики за выбранный период не найдено.\nПопробуйте изменить параметры фильтрации.",
@@ -107,31 +105,28 @@ namespace Kursovaya
                 return;
             }
 
-            // Открываем форму статистики (нужно также передать searchOrderNumber!)
             this.Visible = false;
             ViewStatistics viewStatistics = new ViewStatistics(startDate, endDate, selectedEmployee, selectedStatuses, searchOrderNumber);
             viewStatistics.ShowDialog();
             this.Close();
         }
 
+        //Проверка наличия данных для статистики
         private bool HasDataForStatistics(DateTime startDate, DateTime endDate, string selectedEmployee, List<string> selectedStatuses)
         {
             try
             {
                 List<string> conditions = new List<string>();
 
-                // 1. Фильтр по датам
                 string startDateStr = startDate.ToString("yyyy-MM-dd");
                 string endDateStr = endDate.ToString("yyyy-MM-dd");
                 conditions.Add($"(o.DateEvent >= '{startDateStr}' AND o.DateEvent <= '{endDateStr}')");
 
-                // 2. Фильтр по сотруднику
                 if (selectedEmployee != "Все сотрудники")
                 {
                     conditions.Add($"w.FullName = '{selectedEmployee.Replace("'", "''")}'");
                 }
 
-                // 3. Фильтр по статусам
                 if (selectedStatuses.Count > 0)
                 {
                     List<string> statusConditions = new List<string>();
@@ -142,7 +137,6 @@ namespace Kursovaya
                     conditions.Add("(" + string.Join(" OR ", statusConditions) + ")");
                 }
 
-                // 4. ФИЛЬТР ПО НОМЕРУ ЗАКАЗА (textBox1) - ЭТО БЫЛО ПРОПУЩЕНО!
                 string searchText = textBox1.Text.Trim();
                 if (!string.IsNullOrEmpty(searchText))
                 {
@@ -175,6 +169,7 @@ namespace Kursovaya
             }
         }
 
+        //Маскирование номера телефона
         private string FormatPhoneNumber(string phoneNumber)
         {
             if (string.IsNullOrEmpty(phoneNumber) || phoneNumber.Length < 4)
@@ -187,12 +182,9 @@ namespace Kursovaya
             return $"{firstDigit}{stars}{lastFourDigits}";
         }
 
-        // ========== ПАГИНАЦИЯ ==========
-
+        //Создание элементов пагинации
         void Pagination()
         {
-            // удаляем LinkLabel служащий для пагинации
-            // каждый раз будем создавать новую пагинацию
             for (int j = 0, count = this.Controls.Count; j < count; ++j)
             {
                 if (this.Controls[j].Name.StartsWith("page") ||
@@ -205,18 +197,13 @@ namespace Kursovaya
                 }
             }
 
-            // узнаём сколько страниц будет
-            totalPages = dataGridView1.Rows.Count / 20; // на каждой странице по 20 записей
-            if (Convert.ToBoolean(dataGridView1.Rows.Count % 20)) totalPages += 1; // ситуация когда при делении получаем не целое число
-
-            // Если нет данных, устанавливаем 1 страницу
+            totalPages = dataGridView1.Rows.Count / 20;
+            if (Convert.ToBoolean(dataGridView1.Rows.Count % 20)) totalPages += 1;
             if (totalPages == 0) totalPages = 1;
 
-            // Позиционируем пагинацию под DataGridView
             int yPosition = dataGridView1.Bottom + 10;
             int leftMargin = 13;
 
-            // Создаем кнопку "Назад"
             Button btnPrev = new Button();
             btnPrev.Name = "btnPrev";
             btnPrev.Text = "◀";
@@ -229,8 +216,7 @@ namespace Kursovaya
             btnPrev.FlatAppearance.BorderSize = 0;
             this.Controls.Add(btnPrev);
 
-            // Создаем ссылки на страницы
-            int x = leftMargin + 35; // Начинаем после кнопки "Назад"
+            int x = leftMargin + 35;
             int step = 20;
 
             LinkLabel[] ll = new LinkLabel[totalPages];
@@ -246,17 +232,16 @@ namespace Kursovaya
                 ll[i].Click += new EventHandler(LinkLabel_Click);
                 ll[i].BackColor = Color.Transparent;
 
-                // Выделяем текущую страницу - убираем подчеркивание и меняем цвет
                 if (pageNumber == currentPage)
                 {
                     ll[i].LinkBehavior = LinkBehavior.NeverUnderline;
-                    ll[i].ForeColor = Color.DarkRed; // Меняем цвет текущей страницы
+                    ll[i].ForeColor = Color.DarkRed;
                     ll[i].Font = new Font(ll[i].Font, FontStyle.Bold);
                 }
                 else
                 {
                     ll[i].LinkBehavior = LinkBehavior.AlwaysUnderline;
-                    ll[i].ForeColor = Color.Blue; // Цвет для остальных страниц
+                    ll[i].ForeColor = Color.Blue;
                     ll[i].Font = new Font(ll[i].Font, FontStyle.Regular);
                 }
 
@@ -264,7 +249,6 @@ namespace Kursovaya
                 x += step;
             }
 
-            // Создаем кнопку "Вперед"
             Button btnNext = new Button();
             btnNext.Name = "btnNext";
             btnNext.Text = "▶";
@@ -277,23 +261,18 @@ namespace Kursovaya
             btnNext.FlatAppearance.BorderSize = 0;
             this.Controls.Add(btnNext);
 
-            // Обновляем отображение данных
             ShowPage(currentPage);
-
-            // Обновляем состояние кнопок
             UpdateNavigationButtons();
         }
 
-        // Метод для отображения конкретной страницы
+        //Отображение выбранной страницы
         private void ShowPage(int pageNumber)
         {
-            // Проверяем корректность номера страницы
             if (pageNumber < 1) pageNumber = 1;
             if (pageNumber > totalPages) pageNumber = totalPages;
 
             currentPage = pageNumber;
 
-            // Скрываем/показываем строки в зависимости от страницы
             int countRows = dataGridView1.Rows.Count;
             int sizePage = 20;
             int start = (pageNumber - 1) * sizePage;
@@ -304,7 +283,6 @@ namespace Kursovaya
                 dataGridView1.Rows[j].Visible = (j >= start && j <= stop);
             }
 
-            // Прокручиваем таблицу к началу страницы
             if (dataGridView1.Rows.Count > start)
             {
                 dataGridView1.FirstDisplayedScrollingRowIndex = start;
@@ -313,41 +291,40 @@ namespace Kursovaya
             UpdateRowCount();
         }
 
-        // Обработчик для кнопки "Назад"
+        //Обработчик кнопки "Назад"
         private void BtnPrev_Click(object sender, EventArgs e)
         {
             if (currentPage > 1)
             {
                 ShowPage(currentPage - 1);
-                Pagination(); // Пересоздаем пагинацию с обновленным выделением
+                Pagination();
             }
         }
 
-        // Обработчик для кнопки "Вперед"
+        //Обработчик кнопки "Вперед"
         private void BtnNext_Click(object sender, EventArgs e)
         {
             if (currentPage < totalPages)
             {
                 ShowPage(currentPage + 1);
-                Pagination(); // Пересоздаем пагинацию с обновленным выделением
+                Pagination();
             }
         }
 
-        // Выбор страницы пагинации по клику на номер
+        //Обработчик клика по номеру страницы
         private void LinkLabel_Click(object sender, EventArgs e)
         {
             LinkLabel l = sender as LinkLabel;
             if (l != null && int.TryParse(l.Text, out int pageNumber))
             {
                 ShowPage(pageNumber);
-                Pagination(); // Пересоздаем пагинацию с обновленным выделением
+                Pagination();
             }
         }
 
-        // Метод для обновления состояния кнопок навигации
+        //Обновление состояния кнопок навигации
         private void UpdateNavigationButtons()
         {
-            // Находим кнопки на форме
             Button btnPrev = this.Controls.Find("btnPrev", false).FirstOrDefault() as Button;
             Button btnNext = this.Controls.Find("btnNext", false).FirstOrDefault() as Button;
 
@@ -370,72 +347,18 @@ namespace Kursovaya
             }
         }
 
-        private void ViewingOrderAccounting_Resize(object sender, EventArgs e)
-        {
-            int savedPage = currentPage;
-            Pagination();
-            currentPage = savedPage;
-            ShowPage(currentPage);
-        }
-
-        // Также можно добавить обработку клавиатуры для навигации
-        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
-        {
-            // Обработка стрелок для пагинации
-            if (keyData == Keys.Left || keyData == Keys.PageUp)
-            {
-                if (currentPage > 1)
-                {
-                    BtnPrev_Click(null, null);
-                    return true;
-                }
-            }
-            else if (keyData == Keys.Right || keyData == Keys.PageDown)
-            {
-                if (currentPage < totalPages)
-                {
-                    BtnNext_Click(null, null);
-                    return true;
-                }
-            }
-            else if (keyData == Keys.Home)
-            {
-                // Переход на первую страницу
-                if (currentPage != 1)
-                {
-                    ShowPage(1);
-                    Pagination();
-                }
-                return true;
-            }
-            else if (keyData == Keys.End)
-            {
-                // Переход на последнюю страницу
-                if (currentPage != totalPages)
-                {
-                    ShowPage(totalPages);
-                    Pagination();
-                }
-                return true;
-            }
-
-            return base.ProcessCmdKey(ref msg, keyData);
-        }
-
+        //Настройка элементов выбора даты
         private void SetupDateControls()
         {
-            // Получаем границы из базы данных
-            DateTime minOrderDate = GetMinOrderDate();  // Самая ранняя дата оформления
-            DateTime maxEventDate = GetMaxEventDate();   // Самая поздняя дата проведения
+            DateTime minOrderDate = GetMinOrderDate();
+            DateTime maxEventDate = GetMaxEventDate();
 
-            // Устанавливаем ОДИНАКОВЫЙ диапазон для обоих календарей
             dateTimePicker1.MinDate = minOrderDate;
             dateTimePicker1.MaxDate = maxEventDate;
 
             dateTimePicker2.MinDate = minOrderDate;
             dateTimePicker2.MaxDate = maxEventDate;
 
-            // Значения по умолчанию - весь доступный диапазон
             defaultStartDate = minOrderDate;
             defaultEndDate = maxEventDate;
 
@@ -443,7 +366,7 @@ namespace Kursovaya
             dateTimePicker2.Value = defaultEndDate;
         }
 
-        // Самая ранняя дата оформления заказа
+        //Получение минимальной даты оформления заказа
         private DateTime GetMinOrderDate()
         {
             try
@@ -468,7 +391,7 @@ namespace Kursovaya
             return DateTime.Today.AddYears(-1);
         }
 
-        // Самая поздняя дата проведения мероприятия
+        //Получение максимальной даты проведения мероприятия
         private DateTime GetMaxEventDate()
         {
             try
@@ -493,6 +416,7 @@ namespace Kursovaya
             return DateTime.Today.AddMonths(6);
         }
 
+        //Настройка информации о пользователе
         private void SetupUserInfo()
         {
             string fullname = Properties.Settings.Default.userName;
@@ -511,6 +435,7 @@ namespace Kursovaya
             label2.Text = Properties.Settings.Default.userRole;
         }
 
+        //Построение запроса для подсчета количества записей
         private string BuildCountQuery()
         {
             StringBuilder query = new StringBuilder();
@@ -562,6 +487,7 @@ namespace Kursovaya
             return query.ToString();
         }
 
+        //Загрузка данных
         private void LoadData()
         {
             try
@@ -583,15 +509,26 @@ namespace Kursovaya
 
                     using (MySqlCommand cmd = new MySqlCommand(countQuery, con))
                     {
-                        int totalCount = Convert.ToInt32(cmd.ExecuteScalar()); // ← Это количество с учетом фильтров
-                        UpdateRowCount(totalCount); // ← Передаем отфильтрованное количество
+                        int totalCount = Convert.ToInt32(cmd.ExecuteScalar());
+                        UpdateRowCount(totalCount);
                     }
 
                     DisplayDataInDataGridView(dataTable);
                 }
 
                 currentPage = 1;
-                Pagination();
+
+                if (this.IsHandleCreated)
+                {
+                    this.BeginInvoke(new Action(() => Pagination()));
+                }
+                else
+                {
+                    this.HandleCreated += (s, e) =>
+                    {
+                        this.BeginInvoke(new Action(() => Pagination()));
+                    };
+                }
             }
             catch (Exception ex)
             {
@@ -603,6 +540,7 @@ namespace Kursovaya
             }
         }
 
+        //Построение запроса для получения данных
         private string BuildQuery()
         {
             StringBuilder query = new StringBuilder();
@@ -674,6 +612,7 @@ namespace Kursovaya
             return query.ToString();
         }
 
+        //Отображение данных в DataGridView
         private void DisplayDataInDataGridView(DataTable tableToDisplay)
         {
             if (tableToDisplay == null) return;
@@ -725,8 +664,6 @@ namespace Kursovaya
 
                 string status = row["IdStatus"].ToString();
 
-                // ========== ИСПРАВЛЕНИЕ ТУТ ==========
-                // Используем Convert.ToInt32 для правильного преобразования типов
                 int priceAll = 0;
                 int prepayment = 0;
 
@@ -739,7 +676,6 @@ namespace Kursovaya
                     prepayment = Convert.ToInt32(row["Prepayment"]);
                 else
                     prepayment = 0;
-                // ====================================
 
                 DataGridViewRow dataGridRow = dataGridView1.Rows[rowIndex];
 
@@ -772,6 +708,7 @@ namespace Kursovaya
             label12.Text = totalSum.ToString("C0");
         }
 
+        //Форматирование даты
         private string FormatDate(object dateValue)
         {
             if (dateValue == null || dateValue == DBNull.Value)
@@ -785,9 +722,9 @@ namespace Kursovaya
             return dateValue.ToString();
         }
 
+        //Обновление счетчика строк
         private void UpdateRowCount(int totalFilteredCount = 0)
         {
-            // Подсчитываем видимые строки на текущей странице
             int visibleOnPage = 0;
             for (int i = 0; i < dataGridView1.Rows.Count; i++)
             {
@@ -797,7 +734,6 @@ namespace Kursovaya
                 }
             }
 
-            // Если totalFilteredCount не передан или равен 0, считаем из dataGridView1
             if (totalFilteredCount == 0)
             {
                 totalFilteredCount = dataGridView1.Rows.Count;
@@ -806,6 +742,7 @@ namespace Kursovaya
             label4.Text = $"{visibleOnPage} из {totalFilteredCount}";
         }
 
+        //Обработчик тиков таймера поиска
         private void SearchTimer_Tick(object sender, EventArgs e)
         {
             searchTimer.Stop();
@@ -817,6 +754,7 @@ namespace Kursovaya
             }
         }
 
+        //Обработчик изменения текста в поле поиска
         private void textBox1_TextChanged(object sender, EventArgs e)
         {
             if (!string.IsNullOrEmpty(textBox1.Text))
@@ -833,12 +771,7 @@ namespace Kursovaya
             searchTimer.Start();
         }
 
-        private void textBox1_KeyPress(object sender, KeyPressEventArgs e)
-        {
-            if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar))
-                e.Handled = true;
-        }
-
+        //Загрузка сотрудников в выпадающий список
         void FillFilterUsers()
         {
             try
@@ -866,6 +799,7 @@ namespace Kursovaya
             }
         }
 
+        //Обработчик кнопки сброса фильтров
         private void button1_Click(object sender, EventArgs e)
         {
             try
@@ -873,7 +807,6 @@ namespace Kursovaya
                 textBox1.Text = "";
                 FillFilterUsers();
 
-                // Сбрасываем даты на весь доступный диапазон
                 dateTimePicker1.Value = dateTimePicker1.MinDate;
                 dateTimePicker2.Value = dateTimePicker2.MaxDate;
 
@@ -889,6 +822,7 @@ namespace Kursovaya
             }
         }
 
+        //Обработчик кнопки просмотра заказа
         private void button2_Click(object sender, EventArgs e)
         {
             if (dataGridView1.SelectedRows.Count == 0)
@@ -913,6 +847,7 @@ namespace Kursovaya
             this.Close();
         }
 
+        //Обработчик кнопки возврата в главное меню
         private void button3_Click(object sender, EventArgs e)
         {
             allowClose = true;
@@ -922,9 +857,9 @@ namespace Kursovaya
             this.Close();
         }
 
+        //Обработчик кнопки экспорта в Excel
         private void button4_Click(object sender, EventArgs e)
         {
-            // Проверяем, есть ли данные для экспорта
             if (dataGridView1.Rows.Count == 0 || (dataGridView1.Rows.Count == 1 && dataGridView1.Rows[0].IsNewRow))
             {
                 DialogResult result = MessageBox.Show(
@@ -938,29 +873,27 @@ namespace Kursovaya
             ExportToExcel();
         }
 
+        //Включение кнопки просмотра
         private void buttonEnable()
         {
             button2.Enabled = true;
         }
 
+        //Обработчик клика по ячейке DataGridView
         private void dataGridView1_CellClick(object sender, DataGridViewCellEventArgs e)
         {
             buttonEnable();
         }
 
-        private void dataGridView1_SelectionChanged(object sender, EventArgs e)
-        {
-            button2.Enabled = dataGridView1.SelectedRows.Count > 0;
-        }
-
+        //Обработчик изменения выбранного сотрудника
         private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
         {
             LoadData();
         }
 
+        //Обработчик изменения даты начала
         private void dateTimePicker1_ValueChanged(object sender, EventArgs e)
         {
-            // Если дата "С" стала больше даты "До" - корректируем дату "До"
             if (dateTimePicker1.Value > dateTimePicker2.Value)
             {
                 dateTimePicker2.Value = dateTimePicker1.Value;
@@ -968,9 +901,9 @@ namespace Kursovaya
             LoadData();
         }
 
+        //Обработчик изменения даты окончания
         private void dateTimePicker2_ValueChanged(object sender, EventArgs e)
         {
-            // Если дата "До" стала меньше даты "С" - корректируем дату "С"
             if (dateTimePicker2.Value < dateTimePicker1.Value)
             {
                 dateTimePicker1.Value = dateTimePicker2.Value;
@@ -978,6 +911,7 @@ namespace Kursovaya
             LoadData();
         }
 
+        //Обработчик изменения состояния чекбоксов статусов
         private void checkBox1_CheckedChanged(object sender, EventArgs e)
         {
             LoadData();
@@ -995,6 +929,7 @@ namespace Kursovaya
 
         private bool allowClose = false;
 
+        //Обработчик закрытия формы
         private void ViewingOrderAccounting_FormClosing(object sender, FormClosingEventArgs e)
         {
             if (e.CloseReason == CloseReason.ApplicationExitCall)
@@ -1004,11 +939,7 @@ namespace Kursovaya
                 e.Cancel = true;
         }
 
-        private void ViewingOrderAccounting_Load(object sender, EventArgs e)
-        {
-            LoadData();
-        }
-
+        //Экспорт в Excel
         private void ExportToExcel()
         {
             Microsoft.Office.Interop.Excel.Application excelApp = null;
@@ -1021,17 +952,12 @@ namespace Kursovaya
 
                 workbook = excelApp.Workbooks.Add();
 
-                // Создаем первый лист для данных
                 Microsoft.Office.Interop.Excel.Worksheet dataWorksheet = workbook.Worksheets[1];
                 dataWorksheet.Name = "Данные по заказам";
 
-                // Создаем второй лист для статистики
                 Microsoft.Office.Interop.Excel.Worksheet statsWorksheet = workbook.Worksheets.Add();
                 statsWorksheet.Name = "Статистика";
 
-                // ========== ЛИСТ С ДАННЫМИ ==========
-
-                // Заголовок отчета
                 dataWorksheet.Cells[1, 1] = "ОТЧЕТ ПО ЗАКАЗАМ";
                 Microsoft.Office.Interop.Excel.Range titleRange = dataWorksheet.Range[dataWorksheet.Cells[1, 1], dataWorksheet.Cells[1, 3]];
                 titleRange.Merge();
@@ -1039,7 +965,6 @@ namespace Kursovaya
                 titleRange.Font.Size = 14;
                 titleRange.HorizontalAlignment = Microsoft.Office.Interop.Excel.XlHAlign.xlHAlignCenter;
 
-                // Информация о периоде отчета
                 string periodInfo = $"Период отчета: с {dateTimePicker1.Value:dd.MM.yyyy} по {dateTimePicker2.Value:dd.MM.yyyy}";
                 dataWorksheet.Cells[2, 1] = periodInfo;
                 Microsoft.Office.Interop.Excel.Range periodRange = dataWorksheet.Range[dataWorksheet.Cells[2, 1], dataWorksheet.Cells[2, 3]];
@@ -1049,7 +974,6 @@ namespace Kursovaya
 
                 int headerRow = 5;
 
-                // Заполняем заголовки столбцов
                 for (int i = 0; i < dataGridView1.Columns.Count; i++)
                 {
                     if (dataGridView1.Columns[i].Visible)
@@ -1058,7 +982,6 @@ namespace Kursovaya
                     }
                 }
 
-                // Получаем полные данные из базы для телефонов
                 DataTable fullDataTable = GetFullDataForExport();
 
                 int rowIndex = headerRow + 1;
@@ -1092,7 +1015,6 @@ namespace Kursovaya
                     }
                 }
 
-                // Определяем индекс столбца со статусом для форматирования
                 int statusColumnIndex = -1;
                 for (int i = 0; i < dataGridView1.Columns.Count; i++)
                 {
@@ -1103,7 +1025,6 @@ namespace Kursovaya
                     }
                 }
 
-                // Применяем форматирование к ячейкам со статусом
                 if (statusColumnIndex != -1)
                 {
                     for (int row = headerRow + 1; row <= rowIndex - 1; row++)
@@ -1133,7 +1054,6 @@ namespace Kursovaya
                     }
                 }
 
-                // Форматирование заголовков таблицы
                 Microsoft.Office.Interop.Excel.Range tableHeaders = dataWorksheet.Range[
                     dataWorksheet.Cells[headerRow, 1],
                     dataWorksheet.Cells[headerRow, dataGridView1.Columns.Count]];
@@ -1141,14 +1061,12 @@ namespace Kursovaya
                 tableHeaders.Interior.Color = System.Drawing.ColorTranslator.ToOle(Color.FromArgb(240, 240, 240));
                 tableHeaders.HorizontalAlignment = Microsoft.Office.Interop.Excel.XlHAlign.xlHAlignCenter;
 
-                // Добавляем рамки к таблице
                 Microsoft.Office.Interop.Excel.Range dataRange = dataWorksheet.Range[
                     dataWorksheet.Cells[headerRow, 1],
                     dataWorksheet.Cells[rowIndex - 1, dataGridView1.Columns.Count]];
                 dataRange.Borders.LineStyle = Microsoft.Office.Interop.Excel.XlLineStyle.xlContinuous;
                 dataRange.Borders.Weight = Microsoft.Office.Interop.Excel.XlBorderWeight.xlThin;
 
-                // Автоподбор ширины столбцов
                 Microsoft.Office.Interop.Excel.Range allDataRange = dataWorksheet.UsedRange;
                 allDataRange.Columns.AutoFit();
 
@@ -1158,9 +1076,6 @@ namespace Kursovaya
                         column.ColumnWidth = 30;
                 }
 
-                // ========== ЛИСТ СО СТАТИСТИКОЙ ==========
-
-                // Заголовок листа статистики
                 statsWorksheet.Cells[1, 1] = "СТАТИСТИКА ПО ЗАКАЗАМ";
                 Microsoft.Office.Interop.Excel.Range statsTitleRange = statsWorksheet.Range[statsWorksheet.Cells[1, 1], statsWorksheet.Cells[1, 2]];
                 statsTitleRange.Merge();
@@ -1168,7 +1083,6 @@ namespace Kursovaya
                 statsTitleRange.Font.Size = 14;
                 statsTitleRange.HorizontalAlignment = Microsoft.Office.Interop.Excel.XlHAlign.xlHAlignCenter;
 
-                // Информация о периоде на листе статистики
                 statsWorksheet.Cells[2, 1] = periodInfo;
                 Microsoft.Office.Interop.Excel.Range statsPeriodRange = statsWorksheet.Range[statsWorksheet.Cells[2, 1], statsWorksheet.Cells[2, 2]];
                 statsPeriodRange.Merge();
@@ -1177,7 +1091,6 @@ namespace Kursovaya
 
                 int statsRow = 4;
 
-                // ========== ИСПРАВЛЕННЫЙ РАСЧЕТ СТАТИСТИКИ ==========
                 int totalOrders = 0;
                 int acceptedOrders = 0;
                 int paidOrders = 0;
@@ -1195,7 +1108,6 @@ namespace Kursovaya
                         decimal prepayment = 0;
                         decimal priceAll = 0;
 
-                        // Получаем значения
                         if (row.Cells["Prepayment"].Value != null && decimal.TryParse(row.Cells["Prepayment"].Value.ToString(), out prepayment))
                         {
                             totalPrepayment += prepayment;
@@ -1203,29 +1115,27 @@ namespace Kursovaya
 
                         if (row.Cells["PriceAll"].Value != null && decimal.TryParse(row.Cells["PriceAll"].Value.ToString(), out priceAll))
                         {
-                            // Не добавляем сразу, будем добавлять по статусу
+                            // Не добавляем сразу
                         }
 
                         switch (status)
                         {
                             case "Принят":
                                 acceptedOrders++;
-                                totalRevenue += prepayment;  // Только предоплата
+                                totalRevenue += prepayment;
                                 break;
                             case "Оплачен":
                                 paidOrders++;
-                                totalRevenue += priceAll;    // Полная стоимость
+                                totalRevenue += priceAll;
                                 break;
                             case "Отменен":
                                 cancelledOrders++;
-                                totalRevenue += prepayment; // Только предоплата
+                                totalRevenue += prepayment;
                                 break;
                         }
                     }
                 }
-                // =================================================
 
-                // Общая статистика
                 statsWorksheet.Cells[statsRow, 1] = "ОБЩАЯ СТАТИСТИКА:";
                 statsWorksheet.Cells[statsRow, 1].Font.Bold = true;
                 statsWorksheet.Cells[statsRow, 1].Font.Size = 12;
@@ -1248,7 +1158,6 @@ namespace Kursovaya
                 statsWorksheet.Cells[statsRow, 2] = cancelledOrders;
                 statsRow += 2;
 
-                // Финансовая статистика
                 statsWorksheet.Cells[statsRow, 1] = "ФИНАНСОВАЯ СТАТИСТИКА:";
                 statsWorksheet.Cells[statsRow, 1].Font.Bold = true;
                 statsWorksheet.Cells[statsRow, 1].Font.Size = 12;
@@ -1263,7 +1172,6 @@ namespace Kursovaya
                 statsWorksheet.Cells[statsRow, 2] = totalPrepayment.ToString("N2") + " ₽";
                 statsRow += 2;
 
-                // Информация об отчете
                 statsWorksheet.Cells[statsRow, 1] = "ИНФОРМАЦИЯ ОБ ОТЧЕТЕ:";
                 statsWorksheet.Cells[statsRow, 1].Font.Bold = true;
                 statsWorksheet.Cells[statsRow, 1].Font.Size = 12;
@@ -1279,10 +1187,8 @@ namespace Kursovaya
                 statsWorksheet.Cells[statsRow, 2] = DateTime.Now.ToString("dd.MM.yyyy HH:mm");
                 statsRow += 2;
 
-                // Автоподбор ширины столбцов на листе статистики
                 statsWorksheet.Columns.AutoFit();
 
-                // Переходим на первый лист
                 dataWorksheet.Activate();
 
                 MessageBox.Show("Отчет в Excel составлен.",
@@ -1310,12 +1216,12 @@ namespace Kursovaya
             }
         }
 
-        // Новая функция для получения полных данных (с телефоном без маскировки)
+        //Получение полных данных для экспорта
         private DataTable GetFullDataForExport()
         {
             try
             {
-                string query = BuildQuery(); // Используем существующий метод BuildQuery()
+                string query = BuildQuery();
 
                 using (MySqlConnection con = new MySqlConnection(conString))
                 {

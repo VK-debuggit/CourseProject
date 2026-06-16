@@ -17,10 +17,9 @@ namespace Kursovaya
         string conString = $"host={Properties.Settings.Default.host};uid={Properties.Settings.Default.uid};pwd={Properties.Settings.Default.pwd};database={Properties.Settings.Default.database};";
         private Timer inactivityTimer;
         private int inactivityTimeout;
-        private DataTable dataTable; // Добавим DataTable для хранения данных
+        private DataTable dataTable;
         private int selectedProductRowIndex = -1;
 
-        // Переменные для пагинации
         private int currentPage = 1;
         private int totalPages = 1;
 
@@ -28,7 +27,6 @@ namespace Kursovaya
         {
             InitializeComponent();
 
-            // Развернуть форму на весь экран
             this.WindowState = FormWindowState.Maximized;
 
             FillSort();
@@ -65,11 +63,9 @@ namespace Kursovaya
             label2.Text = Properties.Settings.Default.userRole;
         }
 
-        // создание пагинации        
+        //Создание элементов пагинации
         void Pagination()
         {
-            // удаляем LinkLabel служащий для пагинации
-            // каждый раз будем создавать новую пагинацию
             for (int j = 0, count = this.Controls.Count; j < count; ++j)
             {
                 if (this.Controls[j].Name.StartsWith("page") ||
@@ -82,18 +78,13 @@ namespace Kursovaya
                 }
             }
 
-            // узнаём сколько страниц будет
-            totalPages = dataGridView1.Rows.Count / 20; // на каждой странице по 20 записей
-            if (Convert.ToBoolean(dataGridView1.Rows.Count % 20)) totalPages += 1; // ситуация когда при делении получаем не целое число
-
-            // Если нет данных, устанавливаем 1 страницу
+            totalPages = dataGridView1.Rows.Count / 20;
+            if (Convert.ToBoolean(dataGridView1.Rows.Count % 20)) totalPages += 1;
             if (totalPages == 0) totalPages = 1;
 
-            // Позиционируем пагинацию под DataGridView
             int yPosition = dataGridView1.Bottom + 10;
             int leftMargin = 13;
 
-            // Создаем кнопку "Назад"
             Button btnPrev = new Button();
             btnPrev.Name = "btnPrev";
             btnPrev.Text = "◀";
@@ -106,8 +97,7 @@ namespace Kursovaya
             btnPrev.FlatAppearance.BorderSize = 0;
             this.Controls.Add(btnPrev);
 
-            // Создаем ссылки на страницы
-            int x = leftMargin + 35; // Начинаем после кнопки "Назад"
+            int x = leftMargin + 35;
             int step = 20;
 
             LinkLabel[] ll = new LinkLabel[totalPages];
@@ -123,17 +113,16 @@ namespace Kursovaya
                 ll[i].Click += new EventHandler(LinkLabel_Click);
                 ll[i].BackColor = Color.Transparent;
 
-                // Выделяем текущую страницу - убираем подчеркивание и меняем цвет
                 if (pageNumber == currentPage)
                 {
                     ll[i].LinkBehavior = LinkBehavior.NeverUnderline;
-                    ll[i].ForeColor = Color.DarkRed; // Меняем цвет текущей страницы
+                    ll[i].ForeColor = Color.DarkRed;
                     ll[i].Font = new Font(ll[i].Font, FontStyle.Bold);
                 }
                 else
                 {
                     ll[i].LinkBehavior = LinkBehavior.AlwaysUnderline;
-                    ll[i].ForeColor = Color.Blue; // Цвет для остальных страниц
+                    ll[i].ForeColor = Color.Blue;
                     ll[i].Font = new Font(ll[i].Font, FontStyle.Regular);
                 }
 
@@ -141,7 +130,6 @@ namespace Kursovaya
                 x += step;
             }
 
-            // Создаем кнопку "Вперед"
             Button btnNext = new Button();
             btnNext.Name = "btnNext";
             btnNext.Text = "▶";
@@ -154,23 +142,18 @@ namespace Kursovaya
             btnNext.FlatAppearance.BorderSize = 0;
             this.Controls.Add(btnNext);
 
-            // Обновляем отображение данных
             ShowPage(currentPage);
-
-            // Обновляем состояние кнопок
             UpdateNavigationButtons();
         }
 
-        // Метод для отображения конкретной страницы
+        //Отображение выбранной страницы
         private void ShowPage(int pageNumber)
         {
-            // Проверяем корректность номера страницы
             if (pageNumber < 1) pageNumber = 1;
             if (pageNumber > totalPages) pageNumber = totalPages;
 
             currentPage = pageNumber;
 
-            // Скрываем/показываем строки в зависимости от страницы
             int countRows = dataGridView1.Rows.Count;
             int sizePage = 20;
             int start = (pageNumber - 1) * sizePage;
@@ -181,54 +164,51 @@ namespace Kursovaya
                 dataGridView1.Rows[j].Visible = (j >= start && j <= stop);
             }
 
-            // Прокручиваем таблицу к началу страницы
             if (dataGridView1.Rows.Count > start)
             {
                 dataGridView1.FirstDisplayedScrollingRowIndex = start;
             }
 
-            // Обновляем счетчик
             if (dataTable != null)
             {
                 UpdateRowCount(0, dataTable.Rows.Count);
             }
         }
 
-        // Обработчик для кнопки "Назад"
+        //Обработчик кнопки "Назад"
         private void BtnPrev_Click(object sender, EventArgs e)
         {
             if (currentPage > 1)
             {
                 ShowPage(currentPage - 1);
-                Pagination(); // Пересоздаем пагинацию с обновленным выделением
+                Pagination();
             }
         }
 
-        // Обработчик для кнопки "Вперед"
+        //Обработчик кнопки "Вперед"
         private void BtnNext_Click(object sender, EventArgs e)
         {
             if (currentPage < totalPages)
             {
                 ShowPage(currentPage + 1);
-                Pagination(); // Пересоздаем пагинацию с обновленным выделением
+                Pagination();
             }
         }
 
-        // Выбор страницы пагинации по клику на номер
+        //Обработчик клика по номеру страницы
         private void LinkLabel_Click(object sender, EventArgs e)
         {
             LinkLabel l = sender as LinkLabel;
             if (l != null && int.TryParse(l.Text, out int pageNumber))
             {
                 ShowPage(pageNumber);
-                Pagination(); // Пересоздаем пагинацию с обновленным выделением
+                Pagination();
             }
         }
 
-        // Метод для обновления состояния кнопок навигации
+        //Обновление состояния кнопок навигации
         private void UpdateNavigationButtons()
         {
-            // Находим кнопки на форме
             Button btnPrev = this.Controls.Find("btnPrev", false).FirstOrDefault() as Button;
             Button btnNext = this.Controls.Find("btnNext", false).FirstOrDefault() as Button;
 
@@ -251,62 +231,16 @@ namespace Kursovaya
             }
         }
 
-        // Обработчик изменения размера формы
+        //Обработчик изменения размера формы
         private void ViewingMenu_Resize(object sender, EventArgs e)
         {
-            // Обновляем позицию пагинации при изменении размера формы
             int savedPage = currentPage;
             Pagination();
             currentPage = savedPage;
             ShowPage(currentPage);
         }
 
-        // Также можно добавить обработку клавиатуры для навигации
-        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
-        {
-            // Обработка стрелок для пагинации
-            if (keyData == Keys.Left || keyData == Keys.PageUp)
-            {
-                if (currentPage > 1)
-                {
-                    BtnPrev_Click(null, null);
-                    return true;
-                }
-            }
-            else if (keyData == Keys.Right || keyData == Keys.PageDown)
-            {
-                if (currentPage < totalPages)
-                {
-                    BtnNext_Click(null, null);
-                    return true;
-                }
-            }
-            else if (keyData == Keys.Home)
-            {
-                // Переход на первую страницу
-                if (currentPage != 1)
-                {
-                    ShowPage(1);
-                    Pagination();
-                }
-                return true;
-            }
-            else if (keyData == Keys.End)
-            {
-                // Переход на последнюю страницу
-                if (currentPage != totalPages)
-                {
-                    ShowPage(totalPages);
-                    Pagination();
-                }
-                return true;
-            }
-
-            return base.ProcessCmdKey(ref msg, keyData);
-        }
-
-        // ========== ДОБАВЛЕННЫЕ МЕТОДЫ ==========
-
+        //Построение запроса для подсчета количества записей
         private string BuildCountQuery(string where = "")
         {
             StringBuilder query = new StringBuilder();
@@ -317,25 +251,21 @@ namespace Kursovaya
 
             List<string> conditions = new List<string>();
 
-            // Добавляем условия фильтрации мероприятия
             if (comboBox1.SelectedIndex != 0 && comboBox1.SelectedIndex != -1 && comboBox1.SelectedItem != null)
             {
                 conditions.Add($"r.`Event` = '{MySqlHelper.EscapeString(comboBox1.SelectedItem.ToString())}'");
             }
 
-            // Добавляем условия фильтрации категории
             if (comboBox2.SelectedIndex != 0 && comboBox2.SelectedIndex != -1 && comboBox2.SelectedItem != null)
             {
                 conditions.Add($"c.Category = '{MySqlHelper.EscapeString(comboBox2.SelectedItem.ToString())}'");
             }
 
-            // Добавляем условие поиска 
             if (!string.IsNullOrEmpty(where))
             {
                 conditions.Add($"(p.Name LIKE '{MySqlHelper.EscapeString(where)}%')");
             }
 
-            // Объединяем все условия
             if (conditions.Count > 0)
             {
                 query.Append(" WHERE " + string.Join(" AND ", conditions));
@@ -344,9 +274,9 @@ namespace Kursovaya
             return query.ToString();
         }
 
+        //Обновление счетчика строк
         private void UpdateRowCount(int displayedCount, int totalCount)
         {
-            // Считаем только видимые строки
             int visibleCount = 0;
             for (int i = 0; i < dataGridView1.Rows.Count; i++)
             {
@@ -359,6 +289,7 @@ namespace Kursovaya
             label14.Text = $"{visibleCount} из {totalCount}";
         }
 
+        //Загрузка данных с подсчетом количества
         private void LoadDataWithCount(string where = "")
         {
             try
@@ -400,6 +331,7 @@ namespace Kursovaya
             Pagination();
         }
 
+        //Построение запроса для получения данных
         private string BuildQuery(string where = "")
         {
             StringBuilder query = new StringBuilder();
@@ -418,31 +350,26 @@ namespace Kursovaya
 
             List<string> conditions = new List<string>();
 
-            // Добавляем условия фильтрации мероприятия
             if (comboBox1.SelectedIndex != 0 && comboBox1.SelectedIndex != -1 && comboBox1.SelectedItem != null)
             {
                 conditions.Add($"r.`Event` = '{MySqlHelper.EscapeString(comboBox1.SelectedItem.ToString())}'");
             }
 
-            // Добавляем условия фильтрации категории
             if (comboBox2.SelectedIndex != 0 && comboBox2.SelectedIndex != -1 && comboBox2.SelectedItem != null)
             {
                 conditions.Add($"c.Category = '{MySqlHelper.EscapeString(comboBox2.SelectedItem.ToString())}'");
             }
 
-            // Добавляем условие поиска 
             if (!string.IsNullOrEmpty(where))
             {
                 conditions.Add($"(p.Name LIKE '{MySqlHelper.EscapeString(where)}%')");
             }
 
-            // Объединяем все условия
             if (conditions.Count > 0)
             {
                 query.Append(" WHERE " + string.Join(" AND ", conditions));
             }
 
-            // Добавляем сортировку по цене
             if (comboBox3.SelectedIndex != 0 && comboBox3.SelectedIndex != -1 && comboBox3.SelectedItem != null)
             {
                 query.Append(" ORDER BY p.Price");
@@ -450,20 +377,19 @@ namespace Kursovaya
             }
             else
             {
-                // Сортировка по умолчанию (по названию)
                 query.Append(" ORDER BY p.`Name` ASC");
             }
 
             return query.ToString();
         }
 
+        //Отображение данных в DataGridView
         private void DisplayDataInDataGridView(DataTable tableToDisplay, string where = "")
         {
             if (tableToDisplay == null) return;
 
             dataGridView1.Rows.Clear();
 
-            // Если колонки еще не созданы - создаем их
             if (dataGridView1.Columns.Count == 0)
             {
                 dataGridView1.Columns.Add("Article", "Артикул");
@@ -475,7 +401,6 @@ namespace Kursovaya
                 dataGridView1.Columns.Add("Weight", "Вес");
                 dataGridView1.Columns.Add("Price", "Цена");
 
-                // Создаем колонку для изображений
                 DataGridViewImageColumn imageColumn = new DataGridViewImageColumn();
                 imageColumn.Name = "Photo";
                 imageColumn.HeaderText = "Фото";
@@ -484,7 +409,6 @@ namespace Kursovaya
                 dataGridView1.Columns.Add(imageColumn);
             }
 
-            // Фильтруем данные локально по поиску, если нужно
             DataView dv = new DataView(tableToDisplay);
 
             if (!string.IsNullOrEmpty(where))
@@ -493,7 +417,6 @@ namespace Kursovaya
                 dv.RowFilter = $"Name LIKE '{searchText}%'";
             }
 
-            // Заполняем DataGridView отфильтрованными данными
             string imagesFolder = @".\Resources\";
 
             foreach (DataRowView rowView in dv)
@@ -513,7 +436,6 @@ namespace Kursovaya
                 }
                 else
                 {
-                    // ЗАГРУЖАЕМ КАРТИНКУ-ЗАГЛУШКУ
                     string placeholderPath = Path.Combine(imagesFolder, "picture.png");
                     if (File.Exists(placeholderPath))
                     {
@@ -544,10 +466,9 @@ namespace Kursovaya
             UpdateRowCount(displayedCount, tableToDisplay.Rows.Count);
         }
 
-        // ========== ОСТАЛЬНЫЕ МЕТОДЫ ==========
-
         private bool allowClose = false;
 
+        //Обработчик кнопки возврата в главное меню
         private void button3_Click(object sender, EventArgs e)
         {
             allowClose = true;
@@ -557,6 +478,7 @@ namespace Kursovaya
             this.Close();
         }
 
+        //Обработчик закрытия формы
         private void ViewingMenu_FormClosing(object sender, FormClosingEventArgs e)
         {
             if (e.CloseReason == CloseReason.ApplicationExitCall)
@@ -570,6 +492,7 @@ namespace Kursovaya
             }
         }
 
+        //Загрузка категорий в выпадающий список
         void FillFilterCategories()
         {
             MySqlConnection con = new MySqlConnection(conString);
@@ -591,6 +514,7 @@ namespace Kursovaya
             con.Close();
         }
 
+        //Загрузка мероприятий в выпадающий список
         void FillFilterEvents()
         {
             MySqlConnection con = new MySqlConnection(conString);
@@ -612,6 +536,7 @@ namespace Kursovaya
             con.Close();
         }
 
+        //Загрузка вариантов сортировки
         void FillSort()
         {
             comboBox3.Items.Clear();
@@ -622,31 +547,37 @@ namespace Kursovaya
             comboBox3.SelectedIndex = 0;
         }
 
+        //Загрузка данных в DataGridView
         void FillDataGridView(string where = "")
         {
             LoadDataWithCount(where);
         }
 
+        //Обработчик изменения выбранного мероприятия
         private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
         {
             LoadDataWithCount(textBox1.Text);
         }
 
+        //Обработчик изменения выбранной категории
         private void comboBox2_SelectedIndexChanged(object sender, EventArgs e)
         {
             LoadDataWithCount(textBox1.Text);
         }
 
+        //Обработчик изменения выбранной сортировки
         private void comboBox3_SelectedIndexChanged(object sender, EventArgs e)
         {
             LoadDataWithCount(textBox1.Text);
         }
 
+        //Обработчик изменения текста поиска
         private void textBox1_TextChanged(object sender, EventArgs e)
         {
             LoadDataWithCount(textBox1.Text);
         }
 
+        //Обработчик кнопки сброса фильтров
         private void button2_Click(object sender, EventArgs e)
         {
             textBox1.Text = "";
@@ -656,30 +587,26 @@ namespace Kursovaya
             LoadDataWithCount();
         }
 
+        //Ограничение ввода в поле поиска
         private void textBox1_KeyPress(object sender, KeyPressEventArgs e)
         {
             TextBox tb = (TextBox)sender;
 
-            // Разрешаем управляющие символы (Backspace, Enter и т.д.)
             if (char.IsControl(e.KeyChar))
                 return;
 
-            // Разрешаем пробел
             if (e.KeyChar == ' ')
             {
-                // Запрещаем пробел в начале строки
                 if (tb.Text.Length == 0)
                 {
                     e.Handled = true;
                     return;
                 }
-                // Запрещаем двойные пробелы
                 if (tb.Text.Length > 0 && tb.Text[tb.Text.Length - 1] == ' ')
                 {
                     e.Handled = true;
                     return;
                 }
-                // Запрещаем пробел после дефиса
                 if (tb.Text.Length > 0 && tb.Text[tb.Text.Length - 1] == '-')
                 {
                     e.Handled = true;
@@ -689,22 +616,18 @@ namespace Kursovaya
                 return;
             }
 
-            // Разрешаем дефис
             if (e.KeyChar == '-')
             {
-                // Запрещаем дефис в начале строки
                 if (tb.Text.Length == 0)
                 {
                     e.Handled = true;
                     return;
                 }
-                // Запрещаем двойные дефисы
                 if (tb.Text.Length > 0 && tb.Text[tb.Text.Length - 1] == '-')
                 {
                     e.Handled = true;
                     return;
                 }
-                // Запрещаем дефис после пробела
                 if (tb.Text.Length > 0 && tb.Text[tb.Text.Length - 1] == ' ')
                 {
                     e.Handled = true;
@@ -714,7 +637,6 @@ namespace Kursovaya
                 return;
             }
 
-            // Разрешаем русские буквы (верхний и нижний регистр)
             if ((e.KeyChar >= 'А' && e.KeyChar <= 'Я') ||
                 (e.KeyChar >= 'а' && e.KeyChar <= 'я') ||
                 e.KeyChar == 'Ё' || e.KeyChar == 'ё')
@@ -723,10 +645,10 @@ namespace Kursovaya
                 return;
             }
 
-            // Все остальные символы запрещены
             e.Handled = true;
         }
 
+        //Обработчик загрузки формы
         private void ViewingMenu_Load(object sender, EventArgs e)
         {
             LoadDataWithCount();
@@ -735,6 +657,7 @@ namespace Kursovaya
             textBox2.Text = "";
         }
 
+        //Обработчик клика по ячейке DataGridView
         private void dataGridView1_CellClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex >= 0)
@@ -743,16 +666,14 @@ namespace Kursovaya
             }
         }
 
+        //Обработчик изменения выделения в DataGridView
         private void dataGridView1_SelectionChanged(object sender, EventArgs e)
         {
             if (dataGridView1.CurrentRow != null && dataGridView1.CurrentRow.Index >= 0)
             {
                 try
                 {
-                    // Заполняем поля данными из выбранной строки
                     DataGridViewRow selectedRow = dataGridView1.CurrentRow;
-
-                    // Основные данные
                     textBox2.Text = selectedRow.Cells["Compound"].Value?.ToString() ?? "";
                 }
                 catch (Exception ex)
@@ -762,12 +683,11 @@ namespace Kursovaya
             }
         }
 
+        //Установка русской раскладки в поле поиска
         private void textBox1_Enter(object sender, EventArgs e)
         {
-            // Получаем доступный список языков и устанавливаем нужный
             foreach (InputLanguage lang in InputLanguage.InstalledInputLanguages)
             {
-                // Ищем русский язык
                 if (lang.Culture.TwoLetterISOLanguageName == "ru")
                 {
                     InputLanguage.CurrentInputLanguage = lang;

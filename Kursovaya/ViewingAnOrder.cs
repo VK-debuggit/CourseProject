@@ -20,7 +20,6 @@ namespace Kursovaya
         private DataTable orderItems;
         private OrderData orderData;
         private decimal additionalExpenses = 0;
-        // Добавлено поле для отслеживания состояния обновления
         private bool isDataUpdated = false;
 
         public ViewingAnOrder(string orderId)
@@ -28,9 +27,7 @@ namespace Kursovaya
             InitializeComponent();
             this.orderId = orderId;
 
-            // Загружаем данные заказа
             LoadOrderData();
-            FillFilter();
 
             button1.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
             button2.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
@@ -40,6 +37,7 @@ namespace Kursovaya
             dataGridView1.BackgroundColor = System.Drawing.Color.FromArgb(255, 221, 153);
             dataGridView1.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
             dataGridView1.DefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(217, 152, 22);
+
             string fullname = Properties.Settings.Default.userName;
             string formattedname = fullname;
 
@@ -58,6 +56,7 @@ namespace Kursovaya
             label18.Text = rowCount.ToString();
         }
 
+        //Загрузка данных заказа
         private void LoadOrderData()
         {
             try
@@ -115,7 +114,6 @@ namespace Kursovaya
                                 additionalExpenses = finalAmount - (baseTotalAmount - discountAmount);
                                 if (additionalExpenses < 0) additionalExpenses = 0;
 
-                                // Используем общий класс OrderData
                                 orderData = new OrderData
                                 {
                                     NumberOrder = reader["NumberOrder"].ToString(),
@@ -125,11 +123,11 @@ namespace Kursovaya
                                     NameClient = reader["ClientName"].ToString(),
                                     NumberPhone = reader["NumberPhoneClient"].ToString(),
                                     Event = reader["EventName"].ToString(),
-                                    TotalAmount = Convert.ToInt32(reader["TotalAmount"]), 
-                                    DiscountAmount = Convert.ToInt32(reader["DiscountAmount"]), 
+                                    TotalAmount = Convert.ToInt32(reader["TotalAmount"]),
+                                    DiscountAmount = Convert.ToInt32(reader["DiscountAmount"]),
                                     NameUser = reader["NameUser"] != DBNull.Value ? reader["NameUser"].ToString() : "Не указан",
-                                    FinalAmount = Convert.ToInt32(reader["FinalAmount"]), 
-                                    Prepayment = Convert.ToInt32(reader["Prepayment"]),  
+                                    FinalAmount = Convert.ToInt32(reader["FinalAmount"]),
+                                    Prepayment = Convert.ToInt32(reader["Prepayment"]),
                                     Status = reader["OrderStatus"].ToString()
                                 };
 
@@ -148,6 +146,8 @@ namespace Kursovaya
 
                     LoadOrderComposition(con);
                 }
+
+                FillFilter();
             }
             catch (Exception ex)
             {
@@ -156,6 +156,7 @@ namespace Kursovaya
             }
         }
 
+        //Загрузка состава заказа
         private void LoadOrderComposition(MySqlConnection con)
         {
             string compositionQuery = @"
@@ -176,15 +177,14 @@ namespace Kursovaya
                 adapter.Fill(orderItems);
             }
 
-            // Настраиваем DataGridView
             SetupOrderItemsDataGridView();
         }
 
+        //Отображение информации о заказе
         private void DisplayOrderInfo()
         {
             if (orderData == null) return;
 
-            // Заполняем Label на форме
             label4.Text = orderData.NumberOrder;
             label12.Text = orderData.DateOrder;
             label14.Text = orderData.Date;
@@ -193,36 +193,29 @@ namespace Kursovaya
             label8.Text = orderData.NameClient;
             label10.Text = orderData.NumberPhone;
 
-            // Устанавливаем дополнительные расходы в TextBox (целое число)
             textBox1.Text = additionalExpenses > 0 ? additionalExpenses.ToString() : "";
 
-            // Рассчитываем суммы с учетом дополнительных расходов
             CalculateTotalWithAdditionalExpenses();
 
-            // Устанавливаем статус в комбобокс
             if (comboBox1.Items.Contains(orderData.Status))
             {
                 comboBox1.SelectedItem = orderData.Status;
             }
 
-            // Управляем кнопками в зависимости от статуса
             UpdateButtonsBasedOnStatus();
         }
 
-        // Новый метод для управления кнопками
+        //Управление кнопками в зависимости от статуса
         private void UpdateButtonsBasedOnStatus()
         {
             if (orderData == null) return;
 
-            // Определяем, можно ли редактировать статус
             bool isEditable = orderData.Status == "Принят";
             comboBox1.Enabled = isEditable;
             textBox1.Enabled = isEditable;
 
-            // Управление кнопкой "Обновить данные" (button1)
             if (orderData.Status == "Принят")
             {
-                // Для статуса "Принят" проверяем, изменился ли статус
                 string currentStatus = comboBox1.SelectedItem?.ToString();
                 bool isStatusChanged = currentStatus != orderData.Status;
                 bool isValidNewStatus = currentStatus == "Оплачен" || currentStatus == "Отменен";
@@ -230,70 +223,45 @@ namespace Kursovaya
                 button1.Enabled = isStatusChanged && isValidNewStatus;
                 button1.Text = "Обновить данные";
 
-                // Кнопка печати доступна только после обновления данных
                 button2.Enabled = isDataUpdated;
             }
             else
             {
-                // Для статусов "Оплачен" или "Отменен" кнопка обновления недоступна
                 button1.Enabled = false;
                 button1.Text = "Обновить данные";
 
-                // Кнопка печати доступна сразу
                 button2.Enabled = true;
             }
 
-            // Визуальная индикация доступности кнопки печати
-            if (button2.Enabled)
-            {
-                button2.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
-            }
-            else
-            {
-                button2.BackColor = System.Drawing.Color.FromArgb(217, 152, 22); // Оригинальный
-            }
-
-            // Визуальная индикация для кнопки обновления
-            if (button1.Enabled)
-            {
-                button2.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
-            }
-            else
-            {
-                button1.BackColor = System.Drawing.Color.FromArgb(217, 152, 22); // Оригинальный
-            }
+            button2.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
+            button1.BackColor = System.Drawing.Color.FromArgb(217, 152, 22);
         }
 
+        //Расчет суммы с учетом дополнительных расходов
         private void CalculateTotalWithAdditionalExpenses()
         {
             if (orderData == null) return;
 
-            // Если статус не "Принят", не пересчитываем
             if (orderData.Status != "Принят")
             {
-                // Показываем исходные суммы с целыми числами
                 label20.Text = $"{orderData.Prepayment:N0} ₽";
                 label22.Text = $"{orderData.DiscountAmount:N0} ₽";
                 label27.Text = $"{(orderData.FinalAmount > 0 ? orderData.FinalAmount : orderData.TotalAmount - orderData.DiscountAmount):N0} ₽";
                 return;
             }
 
-            // Получаем базовую сумму заказа (без дополнительных расходов)
             decimal baseTotalAmount = orderData.TotalAmount;
             decimal baseDiscountAmount = orderData.DiscountAmount;
             decimal baseFinalAmount = orderData.FinalAmount > 0 ? orderData.FinalAmount : baseTotalAmount - baseDiscountAmount;
             decimal basePrepayment = orderData.Prepayment;
 
-            // Получаем дополнительные расходы из TextBox1
             int currentAdditionalExpenses = GetAdditionalExpenses();
 
-            // Проверяем, не превышает ли общая сумма максимальное значение
-            decimal maxTotalAllowed = 9999999; // 7 цифр
+            decimal maxTotalAllowed = 9999999;
             decimal newFinalAmount = baseFinalAmount + currentAdditionalExpenses;
 
             if (newFinalAmount > maxTotalAllowed)
             {
-                // Вычисляем максимально допустимые дополнительные расходы
                 int maxAdditionalExpenses = (int)(maxTotalAllowed - baseFinalAmount);
 
                 if (maxAdditionalExpenses < 0)
@@ -301,34 +269,27 @@ namespace Kursovaya
                     maxAdditionalExpenses = 0;
                 }
 
-                // Обрезаем введенное значение
                 currentAdditionalExpenses = maxAdditionalExpenses;
 
-                // Обновляем текст в TextBox
                 textBox1.Text = currentAdditionalExpenses.ToString();
                 textBox1.SelectionStart = textBox1.Text.Length;
 
-                // Показываем предупреждение
                 MessageBox.Show($"Дополнительные расходы ограничены до {maxAdditionalExpenses:N0} ₽, чтобы общая сумма не превышала {maxTotalAllowed:N0} ₽",
                                "Ограничение", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
 
-            // Сохраняем текущие дополнительные расходы
             additionalExpenses = currentAdditionalExpenses;
 
-            // Рассчитываем новые суммы с учетом дополнительных расходов
             decimal newTotalAmount = baseTotalAmount + currentAdditionalExpenses;
             newFinalAmount = baseFinalAmount + currentAdditionalExpenses;
-
-            // Предоплата может быть пересчитана пропорционально или оставлена как есть
             decimal newPrepayment = basePrepayment;
 
-            // Отображаем суммы (целые числа с валютой)
             label20.Text = $"{newPrepayment:N0} ₽";
             label22.Text = $"{baseDiscountAmount:N0} ₽";
             label27.Text = $"{newFinalAmount:N0} ₽";
         }
 
+        //Обновление статуса заказа с расходами
         private void UpdateOrderStatusWithExpenses(string newStatus)
         {
             try
@@ -337,10 +298,8 @@ namespace Kursovaya
                 {
                     con.Open();
 
-                    // Получаем дополнительные расходы (целое число)
                     int additionalExpenses = GetAdditionalExpenses();
 
-                    // Рассчитываем новую общую сумму с учетом дополнительных расходов
                     int baseFinalAmount = orderData.FinalAmount > 0 ? orderData.FinalAmount :
                                              orderData.TotalAmount - orderData.DiscountAmount;
                     int newFinalAmount = baseFinalAmount + additionalExpenses;
@@ -362,7 +321,6 @@ namespace Kursovaya
 
                         if (rowsAffected > 0)
                         {
-                            // Обновляем данные в объекте
                             orderData.Status = newStatus;
                             orderData.FinalAmount = newFinalAmount;
                         }
@@ -376,6 +334,7 @@ namespace Kursovaya
             }
         }
 
+        //Получение дополнительных расходов
         private int GetAdditionalExpenses()
         {
             if (string.IsNullOrWhiteSpace(textBox1.Text))
@@ -389,11 +348,11 @@ namespace Kursovaya
             return 0;
         }
 
+        //Настройка таблицы состава заказа
         private void SetupOrderItemsDataGridView()
         {
             dataGridView1.DataSource = orderItems;
 
-            // Настройка колонок
             if (orderItems.Columns.Contains("Article"))
                 dataGridView1.Columns["Article"].HeaderText = "Артикул";
             if (orderItems.Columns.Contains("Name"))
@@ -401,7 +360,7 @@ namespace Kursovaya
             if (orderItems.Columns.Contains("Price"))
             {
                 dataGridView1.Columns["Price"].HeaderText = "Цена";
-                dataGridView1.Columns["Price"].DefaultCellStyle.Format = "N0"; // Целые числа
+                dataGridView1.Columns["Price"].DefaultCellStyle.Format = "N0";
                 dataGridView1.Columns["Price"].DefaultCellStyle.FormatProvider = System.Globalization.CultureInfo.GetCultureInfo("ru-RU");
             }
             if (orderItems.Columns.Contains("Count"))
@@ -409,16 +368,16 @@ namespace Kursovaya
             if (orderItems.Columns.Contains("Total"))
             {
                 dataGridView1.Columns["Total"].HeaderText = "Сумма";
-                dataGridView1.Columns["Total"].DefaultCellStyle.Format = "N0"; // Целые числа
+                dataGridView1.Columns["Total"].DefaultCellStyle.Format = "N0";
                 dataGridView1.Columns["Total"].DefaultCellStyle.FormatProvider = System.Globalization.CultureInfo.GetCultureInfo("ru-RU");
             }
 
             dataGridView1.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
 
-            // Обновляем количество записей
             UpdateRowCount();
         }
 
+        //Обновление количества записей
         private void UpdateRowCount()
         {
             if (orderItems != null && orderItems.Rows.Count > 0)
@@ -434,11 +393,11 @@ namespace Kursovaya
 
         private bool allowClose = false;
 
+        //Обработчик кнопки обновления данных
         private void button1_Click(object sender, EventArgs e)
         {
             if (orderData == null) return;
 
-            // Проверяем, что статус изменился и не остался "Принят"
             string newStatus = comboBox1.SelectedItem?.ToString();
 
             if (newStatus == orderData.Status)
@@ -455,22 +414,17 @@ namespace Kursovaya
                 return;
             }
 
-            // Сохраняем изменения статуса в базу данных
             UpdateOrderStatusWithExpenses(newStatus);
 
-            // Обновляем состояние - данные обновлены
             isDataUpdated = true;
 
-            // Обновляем управление кнопками
             UpdateButtonsBasedOnStatus();
 
             MessageBox.Show("Данные успешно обновлены.", "Успех",
                           MessageBoxButtons.OK, MessageBoxIcon.Information);
-
-            // После сохранения НЕ возвращаемся к предыдущей форме
-            // Оставляем пользователя на текущей форме для возможной печати
         }
 
+        //Обработчик кнопки возврата
         private void button3_Click(object sender, EventArgs e)
         {
             allowClose = true;
@@ -480,6 +434,7 @@ namespace Kursovaya
             this.Close();
         }
 
+        //Обработчик закрытия формы
         private void ViewingAnOrder_FormClosing(object sender, FormClosingEventArgs e)
         {
             if (e.CloseReason == CloseReason.ApplicationExitCall)
@@ -493,49 +448,102 @@ namespace Kursovaya
             }
         }
 
+        //Заполнение выпадающего списка статусов
         void FillFilter()
         {
-            MySqlConnection con = new MySqlConnection(conString);
-            con.Open();
-
-            MySqlCommand cmd = new MySqlCommand(@"SELECT * FROM CafeActivities.Status;", con);
-            MySqlDataReader rdr = cmd.ExecuteReader();
-
-            comboBox1.Items.Clear();
-
-            while (rdr.Read())
+            try
             {
-                comboBox1.Items.Add(rdr[1].ToString());
+                using (MySqlConnection con = new MySqlConnection(conString))
+                {
+                    con.Open();
+
+                    string query = @"SELECT Status FROM CafeActivities.Status ORDER BY Status";
+
+                    using (MySqlCommand cmd = new MySqlCommand(query, con))
+                    using (MySqlDataReader rdr = cmd.ExecuteReader())
+                    {
+                        comboBox1.Items.Clear();
+
+                        List<string> allStatuses = new List<string>();
+
+                        while (rdr.Read())
+                        {
+                            allStatuses.Add(rdr["Status"].ToString());
+                        }
+
+                        if (orderData != null && !string.IsNullOrEmpty(orderData.Status))
+                        {
+                            foreach (string status in allStatuses)
+                            {
+                                if (status != orderData.Status)
+                                {
+                                    comboBox1.Items.Add(status);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            foreach (string status in allStatuses)
+                            {
+                                comboBox1.Items.Add(status);
+                            }
+                        }
+                    }
+
+                    if (comboBox1.Items.Count > 0)
+                    {
+                        comboBox1.SelectedIndex = 0;
+                    }
+                }
             }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при загрузке статусов: {ex.Message}", "Ошибка",
+                              MessageBoxButtons.OK, MessageBoxIcon.Error);
 
-            comboBox1.SelectedIndex = 2;
+                comboBox1.Items.Clear();
 
-            con.Close();
+                string[] fallbackStatuses = { "Оплачен", "Отменен" };
+
+                if (orderData != null && !string.IsNullOrEmpty(orderData.Status))
+                {
+                    foreach (string status in fallbackStatuses)
+                    {
+                        if (status != orderData.Status)
+                        {
+                            comboBox1.Items.Add(status);
+                        }
+                    }
+                }
+                else
+                {
+                    comboBox1.Items.AddRange(fallbackStatuses);
+                }
+
+                if (comboBox1.Items.Count > 0)
+                    comboBox1.SelectedIndex = 0;
+            }
         }
 
+        //Ограничение ввода в поле дополнительных расходов
         private void textBox1_KeyPress(object sender, KeyPressEventArgs e)
         {
             TextBox tb = (TextBox)sender;
 
-            // Разрешаем управляющие символы (Backspace, Delete, Enter и т.д.)
             if (char.IsControl(e.KeyChar))
                 return;
 
-            // Запрещаем точку и запятую
             if (e.KeyChar == '.' || e.KeyChar == ',')
             {
                 e.Handled = true;
                 return;
             }
 
-            // Разрешаем только цифры
             if (char.IsDigit(e.KeyChar))
             {
-                // Получаем текущий текст без выделенной части
                 string currentText = tb.Text.Substring(0, tb.SelectionStart) +
                                      tb.Text.Substring(tb.SelectionStart + tb.SelectionLength);
 
-                // Проверяем, не превысит ли длина 7 символов после вставки
                 if (currentText.Length >= 7)
                 {
                     e.Handled = true;
@@ -546,10 +554,10 @@ namespace Kursovaya
                 return;
             }
 
-            // Запрещаем все остальные символы
             e.Handled = true;
         }
 
+        //Валидация и форматирование дополнительных расходов
         private void ValidateAndFormatAdditionalExpenses()
         {
             if (string.IsNullOrWhiteSpace(textBox1.Text))
@@ -557,10 +565,8 @@ namespace Kursovaya
                 return;
             }
 
-            // Оставляем только цифры
             string cleanText = new string(textBox1.Text.Where(char.IsDigit).ToArray());
 
-            // Ограничиваем длину до 7 цифр
             if (cleanText.Length > 7)
             {
                 cleanText = cleanText.Substring(0, 7);
@@ -580,21 +586,21 @@ namespace Kursovaya
             }
         }
 
+        //Обработчик изменения текста в поле дополнительных расходов
         private void textBox1_TextChanged(object sender, EventArgs e)
         {
-            // Проверяем и форматируем введенное значение
             ValidateAndFormatAdditionalExpenses();
 
-            // Пересчитываем суммы при изменении дополнительных расходов
             CalculateTotalWithAdditionalExpenses();
         }
 
+        //Обработчик изменения выбранного статуса
         private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
         {
-            // Обновляем состояние кнопок при изменении статуса
             UpdateButtonsBasedOnStatus();
         }
 
+        //Обработчик кнопки печати
         private void button2_Click(object sender, EventArgs e)
         {
             if (orderData == null || orderItems == null)
@@ -605,13 +611,11 @@ namespace Kursovaya
             }
 
             decimal additionalExpenses = GetAdditionalExpenses();
-            // Передаем this как previousForm, но НЕ закрываем форму здесь
             SelectFormPrint selectFormPrint = new SelectFormPrint(orderData, orderItems, DocumentType.Final, this, additionalExpenses, this);
             selectFormPrint.ShowDialog();
-            // НЕ вызываем this.Close() - форма закроется сама при необходимости
-            // this.Close(); // УБРАТЬ ИЛИ ЗАКОММЕНТИРОВАТЬ
         }
 
+        //Получение пути к шаблону
         private string GetTemplatePath()
         {
             string[] possiblePaths = {
@@ -633,6 +637,7 @@ namespace Kursovaya
             throw new FileNotFoundException("Шаблон secondblank.docx не найден. Проверьте наличие файла в папке Resources");
         }
 
+        //Заполнение закладки в документе Word
         private void FillBookmark(Microsoft.Office.Interop.Word.Document doc, string bookmarkName, string value)
         {
             try
@@ -655,6 +660,7 @@ namespace Kursovaya
             }
         }
 
+        //Генерация Word документа
         private void GenerateWordTicket()
         {
             Microsoft.Office.Interop.Word.Application wordApp = null;
@@ -669,7 +675,6 @@ namespace Kursovaya
                     return;
                 }
 
-                // Создаем Word Application
                 wordApp = new Microsoft.Office.Interop.Word.Application();
                 wordApp.Visible = true;
 
@@ -677,17 +682,14 @@ namespace Kursovaya
                 doc = wordApp.Documents.Open(templatePath, ReadOnly: false);
                 doc.Activate();
 
-                // Используем данные из заказа с учетом дополнительных расходов
                 decimal additionalExpenses = GetAdditionalExpenses();
                 decimal totalAmount = orderData.TotalAmount + additionalExpenses;
                 decimal discountAmount = orderData.DiscountAmount;
                 decimal finalAmount = (orderData.FinalAmount > 0 ? orderData.FinalAmount : orderData.TotalAmount - discountAmount) + additionalExpenses;
                 decimal prepayment = orderData.Prepayment;
 
-                // Рассчитываем процент скидки от новой общей суммы
                 decimal discountPercent = totalAmount > 0 ? (discountAmount / totalAmount) * 100 : 0;
 
-                // Заполняем закладки данными
                 FillBookmark(doc, "NumberOrder", orderData.NumberOrder);
                 FillBookmark(doc, "DateOrder", orderData.DateOrder);
                 FillBookmark(doc, "NameClient", orderData.NameClient);
@@ -706,7 +708,6 @@ namespace Kursovaya
                 ReplaceExampleTableWithActualData(doc, wordApp);
                 AddServiceInfoToWord(doc);
 
-                // Сохраняем изменения
                 doc.Save();
 
                 MessageBox.Show("Документ заказа создан.", "Успех",
@@ -724,7 +725,6 @@ namespace Kursovaya
                 {
                     if (doc != null)
                     {
-                        // Не закрываем документ, чтобы пользователь мог его просмотреть
                         System.Runtime.InteropServices.Marshal.ReleaseComObject(doc);
                     }
                 }
@@ -735,13 +735,13 @@ namespace Kursovaya
             }
         }
 
+        //Добавление служебной информации в Word документ
         private void AddServiceInfoToWord(Microsoft.Office.Interop.Word.Document doc)
         {
             Microsoft.Office.Interop.Word.Range range = doc.Range(doc.Content.End - 1, doc.Content.End - 1);
             range.InsertParagraphAfter();
             range.InsertParagraphAfter();
 
-            // Получаем информацию о текущем пользователе (директоре)
             string fullname = Properties.Settings.Default.userName;
             string formattedname = fullname;
 
@@ -754,7 +754,6 @@ namespace Kursovaya
                 formattedname = $"{lastname} {firstname}.{middle}.";
             }
 
-            // Форматируем имя сотрудника, который оформил заказ
             string orderCreatorName = orderData.NameUser;
             string formattedOrderCreator = orderCreatorName;
 
@@ -767,18 +766,16 @@ namespace Kursovaya
                 formattedOrderCreator = $"{lastnameCreator} {firstnameCreator}.{middleCreator}.";
             }
 
-            // Добавляем служебную информацию с текущим временем и обоими сотрудниками
             range.Text = $"Документ сгенерирован: {DateTime.Now:dd.MM.yyyy HH:mm:ss}\rСотрудник: {formattedname}\rЗаказ был оформлен: {formattedOrderCreator}";
             range.Font.Size = 10;
             range.Font.Italic = 1;
         }
 
-        // Метод для замены примера таблицы на актуальные данные
+        //Замена примера таблицы на актуальные данные
         private void ReplaceExampleTableWithActualData(Microsoft.Office.Interop.Word.Document doc, Microsoft.Office.Interop.Word.Application wordApp)
         {
             try
             {
-                // Находим таблицу с примером товара (первую таблицу в документе)
                 if (doc.Tables.Count > 0)
                 {
                     Microsoft.Office.Interop.Word.Table exampleTable = doc.Tables[1];
@@ -797,6 +794,7 @@ namespace Kursovaya
             }
         }
 
+        //Вставка таблицы с актуальными данными заказа
         private void InsertActualOrderTable(Microsoft.Office.Interop.Word.Document doc, Microsoft.Office.Interop.Word.Application wordApp, Microsoft.Office.Interop.Word.Range targetRange)
         {
             if (orderItems.Rows.Count == 0)
@@ -859,7 +857,6 @@ namespace Kursovaya
             table.Borders.Enable = 1;
             table.Rows[1].Range.Font.Bold = 1;
 
-            // Выравнивание
             table.Columns[1].Cells.VerticalAlignment = Microsoft.Office.Interop.Word.WdCellVerticalAlignment.wdCellAlignVerticalCenter;
             table.Columns[3].Cells.VerticalAlignment = Microsoft.Office.Interop.Word.WdCellVerticalAlignment.wdCellAlignVerticalCenter;
             table.Columns[4].Cells.VerticalAlignment = Microsoft.Office.Interop.Word.WdCellVerticalAlignment.wdCellAlignVerticalCenter;
@@ -881,36 +878,21 @@ namespace Kursovaya
             }
         }
 
-        private void label3_Click(object sender, EventArgs e)
-        {
+        private void label3_Click(object sender, EventArgs e) { }
+        private void label4_Click(object sender, EventArgs e) { }
+        private void label6_Click(object sender, EventArgs e) { }
 
-        }
+        private void ViewingAnOrder_Load(object sender, EventArgs e) { }
 
-        private void label4_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void label6_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void ViewingAnOrder_Load(object sender, EventArgs e)
-        {
-
-        }
-
+        //Обработчик потери фокуса полем дополнительных расходов
         private void textBox1_Leave(object sender, EventArgs e)
         {
             if (!string.IsNullOrWhiteSpace(textBox1.Text))
             {
-                // Убираем все нецифровые символы
                 string cleanText = new string(textBox1.Text.Where(char.IsDigit).ToArray());
 
                 if (!string.IsNullOrEmpty(cleanText))
                 {
-                    // Ограничиваем до 7 цифр
                     if (cleanText.Length > 7)
                     {
                         cleanText = cleanText.Substring(0, 7);
@@ -924,20 +906,18 @@ namespace Kursovaya
                 }
             }
 
-            // Пересчитываем с проверкой лимита
             CalculateTotalWithAdditionalExpenses();
         }
 
+        //Валидация и вставка дополнительных расходов
         private void ValidateAndPasteAdditionalExpenses()
         {
             if (Clipboard.ContainsText())
             {
                 string clipboardText = Clipboard.GetText();
 
-                // Оставляем только цифры
                 string numericText = new string(clipboardText.Where(char.IsDigit).ToArray());
 
-                // Ограничиваем длину до 7 цифр
                 if (numericText.Length > 7)
                 {
                     numericText = numericText.Substring(0, 7);
@@ -948,12 +928,12 @@ namespace Kursovaya
                     textBox1.Text = numericText;
                     textBox1.SelectionStart = textBox1.Text.Length;
 
-                    // Пересчитываем суммы
                     CalculateTotalWithAdditionalExpenses();
                 }
             }
         }
 
+        //Обработчик нажатия клавиш в поле дополнительных расходов
         private void textBox1_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.Control && e.KeyCode == Keys.V)

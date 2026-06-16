@@ -337,6 +337,7 @@ namespace Kursovaya
             this.Name = "ViewingOrderForDirector";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Просмотр заказа";
+            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.ViewingOrderForDirector_FormClosing);
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();

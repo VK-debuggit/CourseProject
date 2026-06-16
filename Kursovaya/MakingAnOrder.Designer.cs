@@ -491,10 +491,9 @@ namespace Kursovaya
             // 
             // label28
             // 
-            this.label28.AutoSize = true;
-            this.label28.Location = new System.Drawing.Point(566, 242);
+            this.label28.Location = new System.Drawing.Point(568, 222);
             this.label28.Name = "label28";
-            this.label28.Size = new System.Drawing.Size(79, 28);
+            this.label28.Size = new System.Drawing.Size(502, 106);
             this.label28.TabIndex = 45;
             this.label28.Text = "label28";
             // 
