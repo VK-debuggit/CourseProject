@@ -145,18 +145,27 @@ namespace Kursovaya
             }
         }
 
+        //Получение пути к папке Documents
+        private static string GetDocumentsPath()
+        {
+            // Используем тот же принцип, что и в BackupManager
+            string exeDirectory = Path.GetDirectoryName(System.Windows.Forms.Application.ExecutablePath);
+            string docsFolder = Path.Combine(exeDirectory, "CafeManagement", "Documents");
+
+            if (!Directory.Exists(docsFolder))
+            {
+                Directory.CreateDirectory(docsFolder);
+            }
+
+            return docsFolder;
+        }
+
         //Генерация PDF предварительного документа
         private void GeneratePreliminaryPDFTicket()
         {
             try
             {
-                string documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-                string docsFolder = Path.Combine(documentsPath, "CafeManagement", "Documents");
-
-                if (!Directory.Exists(docsFolder))
-                {
-                    Directory.CreateDirectory(docsFolder);
-                }
+                string docsFolder = GetDocumentsPath();
 
                 string fileName = $"Предварительный_документ_заказ_{_orderData.NumberOrder}_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
                 string filePath = Path.Combine(docsFolder, fileName);
@@ -188,13 +197,7 @@ namespace Kursovaya
         {
             try
             {
-                string documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-                string docsFolder = Path.Combine(documentsPath, "CafeManagement", "Documents");
-
-                if (!Directory.Exists(docsFolder))
-                {
-                    Directory.CreateDirectory(docsFolder);
-                }
+                string docsFolder = GetDocumentsPath();
 
                 string fileName = $"Итоговый_документ_заказ_{_orderData.NumberOrder}_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
                 string filePath = Path.Combine(docsFolder, fileName);

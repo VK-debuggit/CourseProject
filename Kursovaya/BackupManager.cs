@@ -400,40 +400,6 @@ namespace Kursovaya
             return value;
         }
 
-        // Метод очистки старых бэкапов (закомментирован, но оставлен на будущее)
-        /*
-        private static void CleanupOldBackups(string backupPath, int keepCount)
-        {
-            try
-            {
-                if (!Directory.Exists(backupPath))
-                    return;
-                    
-                var directories = Directory.GetDirectories(backupPath)
-                    .Select(d => new DirectoryInfo(d))
-                    .OrderByDescending(d => d.CreationTime)
-                    .Skip(keepCount);
-                    
-                foreach (var dir in directories)
-                {
-                    try
-                    {
-                        Directory.Delete(dir.FullName, true);
-                        LogBackupOperation($"Удален старый бэкап: {dir.FullName}");
-                    }
-                    catch (Exception ex)
-                    {
-                        LogBackupOperation($"Ошибка удаления старого бэкапа {dir.FullName}: {ex.Message}");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                LogBackupOperation($"Ошибка при очистке старых бэкапов: {ex.Message}");
-            }
-        }
-        */
-
         private static void LogBackupOperation(string message)
         {
             try
